@@ -1,0 +1,14 @@
+{
+  "name": "muldaen-church-walkthrough",
+  "private": true,
+  "scripts": {
+    "test": "node tests/world.test.mjs",
+    "test:browser": "node tests/v13-browser.cjs",
+    "test:camera": "node tests/camera-live.cjs"
+  },
+  "devDependencies": {
+    "playwright": "1.62.1",
+    "three": "0.169.0"
+  },
+  "type": "module"
+}

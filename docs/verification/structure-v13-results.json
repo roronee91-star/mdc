@@ -1,0 +1,92 @@
+{
+  "projectId": "47f79244-88ea-4a33-9e60-d761813e183a",
+  "operationId": "repair-upper-ev-openings-and-3f4f-v13-unique-ids-20261102",
+  "revision": 13,
+  "result": {
+    "protected_objects_unchanged": 1039,
+    "created": [
+      "CONNECT_3F_4F_STAIR_FlightA",
+      "CONNECT_3F_4F_STAIR_FlightA.001",
+      "CONNECT_3F_4F_STAIR_FlightA.002",
+      "CONNECT_3F_4F_STAIR_FlightA.003",
+      "CONNECT_3F_4F_STAIR_FlightA.004",
+      "CONNECT_3F_4F_STAIR_FlightA.005",
+      "CONNECT_3F_4F_STAIR_FlightA.006",
+      "CONNECT_3F_4F_STAIR_FlightA.007",
+      "CONNECT_3F_4F_STAIR_FlightA.008",
+      "CONNECT_3F_4F_STAIR_FlightA.009",
+      "CONNECT_3F_4F_STAIR_FlightB",
+      "CONNECT_3F_4F_STAIR_FlightB.001",
+      "CONNECT_3F_4F_STAIR_FlightB.002",
+      "CONNECT_3F_4F_STAIR_FlightB.003",
+      "CONNECT_3F_4F_STAIR_FlightB.004",
+      "CONNECT_3F_4F_STAIR_FlightB.005",
+      "CONNECT_3F_4F_STAIR_FlightB.006",
+      "CONNECT_3F_4F_STAIR_FlightB.007",
+      "CONNECT_3F_4F_STAIR_FlightB.008",
+      "CONNECT_3F_4F_STAIR_FlightB.009",
+      "CONNECT_3F_4F_STAIR_FloorLanding",
+      "CONNECT_3F_4F_STAIR_MidGuard",
+      "CONNECT_3F_4F_STAIR_MidLanding"
+    ],
+    "added_steps": 20,
+    "top_step": 12.800000190734863,
+    "shaft_probe_results": [
+      {
+        "slab": "SLAB_3.1",
+        "x": 11,
+        "y": -6.265,
+        "clear": true
+      },
+      {
+        "slab": "SLAB_3.1",
+        "x": 10.1,
+        "y": -7.4,
+        "clear": true
+      },
+      {
+        "slab": "SLAB_3.1",
+        "x": 11.9,
+        "y": -5.1,
+        "clear": true
+      },
+      {
+        "slab": "SLAB_6.3",
+        "x": 11,
+        "y": -6.265,
+        "clear": true
+      },
+      {
+        "slab": "SLAB_6.3",
+        "x": 10.1,
+        "y": -7.4,
+        "clear": true
+      },
+      {
+        "slab": "SLAB_6.3",
+        "x": 11.9,
+        "y": -5.1,
+        "clear": true
+      },
+      {
+        "slab": "SLAB_9.5",
+        "x": 11,
+        "y": -6.265,
+        "clear": true
+      },
+      {
+        "slab": "SLAB_9.5",
+        "x": 10.1,
+        "y": -7.4,
+        "clear": true
+      },
+      {
+        "slab": "SLAB_9.5",
+        "x": 11.9,
+        "y": -5.1,
+        "clear": true
+      }
+    ],
+    "limitations": "Existing provisional shaft XY retained; plan registration, B1 openings, visual and browser circulation checks still required."
+  }
+}

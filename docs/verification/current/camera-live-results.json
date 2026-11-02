@@ -1,0 +1,31 @@
+{
+  "results": [
+    "Real-time WASD moves avatar",
+    {
+      "test": "Live follow camera / full body",
+      "framed": true,
+      "distance": 5.584428519194963,
+      "fade": 0,
+      "yaw": 1.2624806645994682,
+      "zoom": 7.5
+    },
+    {
+      "test": "Live drag rotation / zoom",
+      "framed": true,
+      "distance": 5.074861004257704,
+      "fade": 0,
+      "yaw": 0.6624806645994682,
+      "zoom": 6.85
+    },
+    {
+      "test": "Live portrait framing",
+      "framed": true,
+      "distance": 5.11192060517653,
+      "fade": 0,
+      "yaw": 0.6624806645994682,
+      "zoom": 6.85
+    },
+    "Esc restores original materials; no page errors"
+  ],
+  "errors": []
+}

@@ -1,0 +1,30 @@
+{
+  "tests": 16,
+  "results": [
+    "Closed landing door blocks shaft entry",
+    "Continuous B1 → 4F staircase ascent",
+    "Continuous 4F → B1 staircase descent",
+    "B1 stair landing → EV corridor → car",
+    "1F stair landing → EV corridor → car",
+    "2F stair landing → EV corridor → car",
+    "3F stair landing → EV corridor → car",
+    "4F stair landing → EV corridor → car",
+    "EV ride / exit / reentry -9.4",
+    "EV ride / exit / reentry 0",
+    "EV ride / exit / reentry 3.2",
+    "EV ride / exit / reentry 9.6",
+    "EV ride / exit / reentry 12.8",
+    "254 protected facade / stage / pew meshes unchanged",
+    "Cross tower front / right / left / roof exterior planes retained",
+    "1F side entrance → EV lobby"
+  ],
+  "visualDrawBatches": 20,
+  "collisionMeshes": 1065,
+  "repairs": [
+    "B1_Ceiling: stair and EV openings",
+    "SITE_Sidewalk: stair and EV openings",
+    "1F internal EV corridor doorway added; front facade unchanged",
+    "Removed obsolete 01_Lobby_E and B1 stair-intersecting partition B1_Room_Front_A_6",
+    "Cross tower internal fill hollowed; exterior front/right/left/top bounds retained"
+  ]
+}

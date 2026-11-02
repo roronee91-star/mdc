@@ -1,0 +1,321 @@
+{
+  "browser": "154.0.8037.57",
+  "method": "Real browser keyboard/pointer events; fixed-step production controller simulation between rendered frames",
+  "results": [
+    {
+      "test": "1F side entrance → EV lobby via WASD",
+      "pass": true,
+      "state": {
+        "p": [
+          9.2,
+          2.9802322831784522e-9,
+          6.265
+        ],
+        "floor": "outside",
+        "lift": {
+          "y": 0,
+          "target": 0,
+          "phase": "open",
+          "openness": 1,
+          "passenger": false
+        },
+        "distance": 10,
+        "fade": 3
+      }
+    },
+    {
+      "test": "wall collision",
+      "pass": true,
+      "state": {
+        "p": [
+          8.10000000000004,
+          2.9802322831784522e-9,
+          4.0699999999999905
+        ],
+        "floor": "outside",
+        "lift": {
+          "y": 0,
+          "target": 0,
+          "phase": "open",
+          "openness": 1,
+          "passenger": false
+        },
+        "distance": 10,
+        "fade": 0
+      }
+    },
+    {
+      "test": "ascending switchback 0",
+      "pass": true,
+      "state": {
+        "p": [
+          5.35,
+          -6.266666449606419,
+          3.6499999999999995
+        ],
+        "floor": "sanctuary",
+        "lift": {
+          "y": 0,
+          "target": 0,
+          "phase": "open",
+          "openness": 1,
+          "passenger": false
+        },
+        "distance": 7.5,
+        "fade": 1
+      }
+    },
+    {
+      "test": "ascending switchback 1",
+      "pass": true,
+      "state": {
+        "p": [
+          5.35,
+          -3.133333243429661,
+          3.6499999999999995
+        ],
+        "floor": "outside",
+        "lift": {
+          "y": 0,
+          "target": 0,
+          "phase": "open",
+          "openness": 1,
+          "passenger": false
+        },
+        "distance": 7.5,
+        "fade": 0
+      }
+    },
+    {
+      "test": "ascending switchback 2",
+      "pass": true,
+      "state": {
+        "p": [
+          5.35,
+          0,
+          3.6499999999999995
+        ],
+        "floor": "outside",
+        "lift": {
+          "y": 0,
+          "target": 0,
+          "phase": "open",
+          "openness": 1,
+          "passenger": false
+        },
+        "distance": 7.5,
+        "fade": 0
+      }
+    },
+    {
+      "test": "ascending switchback 3",
+      "pass": true,
+      "state": {
+        "p": [
+          5.35,
+          3.1999998837709427,
+          3.6499999999999995
+        ],
+        "floor": "education",
+        "lift": {
+          "y": 0,
+          "target": 0,
+          "phase": "open",
+          "openness": 1,
+          "passenger": false
+        },
+        "distance": 7.5,
+        "fade": 0
+      }
+    },
+    {
+      "test": "ascending switchback 4",
+      "pass": true,
+      "state": {
+        "p": [
+          5.35,
+          6.400000169873238,
+          3.6499999999999995
+        ],
+        "floor": "community",
+        "lift": {
+          "y": 0,
+          "target": 0,
+          "phase": "open",
+          "openness": 1,
+          "passenger": false
+        },
+        "distance": 7.5,
+        "fade": 0
+      }
+    },
+    {
+      "test": "ascending switchback 5",
+      "pass": true,
+      "state": {
+        "p": [
+          5.35,
+          9.600000455975533,
+          3.6499999999999995
+        ],
+        "floor": "community",
+        "lift": {
+          "y": 0,
+          "target": 0,
+          "phase": "open",
+          "openness": 1,
+          "passenger": false
+        },
+        "distance": 7.5,
+        "fade": 0
+      }
+    },
+    {
+      "test": "ascending switchback 6",
+      "pass": true,
+      "state": {
+        "p": [
+          5.35,
+          12.80000026524067,
+          3.6499999999999995
+        ],
+        "floor": "terrace",
+        "lift": {
+          "y": 0,
+          "target": 0,
+          "phase": "open",
+          "openness": 1,
+          "passenger": false
+        },
+        "distance": 7.5,
+        "fade": 2
+      }
+    },
+    {
+      "test": "4F → B1 continuous descent",
+      "pass": true
+    },
+    {
+      "test": "closed landing door prevents shaft entry",
+      "pass": true
+    },
+    {
+      "test": "elevator ride, exit, reenter 0",
+      "pass": true,
+      "state": {
+        "p": [
+          11,
+          1.4901164746561335e-9,
+          6.265
+        ],
+        "floor": "outside",
+        "lift": {
+          "y": 0,
+          "target": 0,
+          "phase": "open",
+          "openness": 1,
+          "passenger": true
+        },
+        "distance": 7.5,
+        "fade": 3
+      }
+    },
+    {
+      "test": "elevator ride, exit, reenter 3.2",
+      "pass": true,
+      "state": {
+        "p": [
+          10.999999999999998,
+          3.2000000002980236,
+          6.265
+        ],
+        "floor": "education",
+        "lift": {
+          "y": 3.2,
+          "target": 3.2,
+          "phase": "open",
+          "openness": 1,
+          "passenger": true
+        },
+        "distance": 7.5,
+        "fade": 3
+      }
+    },
+    {
+      "test": "elevator ride, exit, reenter 9.6",
+      "pass": true,
+      "state": {
+        "p": [
+          10.999999999999998,
+          9.600000000298023,
+          6.265
+        ],
+        "floor": "community",
+        "lift": {
+          "y": 9.6,
+          "target": 9.6,
+          "phase": "open",
+          "openness": 1,
+          "passenger": true
+        },
+        "distance": 7.5,
+        "fade": 3
+      }
+    },
+    {
+      "test": "elevator ride, exit, reenter 12.8",
+      "pass": true,
+      "state": {
+        "p": [
+          10.999999999999998,
+          12.800000000298024,
+          6.265
+        ],
+        "floor": "terrace",
+        "lift": {
+          "y": 12.8,
+          "target": 12.8,
+          "phase": "open",
+          "openness": 1,
+          "passenger": true
+        },
+        "distance": 7.5,
+        "fade": 3
+      }
+    },
+    {
+      "test": "elevator ride, exit, reenter -9.4",
+      "pass": true,
+      "state": {
+        "p": [
+          10.999999999999998,
+          -9.399999999701977,
+          6.265
+        ],
+        "floor": "sanctuary",
+        "lift": {
+          "y": -9.4,
+          "target": -9.4,
+          "phase": "open",
+          "openness": 1,
+          "passenger": true
+        },
+        "distance": 7.5,
+        "fade": 2
+      }
+    },
+    {
+      "test": "pointer orbit / wheel / full body",
+      "pass": true
+    },
+    {
+      "test": "portrait full body",
+      "pass": true
+    },
+    {
+      "test": "Esc restores materials and overview",
+      "pass": true
+    }
+  ],
+  "errors": []
+}
