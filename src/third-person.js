@@ -1,4 +1,5 @@
 import * as T from 'three';
+import {setSourceVisibility} from './occlusion.js';
 import {createFollowCamera} from './walk_camera_v12.js';
 
 // Camera and player state are separate: zoom/occlusion never move the player.
@@ -8,6 +9,7 @@ export class ThirdPerson {
     this.position = new T.Vector3();
     this.phase = 0;
     this.ray = new T.Raycaster();
+    this.ray.layers.enableAll();
     this.faded = new Map();
     this.fadeMaterials = new WeakMap();
     this.avatar = new T.Group();
@@ -55,7 +57,7 @@ export class ThirdPerson {
     this.follow.zoom(delta);
   }
   restore() {
-    for (const [mesh, material] of this.faded) mesh.material = material;
+    for (const [mesh, material] of this.faded) {if (!setSourceVisibility(mesh, 1)) mesh.material = material;}
     this.faded.clear();
   }
   update(dt, keys, allowed, floorHeight, group, movement, refreshView = true) {
@@ -86,22 +88,27 @@ export class ThirdPerson {
     this.avatar.updateMatrixWorld(true);
     this.restore();
     // Keep the framing in narrow rooms; temporarily fade intervening surfaces.
-    // Current architecture is batched by material, so an entire batch may fade.
+    // Raycast source objects; hide only their vertex ranges in render batches.
     group.updateMatrixWorld(true);
     const occluders = new Set();
+    if(this.targetWorld!==group){this.targetWorld=group;this.targets=[];group.traverse(o=>{if(o.isMesh&&!o.userData.visualBatch)this.targets.push(o)})}
     const samples = [[0, .1], [0, 1.7], ...Array.from({length: 15}, (_, i) => [(i - 7) * .055, .9])];
     for (const [x, y] of samples) {
       const sample = this.position.clone().add(new T.Vector3(Math.cos(this.yaw) * x, y, -Math.sin(this.yaw) * x));
       const direction = sample.sub(this.camera.position);
       this.ray.set(this.camera.position, direction.clone().normalize());
       this.ray.far = direction.length();
-      for (const hit of this.ray.intersectObject(group, true)) hit.object.visible && occluders.add(hit.object);
+      for (const hit of this.ray.intersectObjects(this.targets, false)) hit.object.visible && occluders.add(hit.object);
       // Reverse rays also detect the exit face when the camera is inside a wall.
       this.ray.set(this.camera.position.clone().add(direction), direction.clone().normalize().negate());
-      for (const hit of this.ray.intersectObject(group, true)) hit.object.visible && occluders.add(hit.object);
+      for (const hit of this.ray.intersectObjects(this.targets, false)) hit.object.visible && occluders.add(hit.object);
     }
+    // Keep each pew coherent: do not leave its legs floating when its seat is hidden.
+    const pews=new Set([...occluders].map(o=>(o.userData.name||o.name).match(/^(B1_Pew_\d+)_/)?.[1]).filter(Boolean));
+    if(pews.size)for(const o of this.targets){const key=(o.userData.name||o.name).match(/^(B1_Pew_\d+)_/)?.[1];if(pews.has(key))occluders.add(o)}
     for (const mesh of occluders) {
       this.faded.set(mesh, mesh.material);
+      if (setSourceVisibility(mesh, 0)) continue;
       if (!this.fadeMaterials.has(mesh)) {
         const make = material => {
           const faded = material.clone();

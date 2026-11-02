@@ -7,6 +7,7 @@ export function createFollowCamera(THREE, camera, avatar, getWorld = () => null)
   const desired = new THREE.Vector3();
   const view = new THREE.Vector3();
   const ray = new THREE.Raycaster();
+  ray.layers.enableAll();
   const pose = {yaw: 0.35, pitch: 0.34, distance: 7.5};
   const allowed = {
     minDistance: 5.5,
@@ -23,7 +24,7 @@ export function createFollowCamera(THREE, camera, avatar, getWorld = () => null)
     lastWorld = world;
     blockers = [];
     world?.traverse(o => {
-      if (!o.isMesh || !o.visible || o.userData?.ignoreCameraCollision) return;
+      if (!o.isMesh || !o.visible || o.userData.visualBatch || o.userData?.ignoreCameraCollision) return;
       const n = (o.name || "").toLowerCase();
       if (o.isMesh) {
         blockers.push(o);
@@ -45,7 +46,7 @@ export function createFollowCamera(THREE, camera, avatar, getWorld = () => null)
   }
   function reset(outdoor = false) {
     pose.yaw = outdoor ? 0.45 : 0.35;
-    pose.pitch = outdoor ? 0.29 : 0.38;
+    pose.pitch = outdoor ? 0.29 : 0.24;
     pose.distance = outdoor ? 10 : 7.5;
     snap();
   }
@@ -75,13 +76,13 @@ export function createFollowCamera(THREE, camera, avatar, getWorld = () => null)
       if (hit) safeDistance = Math.max(3.6, Math.min(safeDistance, hit.distance - 0.35));
     }
     // Portrait view needs enough horizontal room for shoulders too.
-    const halfFov = THREE.MathUtils.degToRad(55 / 2);
+    const halfFov = THREE.MathUtils.degToRad(64 / 2);
     const halfWidth = Math.atan(Math.tan(halfFov) * camera.aspect);
     safeDistance = Math.max(safeDistance, .55 / Math.sin(halfWidth));
     desired.copy(anchor).addScaledVector(view, safeDistance);
     const alpha = immediate ? 1 : 1 - Math.exp(-7.5 * Math.min(dt, 0.05));
     camera.position.lerp(desired, alpha);
-    const fov = safeDistance < 4.9 ? 66 : 55;
+    const fov = safeDistance < 4.9 ? 70 : 64;
     if (Math.abs(camera.fov - fov) > 0.01) {
       camera.fov = THREE.MathUtils.lerp(camera.fov, fov, alpha);
       camera.updateProjectionMatrix();

@@ -106,9 +106,10 @@ export class BuildingWorld {
     for(const batch of batches.values()){
       const geometry=mergeGeometries(batch.parts,false);for(const g of batch.parts)g.dispose();
       if(!geometry)continue;
-      const mesh=new T.Mesh(geometry,batch.material);mesh.name='Render_batch_'+batch.material.name;
+      geometry.setAttribute('sourceVisibility',new T.BufferAttribute(new Float32Array(geometry.attributes.position.count).fill(1),1));
+      const mesh=new T.Mesh(geometry,batch.material.clone());mesh.userData.visualBatch=true;mesh.name='Render_batch_'+batch.material.name;
       mesh.castShadow=true;mesh.receiveShadow=true;this.root.add(mesh);this.visualBatches.push(mesh);
-      for(const original of batch.originals){original.layers.set(1);original.userData.visualProxy=mesh}
+      let start=0;for(const original of batch.originals){const count=original.geometry.attributes.position.count;original.layers.set(1);original.userData.visualProxy=mesh;original.userData.visualRange={start,count};start+=count}
     }
   }
   nearestFloor(y){return FLOORS.reduce((a,b)=>Math.abs(b.y-y)<Math.abs(a.y-y)?b:a)}

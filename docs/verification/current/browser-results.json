@@ -83,7 +83,7 @@
           "passenger": false
         },
         "distance": 7.5,
-        "fade": 0
+        "fade": 1
       }
     },
     {
@@ -188,7 +188,7 @@
           "passenger": false
         },
         "distance": 7.5,
-        "fade": 2
+        "fade": 0
       }
     },
     {
