@@ -25,21 +25,23 @@ const out=path.join(__dirname,'../docs/verification/current');fs.mkdirSync(out,{
  results.push({test:'1F side entrance → EV lobby via WASD',pass:true,state:await state()});await shot('02-entrance-ev');
  // Closed wall: walk against the north wall outside its doorway.
  await go('z',4.95);await go('x',8.1);const before=await state();await page.keyboard.down('w');await page.evaluate(()=>__church.advance(1));await page.keyboard.up('w');const after=await state();assert(after.p[2]>3.9&&after.p[2]<before.p[2]);results.push({test:'wall collision',pass:true,state:after});
- await menu('sanctuary');await page.evaluate(()=>{const c=__church;c.thirdPerson.position.copy(c.world.spawn('sanctuary'));c.thirdPerson.avatar.position.copy(c.thirdPerson.position)});await yaw0();await go('x',5.35);await go('z',3.65);await shot('03-b1-start');
- const tops=[-6.266667,-3.133333,0,3.2,6.4,9.6,12.8];
- for(let i=0;i<7;i++){
+ await menu('sanctuary');await page.evaluate(()=>{const c=__church;c.thirdPerson.position.copy(c.world.spawn('sanctuary'));c.thirdPerson.avatar.position.copy(c.thirdPerson.position)});await yaw0();await shot('03-b1-flat-sanctuary');
+ const sanctuary=await page.evaluate(()=>({stairsRemoved:__church.world.sanctuaryStairsRemoved,tiers:__church.world.sanctuary.tierCount}));assert(sanctuary.stairsRemoved>0);assert.equal(sanctuary.tiers,0);results.push({test:'sanctuary stairs and seating tiers removed',pass:true,state:await state()});
+ await page.evaluate(()=>{const c=__church,p=c.thirdPerson.position;p.set(5.35,0,3.65);c.thirdPerson.avatar.position.copy(p);c.advance(0)});
+ const tops=[3.2,5.2,7.2,11.2];
+ for(let i=0;i<4;i++){
   await go('z',7.65);await go('x',6.65);await go('z',3.65);await go('x',5.35);
   const s=await state();assert(Math.abs(s.p[1]-tops[i])<.02);results.push({test:'ascending switchback '+i,pass:true,state:s});
-  if([2,3,5,6].includes(i)){assert(await framed());await shot('stair-arrival-'+i)}console.log('stairs',i,s.p[1]);
+  if([0,2,3].includes(i)){assert(await framed());await shot('stair-arrival-'+i)}console.log('stairs',i,s.p[1]);
  }
  await go('x',6.65);
- for(let i=0;i<7;i++){await go('z',7.65);await go('x',5.35);await go('z',3.65);await go('x',6.65)}
- assert(Math.abs((await state()).p[1]+9.4)<.02);results.push({test:'4F → B1 continuous descent',pass:true});
- await go('x',5.35);await go('z',2.5);await go('x',9.2);await go('z',6.265);
+ for(let i=0;i<4;i++){await go('z',7.65);await go('x',5.35);await go('z',3.65);await go('x',6.65)}
+ assert(Math.abs((await state()).p[1])<.02);results.push({test:'4F → 1F continuous descent',pass:true});
+ await page.evaluate(()=>{const c=__church,p=c.thirdPerson.position;p.set(5.35,-9.4,2.5);c.thirdPerson.avatar.position.copy(p);c.advance(0)});await go('x',9.2);await go('z',6.265);
  // Car initially at 1F: the B1 landing door must block entry until called.
  await page.keyboard.down('d');await page.evaluate(()=>__church.advance(1));await page.keyboard.up('d');assert((await state()).p[0]<9.75,JSON.stringify(await state()));results.push({test:'closed landing door prevents shaft entry',pass:true});
  await page.keyboard.press('e');await page.evaluate(()=>__church.advance(6));assert.equal((await state()).lift.phase,'open');await go('x',11);assert(await framed());await shot('04-lift-b1');
- for(const target of [0,3.2,9.6,12.8,-9.4]){
+ for(const target of [0,3.2,7.2,11.2,-9.4]){
   await page.click('[data-lift="'+target+'"]');await page.evaluate(()=>__church.advance(12));const s=await state();assert(Math.abs(s.p[1]-target)<.02);assert.equal(s.lift.phase,'open');assert(await framed());
   await go('x',9.2);assert(Math.abs((await state()).p[1]-target)<.02);await go('x',11);
   results.push({test:'elevator ride, exit, reenter '+target,pass:true,state:s});await shot('lift-'+String(target).replace('.','_'));console.log('lift',target);

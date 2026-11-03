@@ -1,7 +1,7 @@
 import * as T from 'three';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
-export const FLOORS = [{id:'sanctuary',label:'B1',y:-9.4},{id:'outside',label:'1F',y:0},{id:'education',label:'2F',y:3.2},{id:'community',label:'3F',y:9.6},{id:'terrace',label:'4F',y:12.8}];
+export const FLOORS = [{id:'sanctuary',label:'B1',y:-9.4},{id:'outside',label:'1F',y:0},{id:'education',label:'2F',y:3.2},{id:'community',label:'3F',y:7.2},{id:'terrace',label:'4F',y:11.2}];
 const stairHole={x1:4.5,x2:7.5,z1:2.8,z2:8.6};
 const liftHole={x1:9.94,x2:12.05,z1:4.91,z2:7.62};
 const down=new T.Vector3(0,-1,0);
@@ -14,7 +14,7 @@ export class BuildingWorld {
     this.repairs=[];this.ray=new T.Raycaster();this.ray.layers.enableAll();this.meshes=[];this.walkables=[];this.solids=[];this.doors=[];
     this.original=new Map();this.root.traverse(o=>{if(o.isMesh)this.original.set(sourceName(o),o)});
     this.trim=new T.MeshStandardMaterial({color:0xd6d0c2,roughness:.7});
-    this.fixStructure();this.fitSanctuary();this.expandSanctuary();this.buildRearRooms();this.openDiningHall();this.furnishEducationRooms();this.buildLift();this.index();this.batchVisuals();
+    this.normalizeUpperFloors();this.removeSanctuaryStairs();this.fixStructure();this.fitSanctuary();this.expandSanctuary();this.buildRearRooms();this.openDiningHall();this.furnishEducationRooms();this.buildLift();this.index();this.batchVisuals();
   }
   box(name,x,y,z,w,h,d,material=this.trim,parent=this.root){
     const o=new T.Mesh(new T.BoxGeometry(w,h,d),material);o.name=name;o.position.set(x,y,z);o.receiveShadow=true;parent.add(o);return o;
@@ -27,11 +27,30 @@ export class BuildingWorld {
     const geom=new T.ExtrudeGeometry(shape,{depth:b.y-a.y,bevelEnabled:false});geom.rotateX(-Math.PI/2);geom.translate(0,a.y,0);
     const o=new T.Mesh(geom,material);o.name=name;o.receiveShadow=true;this.root.add(o);return o;
   }
+  normalizeUpperFloors(){
+    // Preserve B1/1F/2F floor levels, then make the 2F and 3F clear structural
+    // intervals exactly 4m: 2F 3.2→3F 7.2→4F 11.2.
+    const remap=y=>y<=3.2?y:y<=9.6?3.2+(y-3.2)*.625:y<=12.8?7.2+(y-9.6)*1.25:y-1.6;
+    this.root.updateMatrixWorld(true);
+    for(const [name,o] of this.original){
+      if(name==='ROOF_Setback')continue;
+      const matrix=o.matrixWorld.clone(),inverse=matrix.clone().invert();
+      o.geometry=o.geometry.clone();const points=o.geometry.attributes.position,v=new T.Vector3();
+      for(let i=0;i<points.count;i++){v.fromBufferAttribute(points,i).applyMatrix4(matrix);v.y=remap(v.y);v.applyMatrix4(inverse);points.setXYZ(i,v.x,v.y,v.z)}
+      points.needsUpdate=true;o.geometry.computeVertexNormals();o.geometry.computeBoundingBox();o.geometry.computeBoundingSphere();
+    }
+    this.root.updateMatrixWorld(true);this.repairs.push('Upper floors normalized to 2F 3.2m, 3F 7.2m, 4F 11.2m; 2F and 3F each 4m');
+  }
+  removeSanctuaryStairs(){
+    let removed=0;
+    for(const [name,o]of this.original)if(/^B1_(STAIR_|RailPost_|MidLandingGuard_)/.test(name)){o.removeFromParent();removed++}
+    this.sanctuaryStairsRemoved=removed;this.repairs.push('Removed '+removed+' B1 stair and guard meshes; sanctuary circulation uses elevator');
+  }
   fixStructure(){
     // Restore the approved roof transform: the supplied environment export rotated
     // this horizontal slab into a vertical panel extending down into the sanctuary.
     const roof=this.original.get('ROOF_Setback');
-    if(roof){roof.position.set(0,15.899999618530273,-6);roof.quaternion.identity();roof.scale.set(1,1,1);roof.updateMatrixWorld(true);this.repairs.push('ROOF_Setback restored to approved horizontal roof at 15.8–16m; no B1 intrusion')}
+    if(roof){roof.position.set(0,14.299999618530273,-6);roof.quaternion.identity();roof.scale.set(1,1,1);roof.updateMatrixWorld(true);this.repairs.push('ROOF_Setback restored horizontally at 14.2–14.4m after upper-floor normalization; no B1 intrusion')}
 
     // The new landscape base spans through the building; open only its concealed footprint.
     const grass=this.original.get('ENV_Ground_Grass');
@@ -57,7 +76,7 @@ export class BuildingWorld {
     // This room partition occupies the existing B1 stair flight/landing footprint.
     this.original.get('B1_Room_Front_A_6')?.removeFromParent();
     this.repairs.push('Removed obsolete 01_Lobby_E and B1 stair-intersecting partition B1_Room_Front_A_6');
-    for(const f of FLOORS){
+    for(const f of FLOORS.filter(f=>f.id!=='sanctuary')){
       this.box('Landing_bridge_'+f.label,6,f.y-.08,2.95,2.6,.16,.5);
       this.box('Landing_exit_'+f.label,7.55,f.y-.08,3.55,1.1,.16,.9);
     }
@@ -118,36 +137,8 @@ export class BuildingWorld {
       const originals=source<25?[...this.original].filter(([n])=>n.startsWith(prefix)).map(([,o])=>o):added.get(source);
       const copies=originals.map(o=>{const c=o.clone();c.name=(o.userData.name||o.name).replace(prefix,next);c.userData={name:c.name};c.position.x+=dx;c.position.z+=dz;this.root.add(c);return c});added.set(id,copies);
     }
-    // One concentric tier per seating row: 12cm steps descend toward the stage.
-    this.root.updateMatrixWorld(true);
-    const pewMeshes=[];this.root.traverse(o=>{if(o.isMesh&&/^B1_Pew_\d+_/.test(sourceName(o)))pewMeshes.push(o)});
-    const center=new T.Vector2(-10.5,-8.4),tiers=new Map();
-    for(const o of pewMeshes){const seatName=sourceName(o).match(/^(B1_Pew_\d+)_/)[1];if(!tiers.has(seatName))tiers.set(seatName,Math.max(0,Math.min(11,Math.floor((Math.hypot(o.position.x-center.x,o.position.z-center.y)-5.2)/1.3))))}
-    const tierMaterial=new T.MeshStandardMaterial({color:0xb8afa0,roughness:1,side:T.DoubleSide});
-    // Build clipped quarter-ring terraces instead of full rings. The clipping
-    // keeps the raised seating floor out of the rear rooms and lift corridor;
-    // the inner vertical quads make every 12cm descent visible as a real step.
-    for(let i=0;i<=11;i++){
-      const inner=5.2+i*1.3,outer=inner+1.3,y=floor+i*.12+.02,positions=[];
-      for(let s=0;s<128;s++){
-        const a=s/128*Math.PI/2,b=(s+1)/128*Math.PI/2;
-        const p=(r,t,h)=>[center.x+Math.sin(t)*r,h,center.y+Math.cos(t)*r];
-        const ia=p(inner,a,y),ib=p(inner,b,y),oa=p(outer,a,y),ob=p(outer,b,y);
-        const valid=([x,,z])=>x<=8&&z<=6.4&&!(x>5.3&&z>.6&&z<2.2)&&!(x>4.3&&x<7.8&&z>2.5&&z<6.5);
-        if(![ia,ib,oa,ob].every(valid))continue;
-        positions.push(...ia,...oa,...ob,...ia,...ob,...ib);
-        if(i>0){const low=y-.12;positions.push(...p(inner,a,low),...ia,...ib,...p(inner,a,low),...ib,...p(inner,b,low))}
-      }
-      const g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(positions,3));g.computeVertexNormals();
-      const tier=new T.Mesh(g,tierMaterial);tier.name='B1_Seating_Tier_'+i;this.root.add(tier);
-    }
-    // A conventional eight-step aisle descends from the seating rake to the
-    // original B1 stair landing, eliminating the former jump and loose wedges.
-    for(let i=0;i<9;i++){
-      const h=(9-i)*.12;
-      this.box('B1_Seating_Tier_AisleStep_'+i,4.45+(i+.5)*.4,floor+h/2,1.4,.405,h,1.55,tierMaterial);
-    }
-    for(const o of pewMeshes)o.position.y+=tiers.get(sourceName(o).match(/^(B1_Pew_\d+)_/)[1])*.12;
+    // Keep the sanctuary seating on one continuous floor. The former curved
+    // terraces distorted the room and created abrupt drops beside the aisles.
     // Four separate cushions per bench echo the reference seating without losing the existing pew frames.
     this.root.updateMatrixWorld(true);const seatParts=[];this.root.traverse(o=>{if(o.isMesh&&/^B1_Pew_\d+_(Seat|Back)$/.test(sourceName(o)))seatParts.push(o)});
     for(const o of seatParts){const name=sourceName(o),isSeat=name.endsWith('_Seat');o.material=wood;
@@ -162,8 +153,8 @@ export class BuildingWorld {
       this.box('B1_Lighting_Track_'+row,0,0,0,width,.055,.06,trackMaterial,track);
       for(let u=-width/2+.5;u<width/2;u+=1.5){this.box('B1_Light_Housing',u,-.09,0,.13,.15,.17,trackMaterial,track);this.box('B1_Light_Diffuser',u,-.17,.015,.11,.018,.14,lampMaterial,track)}
     }
-    this.sanctuary.pewCount=37;this.sanctuary.stageWidth=10.8;this.sanctuary.stageDepth=4.4;this.sanctuary.frontAisleClearance=.9;this.sanctuary.tierRise=.12;this.sanctuary.tierCount=12;
-    this.repairs.push('Expanded curved stage 10.8m × 4.4m; 37 upholstered pews on 12 descending 12cm terraces; 0.9m minimum front circulation band');
+    this.sanctuary.pewCount=37;this.sanctuary.stageWidth=10.8;this.sanctuary.stageDepth=4.4;this.sanctuary.frontAisleClearance=.9;this.sanctuary.tierRise=0;this.sanctuary.tierCount=0;this.sanctuary.flatSeating=true;
+    this.repairs.push('Expanded curved stage 10.8m × 4.4m; 37 upholstered pews retained on a continuous flat floor; sanctuary stairs removed');
   }
   buildRearRooms(){
     const floor=-9.4,front=7.4,back=10.98,height=3;
@@ -217,14 +208,14 @@ export class BuildingWorld {
     for(const [name,o] of this.original){const match=name.match(/^03_Dining_[0-2]_(\d+)_/);if(match)o.position.z+=rowTargets[Number(match[1])]-[-1.1,-4.1,-7.1][Number(match[1])]}
     // Close the previously open rear elevation without cutting through the hall:
     // an opaque sill and upper glazing sit on the actual rear boundary at z=-9m.
-    const wall=new T.MeshStandardMaterial({color:0xd6d0c2,roughness:.9});
+    const diningFloor=7.2,wall=new T.MeshStandardMaterial({color:0xd6d0c2,roughness:.9});
     const glass=new T.MeshStandardMaterial({color:0xa8c7cc,transparent:true,opacity:.38,depthWrite:false,roughness:.18,side:T.DoubleSide});
     const frame=new T.MeshStandardMaterial({color:0x6f7775,roughness:.75});
-    this.box('03_Dining_Rear_Sill',1.45,10.05,-8.98,12.78,.9,.14,wall);
-    this.box('03_Dining_Rear_Glass',1.45,11.55,-8.98,12.78,2.1,.055,glass);
-    this.box('03_Dining_Rear_Header',1.45,12.55,-8.98,12.78,.1,.16,frame);
-    for(let x=-4.94;x<=7.85;x+=1.6)this.box('03_Dining_Rear_Mullion',x,11.55,-8.91,.055,2.1,.07,frame);
-    this.diningHall={floor:9.6,tableRows:3,frontGlazingContinuous:true,rearEnclosed:true,bounds:{x1:-4.2,x2:4.2,z1:-8.9,z2:-2.85}};
+    this.box('03_Dining_Rear_Sill',1.45,diningFloor+.45,-8.98,12.78,.9,.14,wall);
+    this.box('03_Dining_Rear_Glass',1.45,diningFloor+2.4,-8.98,12.78,3,.055,glass);
+    this.box('03_Dining_Rear_Header',1.45,diningFloor+3.95,-8.98,12.78,.1,.16,frame);
+    for(let x=-4.94;x<=7.85;x+=1.6)this.box('03_Dining_Rear_Mullion',x,diningFloor+2.4,-8.91,.055,3,.07,frame);
+    this.diningHall={floor:diningFloor,tableRows:3,frontGlazingContinuous:true,rearEnclosed:true,bounds:{x1:-4.2,x2:4.2,z1:-8.9,z2:-2.85}};
     this.repairs.push('3F front curtain wall restored continuously; all three dining rows moved behind facade glazing; rear elevation enclosed');
   }
   furnishEducationRooms(){
@@ -243,6 +234,12 @@ export class BuildingWorld {
   }
   buildLift(){
     const steel=new T.MeshStandardMaterial({color:0x7b898c,metalness:.5,roughness:.35});
+    // Vertical remapping must not compress the 2.1m lift doorway. Rebuild the
+    // three affected headers above a fixed clear opening on each upper level.
+    for(const [id,floor,ceiling]of[['02',3.2,7.2],['03',7.2,11.2],['04',11.2,14.4]]){
+      const old=this.original.get('EV_'+id+'_header');if(!old)continue;const material=old.material;old.removeFromParent();
+      const bottom=floor+2.15,height=ceiling-bottom;this.box('EV_'+id+'_header_clear',10,bottom+height/2,6.265,.12,height,1.35,material);
+    }
     const group=new T.Group();group.name='Elevator_car';this.root.add(group);
     this.car=group;this.lift={y:0,target:0,phase:'open',openness:1,passenger:false};
     this.box('Lift_car_floor',11,-.07,6.265,1.75,.14,2.35,steel,group);

@@ -1,6 +1,7 @@
 {
   "layout": {
     "pews": 37,
+    "stairsRemoved": 99,
     "floor": -9.4,
     "ceiling": -0.4,
     "height": 9,
@@ -12,8 +13,9 @@
     "stageWidth": 10.8,
     "stageDepth": 4.4,
     "frontAisleClearance": 0.9,
-    "tierRise": 0.12,
-    "tierCount": 12
+    "tierRise": 0,
+    "tierCount": 0,
+    "flatSeating": true
   },
   "stageAccessible": true,
   "aisleToLift": true,

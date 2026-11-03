@@ -45,13 +45,13 @@
       }
     },
     {
-      "test": "ascending switchback 0",
+      "test": "sanctuary stairs and seating tiers removed",
       "pass": true,
       "state": {
         "p": [
-          5.35,
-          -6.266666449606419,
-          3.6499999999999995
+          7.85,
+          -9.4,
+          2.5
         ],
         "floor": "sanctuary",
         "lift": {
@@ -62,53 +62,11 @@
           "passenger": false
         },
         "distance": 7.5,
-        "fade": 8
+        "fade": 0
       }
     },
     {
-      "test": "ascending switchback 1",
-      "pass": true,
-      "state": {
-        "p": [
-          5.35,
-          -3.133333243429661,
-          3.6499999999999995
-        ],
-        "floor": "outside",
-        "lift": {
-          "y": 0,
-          "target": 0,
-          "phase": "open",
-          "openness": 1,
-          "passenger": false
-        },
-        "distance": 7.5,
-        "fade": 8
-      }
-    },
-    {
-      "test": "ascending switchback 2",
-      "pass": true,
-      "state": {
-        "p": [
-          5.35,
-          0,
-          3.6499999999999995
-        ],
-        "floor": "outside",
-        "lift": {
-          "y": 0,
-          "target": 0,
-          "phase": "open",
-          "openness": 1,
-          "passenger": false
-        },
-        "distance": 7.5,
-        "fade": 8
-      }
-    },
-    {
-      "test": "ascending switchback 3",
+      "test": "ascending switchback 0",
       "pass": true,
       "state": {
         "p": [
@@ -125,16 +83,16 @@
           "passenger": false
         },
         "distance": 7.5,
-        "fade": 8
+        "fade": 0
       }
     },
     {
-      "test": "ascending switchback 4",
+      "test": "ascending switchback 1",
       "pass": true,
       "state": {
         "p": [
           5.35,
-          6.400000169873238,
+          5.200000047683716,
           3.6499999999999995
         ],
         "floor": "community",
@@ -146,16 +104,16 @@
           "passenger": false
         },
         "distance": 7.5,
-        "fade": 8
+        "fade": 0
       }
     },
     {
-      "test": "ascending switchback 5",
+      "test": "ascending switchback 2",
       "pass": true,
       "state": {
         "p": [
           5.35,
-          9.600000455975533,
+          7.200000524520874,
           3.6499999999999995
         ],
         "floor": "community",
@@ -167,16 +125,16 @@
           "passenger": false
         },
         "distance": 7.5,
-        "fade": 8
+        "fade": 6
       }
     },
     {
-      "test": "ascending switchback 6",
+      "test": "ascending switchback 3",
       "pass": true,
       "state": {
         "p": [
           5.35,
-          12.80000026524067,
+          11.200000286102295,
           3.6499999999999995
         ],
         "floor": "terrace",
@@ -192,7 +150,7 @@
       }
     },
     {
-      "test": "4F → B1 continuous descent",
+      "test": "4F → 1F continuous descent",
       "pass": true
     },
     {
@@ -242,18 +200,18 @@
       }
     },
     {
-      "test": "elevator ride, exit, reenter 9.6",
+      "test": "elevator ride, exit, reenter 7.2",
       "pass": true,
       "state": {
         "p": [
           10.999999999999998,
-          9.600000000298023,
+          7.200000000298023,
           6.265
         ],
         "floor": "community",
         "lift": {
-          "y": 9.6,
-          "target": 9.6,
+          "y": 7.2,
+          "target": 7.2,
           "phase": "open",
           "openness": 1,
           "passenger": true
@@ -263,18 +221,18 @@
       }
     },
     {
-      "test": "elevator ride, exit, reenter 12.8",
+      "test": "elevator ride, exit, reenter 11.2",
       "pass": true,
       "state": {
         "p": [
           10.999999999999998,
-          12.800000000298024,
+          11.200000000298022,
           6.265
         ],
         "floor": "terrace",
         "lift": {
-          "y": 12.8,
-          "target": 12.8,
+          "y": 11.2,
+          "target": 11.2,
           "phase": "open",
           "openness": 1,
           "passenger": true

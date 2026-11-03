@@ -4,7 +4,7 @@ const page=await browser.newPage({viewport:{width:1280,height:900}}),errors=[];p
 const root=path.dirname(path.dirname(require.resolve('three'))),out=path.join(__dirname,'../docs/verification/current');await page.route('https://cdn.jsdelivr.net/npm/three@0.169.0/**',r=>r.fulfill({path:path.join(root,r.request().url().split('three@0.169.0/')[1]),contentType:'text/javascript'}));
 await page.goto((process.env.TEST_URL||'http://127.0.0.1:8005/')+'?test');await page.waitForFunction(()=>window.__church?.advance);
 const roof=await page.evaluate(async()=>{const T=await import('three'),w=__church.world,o=w.original.get('ROOF_Setback'),b=new T.Box3().setFromObject(o);return {min:b.min.toArray(),max:b.max.toArray(),rotation:o.quaternion.toArray(),environment:[...w.original.keys()].filter(n=>n.startsWith('ENV_')).length}});
-assert(Math.abs(roof.min[1]-15.8)<.00001);assert(Math.abs(roof.max[1]-16)<.00001);assert.deepEqual(roof.rotation,[0,0,0,1]);assert(roof.environment>400);
+assert(Math.abs(roof.min[1]-14.2)<.00001);assert(Math.abs(roof.max[1]-14.4)<.00001);assert.deepEqual(roof.rotation,[0,0,0,1]);assert(roof.environment>400);
 await page.screenshot({path:path.join(out,'roof-fixed-exterior.png')});await page.click('[data-space="sanctuary"]');
 await page.evaluate(()=>{const c=__church;c.thirdPerson.position.set(-4,-9.4,-3);c.thirdPerson.avatar.position.copy(c.thirdPerson.position);c.thirdPerson.follow.pose.yaw=.95;c.thirdPerson.follow.pose.pitch=.3;c.advance(0)});
 await page.screenshot({path:path.join(out,'roof-fixed-sanctuary.png')});

@@ -6,15 +6,14 @@
     "work_branch": "work",
     "deploy_branch": "main",
     "deploy_url": "https://roronee91-star.github.io/mdc/",
-    "current_commit": "662d1f2",
     "glb": "assets/church-environment-20261103.glb"
   },
   "fixed_levels_m": {
     "B1": -9.4,
     "1F": 0,
     "2F": 3.2,
-    "3F": 9.6,
-    "4F": 12.8
+    "3F": 7.2,
+    "4F": 11.2
   },
   "non_negotiable_constraints": [
     "승인된 외관 버전3을 임의로 변경하지 않는다.",
@@ -30,9 +29,10 @@
       "avatar_height_m": 1.65,
       "pew_count": 37,
       "pews_never_hidden_by_camera": true,
-      "tier_count": 12,
-      "tier_rise_m": 0.12,
-      "transition_step_count": 9,
+      "tier_count": 0,
+      "tier_rise_m": 0,
+      "transition_step_count": 0,
+      "flat_seating": true,
       "stage_width_m": 10.8,
       "stage_depth_m": 4.4,
       "front_aisle_clearance_m": 0.9
@@ -57,8 +57,9 @@
       "floor_cushions": 8
     },
     "circulation": {
-      "stairs_B1_to_4F": true,
-      "stairs_4F_to_B1": true,
+      "stairs_B1_to_4F": false,
+      "stairs_1F_to_4F": true,
+      "stairs_4F_to_1F": true,
       "elevator_floors": [
         "B1",
         "1F",
@@ -79,7 +80,7 @@
   ],
   "verification": {
     "structure_tests_passed": 23,
-    "browser_tests_passed": 19,
+    "browser_tests_passed": 17,
     "camera_tests_passed": 5,
     "hidden_pews": 0,
     "protected_facade_environment_meshes": 659,
@@ -87,7 +88,7 @@
     "latest_screenshots": [
       "docs/verification/current/3f-front-curtain-wall.png",
       "docs/verification/current/3f-rear-facade-enclosed.png",
-      "docs/verification/current/sanctuary-stair-tier-junction.png",
+      "docs/verification/current/sanctuary-flat-floor.png",
       "docs/verification/current/education-group-room.png",
       "docs/verification/current/education-prayer-small-groups.png",
       "docs/verification/current/dining-hall-three-rows.png"
