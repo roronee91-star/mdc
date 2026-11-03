@@ -3,6 +3,8 @@
     "floor": 9.6,
     "tableRows": 3,
     "barrierRemoved": "Upper_Setback_Glass",
+    "framesRemoved": 11,
+    "rearEnclosed": true,
     "bounds": {
       "x1": -4.2,
       "x2": 4.2,
@@ -11,6 +13,8 @@
     },
     "tables": 9,
     "removed": true,
+    "orphanFrames": 0,
+    "rearParts": 11,
     "fourth": 0
   },
   "walkedAcrossFormerGlassLine": true,

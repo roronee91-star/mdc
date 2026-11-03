@@ -1,0 +1,38 @@
+{
+  "rooms": {
+    "rooms": [
+      {
+        "id": "Prayer",
+        "label": "기도실",
+        "center": [
+          7.25,
+          3.2,
+          -0.83
+        ]
+      },
+      {
+        "id": "SmallGroupA",
+        "label": "소그룹실 1",
+        "center": [
+          7.25,
+          3.2,
+          -4.08
+        ]
+      },
+      {
+        "id": "SmallGroupB",
+        "label": "소그룹실 2",
+        "center": [
+          7.25,
+          3.2,
+          -7.33
+        ]
+      }
+    ],
+    "roundTables": 3,
+    "chairs": 12,
+    "tables": 3,
+    "seats": 12
+  },
+  "errors": []
+}

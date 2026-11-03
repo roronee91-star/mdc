@@ -17,7 +17,7 @@ const fs=require('fs'),path=require('path'),assert=require('assert/strict');
   let exact=true;for(const o of c.world.meshes){const r=o.userData.visualRange,p=o.userData.visualProxy;if(!r)continue;const a=p.geometry.getAttribute('sourceVisibility').array,v=faded.includes(o)?0:1;for(let i=r.start;i<r.start+r.count;i++)if(a[i]!==v)exact=false}
   return {faded:faded.length,hiddenPews,totalPews:pews.length,exact,opaqueBatches:c.world.visualBatches.filter(m=>!m.material.transparent).length,fov:c.camera.fov};
  });
- assert(result.faded>0);assert(result.hiddenPews>0&&result.hiddenPews<result.totalPews/2);assert(result.exact);assert(result.fov>=64);
+ assert.equal(result.hiddenPews,0);assert(result.exact);assert(result.fov>=64);
  await page.screenshot({path:path.join(out,'pew-occlusion-local.png')});
  await page.keyboard.down('w');await page.evaluate(()=>__church.advance(.5));await page.keyboard.up('w');
  await page.keyboard.press('Escape');assert(await page.evaluate(()=>__church.world.visualBatches.every(m=>m.geometry.getAttribute('sourceVisibility').array.every(v=>v===1))));

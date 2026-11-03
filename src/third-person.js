@@ -109,14 +109,11 @@ export class ThirdPerson {
       const direction = sample.sub(this.camera.position);
       this.ray.set(this.camera.position, direction.clone().normalize());
       this.ray.far = direction.length();
-      for (const hit of this.ray.intersectObjects(this.targets, false)) hit.object.visible && occluders.add(hit.object);
+      for (const hit of this.ray.intersectObjects(this.targets, false)) if(hit.object.visible&&!/^B1_Pew_/.test(hit.object.userData.name||hit.object.name))occluders.add(hit.object);
       // Reverse rays also detect the exit face when the camera is inside a wall.
       this.ray.set(this.camera.position.clone().add(direction), direction.clone().normalize().negate());
-      for (const hit of this.ray.intersectObjects(this.targets, false)) hit.object.visible && occluders.add(hit.object);
+      for (const hit of this.ray.intersectObjects(this.targets, false)) if(hit.object.visible&&!/^B1_Pew_/.test(hit.object.userData.name||hit.object.name))occluders.add(hit.object);
     }
-    // Keep each pew coherent: do not leave its legs floating when its seat is hidden.
-    const pews=new Set([...occluders].map(o=>(o.userData.name||o.name).match(/^(B1_Pew_\d+)_/)?.[1]).filter(Boolean));
-    if(pews.size)for(const o of this.targets){const key=(o.userData.name||o.name).match(/^(B1_Pew_\d+)_/)?.[1];if(pews.has(key))occluders.add(o)}
     for (const mesh of occluders) {
       this.faded.set(mesh, mesh.material);
       if (setSourceVisibility(mesh, 0)) continue;

@@ -1,10 +1,11 @@
 {
-  "tests": 22,
+  "tests": 23,
   "results": [
     "Closed landing door blocks shaft entry",
     "Approved roof bounds restored; roof cannot intersect B1 seating",
     "37 pews on 12 descending tiers and curved stage footprint 10.8m × 4.4m",
-    "3F dining tables form three unobstructed rows in one hall",
+    "3F dining tables form three unobstructed rows behind an enclosed rear elevation",
+    "2F prayer and small-group rooms contain round tables and chairs",
     "Mother enclosed walls / viewing window / ceiling",
     "Engineer enclosed walls / viewing window / ceiling",
     "Continuous B1 → 4F staircase ascent",
@@ -19,13 +20,13 @@
     "EV ride / exit / reentry 3.2",
     "EV ride / exit / reentry 9.6",
     "EV ride / exit / reentry 12.8",
-    "658 protected facade / stage / pew / environment meshes unchanged",
+    "647 protected facade / stage / pew / environment meshes unchanged",
     "100 original pew mesh geometries retained while positions follow tiers",
     "Cross tower front / right / left / roof exterior planes retained",
     "1F side entrance → EV lobby"
   ],
-  "visualDrawBatches": 60,
-  "collisionMeshes": 2177,
+  "visualDrawBatches": 65,
+  "collisionMeshes": 2235,
   "repairs": [
     "ROOF_Setback restored to approved horizontal roof at 15.8–16m; no B1 intrusion",
     "Landscape base opened under building to preserve B1 stair headroom",
@@ -37,6 +38,7 @@
     "B1 full structural ceiling 9m (visual target ~10m); cross below 6.2 × 3.49m screen; 1.65m adult reference",
     "Expanded curved stage 10.8m × 4.4m; 37 upholstered pews on 12 descending 12cm terraces; 0.9m minimum front circulation band",
     "Rear fragments replaced by separate Mother and Engineer rooms with continuous walls, ceilings, viewing windows and 1.2m open doorways",
-    "3F dining hall unified: central setback glass removed and tables arranged as three rows in one room"
+    "3F dining hall unified: internal glass and 11 orphaned frames removed; rear elevation enclosed with sill and glazing; three table rows retained",
+    "2F prayer and small-group rooms furnished with three round tables and twelve chairs"
   ]
 }

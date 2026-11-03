@@ -14,7 +14,7 @@ export class BuildingWorld {
     this.repairs=[];this.ray=new T.Raycaster();this.ray.layers.enableAll();this.meshes=[];this.walkables=[];this.solids=[];this.doors=[];
     this.original=new Map();this.root.traverse(o=>{if(o.isMesh)this.original.set(sourceName(o),o)});
     this.trim=new T.MeshStandardMaterial({color:0xd6d0c2,roughness:.7});
-    this.fixStructure();this.fitSanctuary();this.expandSanctuary();this.buildRearRooms();this.openDiningHall();this.buildLift();this.index();this.batchVisuals();
+    this.fixStructure();this.fitSanctuary();this.expandSanctuary();this.buildRearRooms();this.openDiningHall();this.furnishEducationRooms();this.buildLift();this.index();this.batchVisuals();
   }
   box(name,x,y,z,w,h,d,material=this.trim,parent=this.root){
     const o=new T.Mesh(new T.BoxGeometry(w,h,d),material);o.name=name;o.position.set(x,y,z);o.receiveShadow=true;parent.add(o);return o;
@@ -147,6 +147,12 @@ export class BuildingWorld {
       const h=(11-i)*.12;
       this.box('B1_Seating_Tier_AisleStep_'+i,5.61+(i+.5)*.22,floor+h/2,1.6,.225,h,1.3,tierMaterial);
     }
+    // Finish the exposed seating edge beside the sunken stair core. Segmenting
+    // the face follows the radial tier heights and removes the floating-slab look.
+    for(let i=0;i<16;i++){
+      const z=2.625+i*.24,r=Math.hypot(4.3-center.x,z-center.y),level=Math.max(1,Math.min(11,Math.floor((r-5.2)/1.3))),h=level*.12+.02;
+      this.box('B1_Seating_Retaining_Edge_'+i,4.24,floor+h/2,z,.12,h,.245,tierMaterial);
+    }
     for(const o of pewMeshes)o.position.y+=tiers.get(sourceName(o).match(/^(B1_Pew_\d+)_/)[1])*.12;
     // Four separate cushions per bench echo the reference seating without losing the existing pew frames.
     this.root.updateMatrixWorld(true);const seatParts=[];this.root.traverse(o=>{if(o.isMesh&&/^B1_Pew_\d+_(Seat|Back)$/.test(sourceName(o)))seatParts.push(o)});
@@ -215,8 +221,34 @@ export class BuildingWorld {
     // leaving three clear table rows in one continuous hall.
     this.original.get('Upper_Setback_Glass')?.removeFromParent();
     for(const [name,o] of this.original)if(/^03_Dining_3_/.test(name))o.removeFromParent();
-    this.diningHall={floor:9.6,tableRows:3,barrierRemoved:'Upper_Setback_Glass',bounds:{x1:-4.2,x2:4.2,z1:-8.3,z2:.1}};
-    this.repairs.push('3F dining hall unified: central setback glass removed and tables arranged as three rows in one room');
+    for(let i=7;i<=17;i++)this.original.get('FRAME_Setback'+i)?.removeFromParent();
+    // Close the previously open rear elevation without cutting through the hall:
+    // an opaque sill and upper glazing sit on the actual rear boundary at z=-9m.
+    const wall=new T.MeshStandardMaterial({color:0xd6d0c2,roughness:.9});
+    const glass=new T.MeshStandardMaterial({color:0xa8c7cc,transparent:true,opacity:.38,depthWrite:false,roughness:.18,side:T.DoubleSide});
+    const frame=new T.MeshStandardMaterial({color:0x6f7775,roughness:.75});
+    this.box('03_Dining_Rear_Sill',1.45,10.05,-8.98,12.78,.9,.14,wall);
+    this.box('03_Dining_Rear_Glass',1.45,11.55,-8.98,12.78,2.1,.055,glass);
+    this.box('03_Dining_Rear_Header',1.45,12.55,-8.98,12.78,.1,.16,frame);
+    for(let x=-4.94;x<=7.85;x+=1.6)this.box('03_Dining_Rear_Mullion',x,11.55,-8.91,.055,2.1,.07,frame);
+    this.diningHall={floor:9.6,tableRows:3,barrierRemoved:'Upper_Setback_Glass',framesRemoved:11,rearEnclosed:true,bounds:{x1:-4.2,x2:4.2,z1:-8.3,z2:.1}};
+    this.repairs.push('3F dining hall unified: internal glass and 11 orphaned frames removed; rear elevation enclosed with sill and glazing; three table rows retained');
+  }
+  furnishEducationRooms(){
+    const floor=3.2,wood=new T.MeshStandardMaterial({color:0xb58c5a,roughness:.88}),fabric=new T.MeshStandardMaterial({color:0x9caa9e,roughness:1});
+    const rooms=[{id:'Prayer',label:'기도실',x:7.25,z:-.83},{id:'SmallGroupA',label:'소그룹실 1',x:7.25,z:-4.08},{id:'SmallGroupB',label:'소그룹실 2',x:7.25,z:-7.33}];
+    for(const room of rooms){
+      const top=new T.Mesh(new T.CylinderGeometry(.7,.7,.08,32),wood);top.name='02_'+room.id+'_RoundTable';top.position.set(room.x,floor+.75,room.z);top.receiveShadow=true;this.root.add(top);
+      const pedestal=new T.Mesh(new T.CylinderGeometry(.11,.18,.72,20),wood);pedestal.name='02_'+room.id+'_TablePedestal';pedestal.position.set(room.x,floor+.36,room.z);this.root.add(pedestal);
+      for(let i=0;i<4;i++){
+        const a=i*Math.PI/2,x=room.x+Math.cos(a)*1.05,z=room.z+Math.sin(a)*1.05;
+        const seat=new T.Mesh(new T.CylinderGeometry(.25,.25,.08,20),fabric);seat.name='02_'+room.id+'_ChairSeat_'+i;seat.position.set(x,floor+.46,z);this.root.add(seat);
+        const leg=new T.Mesh(new T.CylinderGeometry(.055,.075,.44,12),wood);leg.name='02_'+room.id+'_ChairLeg_'+i;leg.position.set(x,floor+.22,z);this.root.add(leg);
+        const back=this.box('02_'+room.id+'_ChairBack_'+i,x+Math.cos(a)*.22,floor+.78,z+Math.sin(a)*.22,.48,.56,.08,fabric);back.rotation.y=Math.PI/2-a;
+      }
+    }
+    this.educationRooms={rooms:rooms.map(r=>({id:r.id,label:r.label,center:[r.x,floor,r.z]})),roundTables:3,chairs:12};
+    this.repairs.push('2F prayer and small-group rooms furnished with three round tables and twelve chairs');
   }
   buildLift(){
     const steel=new T.MeshStandardMaterial({color:0x7b898c,metalness:.5,roughness:.35});

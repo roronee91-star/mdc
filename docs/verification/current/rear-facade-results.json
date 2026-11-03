@@ -1,0 +1,9 @@
+{
+  "facade": {
+    "rearEnclosed": true,
+    "sill": 1,
+    "glass": 1,
+    "mullions": 8
+  },
+  "errors": []
+}

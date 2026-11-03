@@ -10,4 +10,5 @@ await go(-7.18,-5.08);const stage=await go(-7.65,-5.55);assert(Math.abs(stage.y+
 await go(-7.18,-5.08);await go(-1,-2);await go(3,1.5);await go(5.65,1.6);await go(8.35,1.6);await go(9.2,2.5);await go(9.2,6.265);
 await page.evaluate(()=>{const c=__church;c.thirdPerson.position.set(-2,-9.4,-2);c.thirdPerson.avatar.position.copy(c.thirdPerson.position);c.thirdPerson.follow.pose.yaw=.95;c.thirdPerson.follow.pose.pitch=.36;c.advance(0)});
 await page.screenshot({path:path.join(out,'expanded-sanctuary.png')});assert.deepEqual(errors,[]);fs.writeFileSync(path.join(out,'sanctuary-layout-results.json'),JSON.stringify({layout,stageAccessible:true,aisleToLift:true,errors},null,2));console.log(JSON.stringify({layout,stageAccessible:true,aisleToLift:true,errors}));
+await page.evaluate(()=>{const c=__church,p=c.thirdPerson.position;p.set(-1,-9.4,-2);c.thirdPerson.avatar.position.copy(p);c.thirdPerson.follow.pose.yaw=-2.35;c.thirdPerson.follow.pose.pitch=.42;c.thirdPerson.follow.pose.distance=9;c.advance(0)});await page.screenshot({path:path.join(out,'sanctuary-stair-tier-junction.png')});
 }finally{await browser.close()}})().catch(e=>{console.error(e);process.exit(1)});

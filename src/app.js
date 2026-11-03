@@ -90,6 +90,6 @@ const testing=new URLSearchParams(location.search).has('test');
 const clock=new T.Clock();let lastRender=0;function animate(){requestAnimationFrame(animate);const now=performance.now();if(softwareRenderer&&now-lastRender<1000/12)return;lastRender=now;const dt=Math.min(clock.getDelta(),.1);if(!testing){tick(dt);if(!walking)controls.update();renderer.render(scene,camera)}else if(!window.__church)renderer.render(scene,camera);if(window.__church)window.__church.renderedSpace=space;}
 setSpace('outside');animate();document.querySelector('#loading').remove();addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
 document.querySelector('#spaces-toggle').onclick=()=>{const hidden=document.body.classList.toggle('compact');document.querySelector('#spaces-toggle').setAttribute('aria-expanded',String(!hidden))};
-window.__church={get space(){return space},get walking(){return walking},camera,seatCount,groups,obstacles,floorHeight,thirdPerson,allowed,world,FLOORS,renderer};
+window.__church={get space(){return space},get walking(){return walking},camera,controls,scene,seatCount,groups,obstacles,floorHeight,thirdPerson,allowed,world,FLOORS,renderer};
 
 if(testing)window.__church.advance=(seconds,render=true)=>{for(let t=0;t<seconds;t+=1/60)tick(Math.min(1/60,seconds-t),false);if(render){thirdPerson.follow.snap();tick(0);renderer.render(scene,camera)}};
