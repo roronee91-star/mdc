@@ -6,7 +6,8 @@
     "test:browser": "node tests/v13-browser.cjs",
     "test:camera": "node tests/camera-live.cjs",
     "test:occlusion": "node tests/pew-occlusion.cjs",
-    "test:sanctuary": "node tests/sanctuary-scale.cjs"
+    "test:sanctuary": "node tests/sanctuary-scale.cjs",
+    "test:roof": "node tests/roof-regression.cjs"
   },
   "devDependencies": {
     "playwright": "1.62.1",

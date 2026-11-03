@@ -28,6 +28,11 @@ export class BuildingWorld {
     const o=new T.Mesh(geom,material);o.name=name;o.receiveShadow=true;this.root.add(o);return o;
   }
   fixStructure(){
+    // Restore the approved roof transform: the supplied environment export rotated
+    // this horizontal slab into a vertical panel extending down into the sanctuary.
+    const roof=this.original.get('ROOF_Setback');
+    if(roof){roof.position.set(0,15.899999618530273,-6);roof.quaternion.identity();roof.scale.set(1,1,1);roof.updateMatrixWorld(true);this.repairs.push('ROOF_Setback restored to approved horizontal roof at 15.8–16m; no B1 intrusion')}
+
     // The new landscape base spans through the building; open only its concealed footprint.
     const grass=this.original.get('ENV_Ground_Grass');
     if(grass){this.slab('ENV_Ground_Grass_building_opening',new T.Box3().setFromObject(grass),[{x1:-13.3,x2:13.3,z1:-11.2,z2:11.2}],grass.material);grass.removeFromParent();this.repairs.push('Landscape base opened under building to preserve B1 stair headroom')}

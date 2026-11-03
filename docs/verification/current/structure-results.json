@@ -1,7 +1,8 @@
 {
-  "tests": 16,
+  "tests": 17,
   "results": [
     "Closed landing door blocks shaft entry",
+    "Approved roof bounds restored; roof cannot intersect B1 seating",
     "Continuous B1 → 4F staircase ascent",
     "Continuous 4F → B1 staircase descent",
     "B1 stair landing → EV corridor → car",
@@ -21,6 +22,7 @@
   "visualDrawBatches": 41,
   "collisionMeshes": 1579,
   "repairs": [
+    "ROOF_Setback restored to approved horizontal roof at 15.8–16m; no B1 intrusion",
     "Landscape base opened under building to preserve B1 stair headroom",
     "B1_Ceiling: stair and EV openings",
     "SITE_Sidewalk: stair and EV openings",
