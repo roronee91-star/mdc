@@ -17,9 +17,9 @@ try {world=await BuildingWorld.load()} catch(error){document.querySelector('#loa
 // Preserve geometry/colors while keeping software WebGL usable.
 if(softwareRenderer){const fallback=new Map();world.root.traverse(o=>{if(!o.isMesh)return;const convert=m=>{if(m.isMeshBasicMaterial)return m;if(!fallback.has(m)){const glass=m.transmission>0;fallback.set(m,new T.MeshLambertMaterial({color:m.color,map:m.map,emissive:m.emissive,emissiveIntensity:m.emissiveIntensity,side:m.side,transparent:glass||m.transparent,opacity:glass?.45:m.opacity,depthWrite:glass?false:m.depthWrite}))}return fallback.get(m)};o.material=Array.isArray(o.material)?o.material.map(convert):convert(o.material)})}
 // Screen artwork is a local canvas texture, with no external image dependency.
-const screenCanvas=document.createElement('canvas');screenCanvas.width=1600;screenCanvas.height=900;
-const screenContext=screenCanvas.getContext('2d'),sky=screenContext.createLinearGradient(0,0,0,900);sky.addColorStop(0,'#162f40');sky.addColorStop(1,'#719295');screenContext.fillStyle=sky;screenContext.fillRect(0,0,1600,900);
-screenContext.fillStyle='#ffffff';screenContext.textAlign='center';screenContext.font='600 94px sans-serif';screenContext.fillText('물댄동산교회',800,415);screenContext.font='38px sans-serif';screenContext.fillText('함께 예배하는 공동체',800,505);
+const screenCanvas=document.createElement('canvas');screenCanvas.width=2255;screenCanvas.height=900;
+const screenContext=screenCanvas.getContext('2d'),sky=screenContext.createLinearGradient(0,0,0,900);sky.addColorStop(0,'#162f40');sky.addColorStop(1,'#719295');screenContext.fillStyle=sky;screenContext.fillRect(0,0,2255,900);
+screenContext.fillStyle='#ffffff';screenContext.textAlign='center';screenContext.font='600 94px sans-serif';screenContext.fillText('물댄동산교회',1127,415);screenContext.font='38px sans-serif';screenContext.fillText('함께 예배하는 공동체',1127,505);
 const screenTexture=new T.CanvasTexture(screenCanvas);screenTexture.colorSpace=T.SRGBColorSpace;
 world.screen.material.map=screenTexture;world.screen.material.color.set(0xffffff);world.screen.material.needsUpdate=true;
 // The render batch owns a cloned material; update its screen copy as well.
@@ -34,7 +34,7 @@ const data=Object.fromEntries(FLOORS.map(f=>[f.id,{
  eye:f.id==='outside'?[32,23,38]:[10,f.y+2.2,2.5],target:f.id==='outside'?[0,6,0]:f.id==='sanctuary'?[-10.3,-6.1,-8.2]:[0,f.y+1,0],
  walk:world.spawn(f.id).toArray(),plan:({sanctuary:2,outside:3,education:4,community:5,terrace:6})[f.id]
 }]));
-const seatCount=[...world.original.keys()].filter(n=>/Pew.*Seat/.test(n)).length;
+const seatCount=world.meshes.filter(o=>/Pew.*Seat/.test(o.userData.name||o.name)).length;
 function floorHeight(x,z){return world.support(x,z,thirdPerson?.position.y||0)??0}
 const thirdPerson=new ThirdPerson(scene,camera);
 let walking=false;const keys=new Set();

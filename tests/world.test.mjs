@@ -6,10 +6,11 @@ import {BuildingWorld,FLOORS} from '../src/building-world.js';
 const bytes=fs.readFileSync(new URL('../assets/church-environment-20261103.glb',import.meta.url));
 const scene=(await new GLTFLoader().parseAsync(bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength),'')).scene;
 scene.updateMatrixWorld(true);
-const protectedParts=new Map();scene.traverse(o=>{if(o.isMesh&&/Pew|Stage|Glass|FIN_|FRAME_|Cross|^ENV_/.test(o.name)&&o.name!=='ENV_Ground_Grass'&&o.name!=='HERO_Cross_Tower'&&!/^B1_(Cross_|Stage_Backdrop)/.test(o.name))protectedParts.set(o,{matrix:o.matrixWorld.toArray(),vertices:Array.from(o.geometry.attributes.position.array)})});
+const protectedParts=new Map();scene.traverse(o=>{if(o.isMesh&&/Pew|Stage|Glass|FIN_|FRAME_|Cross|^ENV_/.test(o.name)&&o.name!=='ENV_Ground_Grass'&&o.name!=='HERO_Cross_Tower'&&!/^B1_(Cross_|Stage_Backdrop|StageFan|Pew_0[012]_)/.test(o.name))protectedParts.set(o,{matrix:o.matrixWorld.toArray(),vertices:Array.from(o.geometry.attributes.position.array)})});
 const w=new BuildingWorld(scene),p=new T.Vector3(5.35,-9.4,3.65),results=[];
 const closedDoorProbe=new T.Vector3(9.2,-9.4,6.265);for(let i=0;i<100;i++)w.move(closedDoorProbe,.025,0,1/60);assert(closedDoorProbe.x<9.75);results.push('Closed landing door blocks shaft entry');
 const roofBounds=new T.Box3().setFromObject(w.original.get('ROOF_Setback'));assert(Math.abs(roofBounds.min.y-15.8)<.00001&&Math.abs(roofBounds.max.y-16)<.00001);assert(Math.abs(roofBounds.min.x+12.425)<.00001&&Math.abs(roofBounds.max.x-12.425)<.00001);results.push('Approved roof bounds restored; roof cannot intersect B1 seating');
+const stageSize=w.stage.geometry.boundingBox.getSize(new T.Vector3());assert(Math.abs(stageSize.x-10.8)<.00001&&Math.abs(stageSize.z-4.4)<.00001);assert.equal(w.meshes.filter(o=>/^B1_Pew_\d+_Seat$/.test(o.userData.name||o.name)).length,35);results.push('35 pews and measured curved stage footprint 10.8m × 4.4m');
 function go(x,z){for(let i=0;i<2000;i++){const dx=x-p.x,dz=z-p.z,n=Math.hypot(dx,dz);if(n<.015)return;const before=p.clone();w.move(p,dx/n*Math.min(n,.025),dz/n*Math.min(n,.025),1/60);assert(before.distanceTo(p)>.000001,`Blocked ${p.toArray()} toward ${x},${z}`)}throw Error('Route timeout')}
 for(const expected of [-6.266667,-3.133333,0,3.2,6.4,9.6,12.8]){for(const [x,z] of [[5.35,7.65],[6.65,7.65],[6.65,3.65],[5.35,3.65]])go(x,z);assert(Math.abs(p.y-expected)<.002)}
 results.push('Continuous B1 → 4F staircase ascent');go(6.65,3.65);

@@ -1,8 +1,9 @@
 {
-  "tests": 17,
+  "tests": 18,
   "results": [
     "Closed landing door blocks shaft entry",
     "Approved roof bounds restored; roof cannot intersect B1 seating",
+    "35 pews and measured curved stage footprint 10.8m × 4.4m",
     "Continuous B1 → 4F staircase ascent",
     "Continuous 4F → B1 staircase descent",
     "B1 stair landing → EV corridor → car",
@@ -15,12 +16,12 @@
     "EV ride / exit / reentry 3.2",
     "EV ride / exit / reentry 9.6",
     "EV ride / exit / reentry 12.8",
-    "760 protected facade / stage / pew / environment meshes unchanged",
+    "747 protected facade / stage / pew / environment meshes unchanged",
     "Cross tower front / right / left / roof exterior planes retained",
     "1F side entrance → EV lobby"
   ],
-  "visualDrawBatches": 41,
-  "collisionMeshes": 1579,
+  "visualDrawBatches": 47,
+  "collisionMeshes": 2113,
   "repairs": [
     "ROOF_Setback restored to approved horizontal roof at 15.8–16m; no B1 intrusion",
     "Landscape base opened under building to preserve B1 stair headroom",
@@ -29,6 +30,7 @@
     "1F internal EV corridor doorway added; front facade unchanged",
     "Removed obsolete 01_Lobby_E and B1 stair-intersecting partition B1_Room_Front_A_6",
     "Cross tower internal fill hollowed; exterior front/right/left/top bounds retained",
-    "B1 finished ceiling 6m; cross below 4.4 × 2.475m screen; 1.65m adult reference"
+    "B1 finished ceiling 6m; cross below 4.4 × 2.475m screen; 1.65m adult reference",
+    "Expanded curved stage 10.8m × 4.4m; wider pulpit; 35 upholstered pews with aisle access"
   ]
 }

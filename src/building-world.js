@@ -14,7 +14,7 @@ export class BuildingWorld {
     this.repairs=[];this.ray=new T.Raycaster();this.ray.layers.enableAll();this.meshes=[];this.walkables=[];this.solids=[];this.doors=[];
     this.original=new Map();this.root.traverse(o=>{if(o.isMesh)this.original.set(sourceName(o),o)});
     this.trim=new T.MeshStandardMaterial({color:0xd6d0c2,roughness:.7});
-    this.fixStructure();this.fitSanctuary();this.buildLift();this.index();this.batchVisuals();
+    this.fixStructure();this.fitSanctuary();this.expandSanctuary();this.buildLift();this.index();this.batchVisuals();
   }
   box(name,x,y,z,w,h,d,material=this.trim,parent=this.root){
     const o=new T.Mesh(new T.BoxGeometry(w,h,d),material);o.name=name;o.position.set(x,y,z);o.receiveShadow=true;parent.add(o);return o;
@@ -95,6 +95,45 @@ export class BuildingWorld {
     this.box('B1_Height_Band_N',0,floor+3,-10.98,26.2,.045,.025,band);
     this.box('B1_Height_Band_W',-13.08,floor+3,0,.025,.045,22,band);
     this.repairs.push('B1 finished ceiling 6m; cross below 4.4 × 2.475m screen; 1.65m adult reference');
+  }
+  expandSanctuary(){
+    const floor=-9.4,wood=this.original.get('B1_StageFan').material;
+    this.original.get('B1_StageFan').removeFromParent();
+    // Broad fan-shaped platform, with a curved front and clear side approaches.
+    const shape=new T.Shape();shape.moveTo(-3.4,0);shape.lineTo(3.4,0);shape.lineTo(5.4,-3.3);shape.quadraticCurveTo(0,-5.5,-5.4,-3.3);shape.closePath();
+    const geometry=new T.ExtrudeGeometry(shape,{depth:.3,bevelEnabled:false,curveSegments:24});geometry.rotateX(-Math.PI/2);
+    const stage=new T.Mesh(geometry,wood);stage.name='B1_Expanded_Stage';stage.rotation.y=Math.PI/4;stage.position.set(-10.5,floor,-8.4);this.root.add(stage);this.stage=stage;
+    // A 15cm intermediate step makes the 30cm platform accessible from the aisle.
+    const step=this.box('B1_Stage_Approach_Step',-7.18,floor+.075,-5.08,2.4,.15,.7,wood);step.rotation.y=Math.PI/4;
+    for(const n of ['B1_Pulpit','B1_PulpitTop']){const o=this.original.get(n);o.scale.x*=1.8;o.scale.z*=1.35}
+    this.original.get('B1_Stage_Backdrop').scale.x*=1.4;
+    this.screen.scale.x=6.2/4.4;this.root.getObjectByName('B1_Screen_Frame').scale.x=6.36/4.56;this.sanctuary.screenWidth=6.2;
+    const fabric=new T.MeshStandardMaterial({color:0xaaa394,roughness:.95});
+    for(const [n,o]of this.original){if(/^B1_Pew_\d+_(Seat|Back)$/.test(n))o.material=fabric;
+      if(/^B1_Pew_0[012]_/.test(n)){const dx=o.position.x+12.8,dz=o.position.z+10.7,l=Math.hypot(dx,dz);o.position.x+=dx/l*.6;o.position.z+=dz/l*.6}
+    }
+    const added=new Map();
+    const rows=[[25,21,.315,1.26],[26,22,.65,1.126],[27,23,1.126,.65],[28,24,1.26,.315],[29,26,.65,1.126],[30,27,1.126,.65],[31,28,1.26,.315],[32,31,1.26,.315],[33,30,1.126,.65],[34,32,1.26,.315]];
+    for(const[id,source,dx,dz]of rows){const prefix='B1_Pew_'+String(source).padStart(2,'0')+'_',next='B1_Pew_'+id+'_';
+      const originals=source<25?[...this.original].filter(([n])=>n.startsWith(prefix)).map(([,o])=>o):added.get(source);
+      const copies=originals.map(o=>{const c=o.clone();c.name=(o.userData.name||o.name).replace(prefix,next);c.userData={name:c.name};c.position.x+=dx;c.position.z+=dz;this.root.add(c);return c});added.set(id,copies);
+    }
+    // Four separate cushions per bench echo the reference seating without losing the existing pew frames.
+    this.root.updateMatrixWorld(true);const seatParts=[];this.root.traverse(o=>{if(o.isMesh&&/^B1_Pew_\d+_(Seat|Back)$/.test(sourceName(o)))seatParts.push(o)});
+    for(const o of seatParts){const name=sourceName(o),isSeat=name.endsWith('_Seat');o.material=wood;
+      for(let i=0;i<4;i++){const point=o.localToWorld(new T.Vector3(-.9+i*.6,isSeat?.095:0,isSeat?0:-.085));const pad=this.box(name.replace(/_(Seat|Back)$/,'')+(isSeat?'_Cushion_':'_Upholstery_')+i,point.x,point.y,point.z,.54,isSeat?.055:.48,isSeat?.4:.055,fabric);pad.quaternion.copy(o.quaternion);if(!isSeat){const rear=o.localToWorld(new T.Vector3(-.9+i*.6,0,.085));const cushion=this.box(name.replace(/_Back$/,'')+'_RearUpholstery_'+i,rear.x,rear.y,rear.z,.54,.48,.055,fabric);cushion.quaternion.copy(o.quaternion)}}
+    }
+    const timber=new T.MeshStandardMaterial({color:0xb59a72,roughness:.9});
+    const backdropTrim=new T.Group();backdropTrim.position.set(-10.5,floor+.3,-8.4);backdropTrim.rotation.y=Math.PI/4;this.root.add(backdropTrim);
+    for(let i=0;i<28;i++)this.box('B1_Acoustic_Slat_'+i,-3.375+i*.25,1.325,.12,.12,2.65,.035,timber,backdropTrim);
+    const trackMaterial=new T.MeshStandardMaterial({color:0x33312b,roughness:.8}),lampMaterial=new T.MeshBasicMaterial({color:0xffdca3,toneMapped:false});
+    for(const [row,v,width]of [[0,5,8],[1,9,12],[2,13,12]]){
+      const track=new T.Group();track.position.set(-10.5+v/Math.SQRT2,floor+5.65,-8.4+v/Math.SQRT2);track.rotation.y=Math.PI/4;this.root.add(track);
+      this.box('B1_Lighting_Track_'+row,0,0,0,width,.055,.06,trackMaterial,track);
+      for(let u=-width/2+.5;u<width/2;u+=1.5){this.box('B1_Light_Housing',u,-.09,0,.13,.15,.17,trackMaterial,track);this.box('B1_Light_Diffuser',u,-.17,.015,.11,.018,.14,lampMaterial,track)}
+    }
+    this.sanctuary.pewCount=35;this.sanctuary.stageWidth=10.8;this.sanctuary.stageDepth=4.4;
+    this.repairs.push('Expanded curved stage 10.8m × 4.4m; wider pulpit; 35 upholstered pews with aisle access');
   }
   buildLift(){
     const steel=new T.MeshStandardMaterial({color:0x7b898c,metalness:.5,roughness:.35});
@@ -177,7 +216,7 @@ export class BuildingWorld {
     }else if(l.phase==='opening'){l.openness=Math.min(1,l.openness+dt*1.7);if(l.openness===1)l.phase='open'}
     this.updateDoors();
   }
-  candidates(list,min,max){return list.filter(o=>o.visible&&!o.userData.noCollision&&o.userData.worldBounds.intersectsBox(new T.Box3(min,max)))}
+  candidates(list,min,max){const bounds=new T.Box3(min,max);return list.filter(o=>o.visible&&!o.userData.noCollision&&o.userData.worldBounds.intersectsBox(bounds))}
   support(x,z,y){
     this.ray.set(new T.Vector3(x,y+.24,z),down);this.ray.near=0;this.ray.far=.55;
     const candidates=this.candidates(this.walkables,new T.Vector3(x-.01,y-.31,z-.01),new T.Vector3(x+.01,y+.24,z+.01));

@@ -1,0 +1,17 @@
+{
+  "layout": {
+    "pews": 35,
+    "floor": -9.4,
+    "ceiling": -3.4000000000000004,
+    "height": 6,
+    "personHeight": 1.65,
+    "screenWidth": 6.2,
+    "screenHeight": 2.475,
+    "pewCount": 35,
+    "stageWidth": 10.8,
+    "stageDepth": 4.4
+  },
+  "stageAccessible": true,
+  "aisleToLift": true,
+  "errors": []
+}

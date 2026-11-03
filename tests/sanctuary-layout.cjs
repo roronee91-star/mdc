@@ -1,0 +1,13 @@
+const {chromium}=require('playwright');const fs=require('fs'),path=require('path'),assert=require('assert/strict');
+(async()=>{const browser=await chromium.launch({executablePath:'/usr/bin/chromium',args:['--no-sandbox','--enable-unsafe-swiftshader']});try{
+const page=await browser.newPage({viewport:{width:1280,height:900}}),errors=[];page.setDefaultTimeout(90000);page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});
+const root=path.dirname(path.dirname(require.resolve('three'))),out=path.join(__dirname,'../docs/verification/current');await page.route('https://cdn.jsdelivr.net/npm/three@0.169.0/**',r=>r.fulfill({path:path.join(root,r.request().url().split('three@0.169.0/')[1]),contentType:'text/javascript'}));
+await page.goto((process.env.TEST_URL||'http://127.0.0.1:8006/')+'?test');await page.waitForFunction(()=>window.__church?.advance);
+await page.click('[data-space="sanctuary"]');
+const layout=await page.evaluate(()=>({pews:__church.seatCount,...__church.world.sanctuary}));assert.equal(layout.pews,35);assert.equal(layout.stageWidth,10.8);
+async function go(x,z){await page.evaluate(({x,z})=>{const c=__church,p=c.thirdPerson.position;c.thirdPerson.follow.pose.yaw=Math.atan2(-(x-p.x),-(z-p.z))},{x,z});await page.keyboard.down('w');const result=await page.evaluate(({x,z})=>{const c=__church,p=c.thirdPerson.position;let n=0;while(Math.hypot(x-p.x,z-p.z)>.025&&n++<1600){const before=p.clone();c.advance(Math.min(1/60,Math.hypot(x-p.x,z-p.z)/2.2),false);if(before.distanceTo(p)<1e-7)break}c.advance(0);return {remaining:Math.hypot(x-p.x,z-p.z),y:p.y}},{x,z});await page.keyboard.up('w');assert(result.remaining<.08,JSON.stringify(result));return result}
+await go(-7.18,-5.08);const stage=await go(-7.65,-5.55);assert(Math.abs(stage.y+9.1)<.001);
+await go(-7.18,-5.08);await go(-1,-2);await go(3,1.5);await go(7.85,2.5);await go(9.2,2.5);await go(9.2,6.265);
+await page.evaluate(()=>{const c=__church;c.thirdPerson.position.set(-2,-9.4,-2);c.thirdPerson.avatar.position.copy(c.thirdPerson.position);c.thirdPerson.follow.pose.yaw=.95;c.thirdPerson.follow.pose.pitch=.36;c.advance(0)});
+await page.screenshot({path:path.join(out,'expanded-sanctuary.png')});assert.deepEqual(errors,[]);fs.writeFileSync(path.join(out,'sanctuary-layout-results.json'),JSON.stringify({layout,stageAccessible:true,aisleToLift:true,errors},null,2));console.log(JSON.stringify({layout,stageAccessible:true,aisleToLift:true,errors}));
+}finally{await browser.close()}})().catch(e=>{console.error(e);process.exit(1)});
