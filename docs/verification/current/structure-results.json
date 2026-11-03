@@ -20,13 +20,13 @@
     "EV ride / exit / reentry 3.2",
     "EV ride / exit / reentry 7.2",
     "EV ride / exit / reentry 11.2",
-    "659 protected facade / stage / pew / environment meshes retain plan geometry while upper levels normalize",
+    "658 protected facade / stage / pew / environment meshes retain plan geometry while upper levels normalize",
     "100 original pew mesh geometries retained on flat floor",
     "Cross tower front / right / left / roof exterior planes retained",
     "1F side entrance → EV lobby"
   ],
-  "visualDrawBatches": 63,
-  "collisionMeshes": 2070,
+  "visualDrawBatches": 65,
+  "collisionMeshes": 2076,
   "repairs": [
     "Upper floors normalized to 2F 3.2m, 3F 7.2m, 4F 11.2m; 2F and 3F each 4m",
     "Removed 99 B1 stair and guard meshes; sanctuary circulation uses elevator",

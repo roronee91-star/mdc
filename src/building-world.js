@@ -47,6 +47,14 @@ export class BuildingWorld {
     this.sanctuaryStairsRemoved=removed;this.repairs.push('Removed '+removed+' B1 stair and guard meshes; sanctuary circulation uses elevator');
   }
   fixStructure(){
+    // The roof guard crosses the three real 4F doorways. Keep the guard,
+    // but leave clear openings aligned with the existing door jambs.
+    for(const guardName of ['RAIL_Glass_RoofGuard','RAIL_Top_RoofGuard']){
+    const guard=this.original.get(guardName);
+    if(guard){const b=new T.Box3().setFromObject(guard);guard.removeFromParent();
+      for(const [i,a,c]of [[0,b.min.x,-9.5],[1,-8.5,.75],[2,1.75,9.6],[3,10.6,b.max.x]])this.box(guardName+'_segment_'+i,(a+c)/2,(b.min.y+b.max.y)/2,(b.min.z+b.max.z)/2,c-a,b.max.y-b.min.y,b.max.z-b.min.z,guard.material);
+    }
+    }
     // Restore the approved roof transform: the supplied environment export rotated
     // this horizontal slab into a vertical panel extending down into the sanctuary.
     const roof=this.original.get('ROOF_Setback');
@@ -128,7 +136,8 @@ export class BuildingWorld {
     this.sanctuary.screenWidth=6.2;
     const fabric=new T.MeshStandardMaterial({color:0xaaa394,roughness:.95});
     for(const [n,o]of this.original){if(/^B1_Pew_\d+_(Seat|Back)$/.test(n))o.material=fabric;
-      if(/^B1_Pew_0[012]_/.test(n)){const dx=o.position.x+12.8,dz=o.position.z+10.7,l=Math.hypot(dx,dz);o.position.x+=dx/l*.6;o.position.z+=dz/l*.6}
+      // Preserve the original 1.3m row pitch: shifting only the first row
+      // back by .6m previously squeezed its gap to the second row to .7m.
     }
     const added=new Map();
     const rows=[[25,21,.315,1.26],[26,22,.65,1.126],[27,23,1.126,.65],[28,24,1.26,.315],[29,26,.65,1.126],[30,27,1.126,.65],[31,28,1.26,.315],[32,31,1.26,.315],[33,30,1.126,.65],[34,32,1.26,.315],
