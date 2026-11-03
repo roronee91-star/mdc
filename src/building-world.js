@@ -8,7 +8,7 @@ const down=new T.Vector3(0,-1,0);
 const sourceName=o=>o.userData.name||o.name;
 
 export class BuildingWorld {
-  static async load(){const gltf=await new GLTFLoader().loadAsync('assets/church-v13.glb');return new BuildingWorld(gltf.scene)}
+  static async load(){const gltf=await new GLTFLoader().loadAsync('assets/church-environment-20261103.glb');return new BuildingWorld(gltf.scene)}
   constructor(model){
     this.root=model;this.root.name='church-v13';this.root.updateMatrixWorld(true);
     this.repairs=[];this.ray=new T.Raycaster();this.ray.layers.enableAll();this.meshes=[];this.walkables=[];this.solids=[];this.doors=[];
@@ -28,6 +28,10 @@ export class BuildingWorld {
     const o=new T.Mesh(geom,material);o.name=name;o.receiveShadow=true;this.root.add(o);return o;
   }
   fixStructure(){
+    // The new landscape base spans through the building; open only its concealed footprint.
+    const grass=this.original.get('ENV_Ground_Grass');
+    if(grass){this.slab('ENV_Ground_Grass_building_opening',new T.Box3().setFromObject(grass),[{x1:-13.3,x2:13.3,z1:-11.2,z2:11.2}],grass.material);grass.removeFromParent();this.repairs.push('Landscape base opened under building to preserve B1 stair headroom')}
+
     for(const name of ['B1_Ceiling','SITE_Sidewalk']){
       const o=this.original.get(name);if(!o)continue;const b=new T.Box3().setFromObject(o);
       this.slab(name+'_core_openings',b,[stairHole,liftHole],o.material);o.removeFromParent();this.repairs.push(name+': stair and EV openings');

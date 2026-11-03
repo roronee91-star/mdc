@@ -62,7 +62,7 @@
           "passenger": false
         },
         "distance": 7.5,
-        "fade": 3
+        "fade": 8
       }
     },
     {
@@ -83,7 +83,7 @@
           "passenger": false
         },
         "distance": 7.5,
-        "fade": 3
+        "fade": 8
       }
     },
     {
@@ -104,7 +104,7 @@
           "passenger": false
         },
         "distance": 7.5,
-        "fade": 2
+        "fade": 8
       }
     },
     {
@@ -125,7 +125,7 @@
           "passenger": false
         },
         "distance": 7.5,
-        "fade": 2
+        "fade": 8
       }
     },
     {
@@ -146,7 +146,7 @@
           "passenger": false
         },
         "distance": 7.5,
-        "fade": 2
+        "fade": 8
       }
     },
     {
@@ -167,7 +167,7 @@
           "passenger": false
         },
         "distance": 7.5,
-        "fade": 2
+        "fade": 8
       }
     },
     {
@@ -217,7 +217,7 @@
           "passenger": true
         },
         "distance": 7.5,
-        "fade": 3
+        "fade": 5
       }
     },
     {
@@ -280,7 +280,7 @@
           "passenger": true
         },
         "distance": 7.5,
-        "fade": 3
+        "fade": 4
       }
     },
     {
