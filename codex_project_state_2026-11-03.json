@@ -1,0 +1,109 @@
+{
+  "project": {
+    "name": "물댄동산교회 3D 가상 탐방",
+    "repository": "https://github.com/roronee91-star/mdc",
+    "workspace": "/workspace/mdc",
+    "work_branch": "work",
+    "deploy_branch": "main",
+    "deploy_url": "https://roronee91-star.github.io/mdc/",
+    "current_commit": "662d1f2",
+    "glb": "assets/church-environment-20261103.glb"
+  },
+  "fixed_levels_m": {
+    "B1": -9.4,
+    "1F": 0,
+    "2F": 3.2,
+    "3F": 9.6,
+    "4F": 12.8
+  },
+  "non_negotiable_constraints": [
+    "승인된 외관 버전3을 임의로 변경하지 않는다.",
+    "십자가 정면 오른쪽 끝은 건물 모서리다.",
+    "오른쪽 유리는 정면이 아니라 측면 창이다.",
+    "기존 GLB와 코드 구조를 유지한다.",
+    "실제 브라우저에서 검증하지 않은 기능은 완료로 표시하지 않는다."
+  ],
+  "current_implementation": {
+    "sanctuary": {
+      "actual_clear_height_m": 9,
+      "visual_target": "약 10m",
+      "avatar_height_m": 1.65,
+      "pew_count": 37,
+      "pews_never_hidden_by_camera": true,
+      "tier_count": 12,
+      "tier_rise_m": 0.12,
+      "transition_step_count": 9,
+      "stage_width_m": 10.8,
+      "stage_depth_m": 4.4,
+      "front_aisle_clearance_m": 0.9
+    },
+    "rear_rooms_B1": [
+      "자모실",
+      "엔지니어실"
+    ],
+    "dining_3F": {
+      "front_curtain_wall": "Upper_Setback_Glass + FRAME_Setback0~21 유지",
+      "table_count": 9,
+      "table_rows": 3,
+      "tables_behind_front_glazing": true,
+      "rear_elevation_enclosed": true
+    },
+    "education_2F": {
+      "group_room": {
+        "tables": 1,
+        "chairs": 8
+      },
+      "prayer_rooms": 2,
+      "floor_cushions": 8
+    },
+    "circulation": {
+      "stairs_B1_to_4F": true,
+      "stairs_4F_to_B1": true,
+      "elevator_floors": [
+        "B1",
+        "1F",
+        "2F",
+        "3F",
+        "4F"
+      ]
+    }
+  },
+  "important_files": [
+    "src/building-world.js",
+    "src/third-person.js",
+    "src/walk_camera_v12.js",
+    "src/app.js",
+    "tests/world.test.mjs",
+    "tests/v13-browser.cjs",
+    "docs/verification/current/"
+  ],
+  "verification": {
+    "structure_tests_passed": 23,
+    "browser_tests_passed": 19,
+    "camera_tests_passed": 5,
+    "hidden_pews": 0,
+    "protected_facade_environment_meshes": 659,
+    "original_pew_geometries_preserved": 100,
+    "latest_screenshots": [
+      "docs/verification/current/3f-front-curtain-wall.png",
+      "docs/verification/current/3f-rear-facade-enclosed.png",
+      "docs/verification/current/sanctuary-stair-tier-junction.png",
+      "docs/verification/current/education-group-room.png",
+      "docs/verification/current/education-prayer-small-groups.png",
+      "docs/verification/current/dining-hall-three-rows.png"
+    ]
+  },
+  "test_commands": [
+    "npm test",
+    "TEST_URL=http://127.0.0.1:8008/ npm run test:layout",
+    "TEST_URL=http://127.0.0.1:8008/ npm run test:browser",
+    "TEST_URL=http://127.0.0.1:8008/ npm run test:camera",
+    "TEST_URL=http://127.0.0.1:8008/ npm run test:occlusion",
+    "TEST_URL=http://127.0.0.1:8008/ npm run test:dining",
+    "TEST_URL=http://127.0.0.1:8008/ npm run test:education",
+    "TEST_URL=http://127.0.0.1:8008/ npm run test:rear-facade",
+    "TEST_URL=http://127.0.0.1:8008/ npm run test:rooms",
+    "TEST_URL=http://127.0.0.1:8008/ npm run test:roof"
+  ],
+  "handoff_instruction": "기존 프로젝트를 다시 만들지 말고 현재 구현에서 이어서 작업한다. 외관 버전3과 고정 층 레벨을 보존하고, 수정 후 실제 Chromium 회귀 검사와 스크린샷 검증을 수행한 뒤 work 및 main 브랜치에 배포한다."
+}
