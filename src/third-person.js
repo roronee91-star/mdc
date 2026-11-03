@@ -89,7 +89,7 @@ export class ThirdPerson {
       this.avatar.rotation.y = Math.atan2(dx, dz);
       this.phase += dt * 9;
     }
-    this.legs.forEach((leg, i) => leg.rotation.x = moving ? Math.sin(this.phase + i * Math.PI) * .35 : 0);
+    this.legs.forEach((leg, i) => leg.rotation.x = moving ? Math.sin(this.phase + i * Math.PI) * .18 : 0);
     this.arms.forEach((arm, i) => arm.rotation.x = moving ? -Math.sin(this.phase + i * Math.PI) * .25 : 0);
     this.avatar.position.copy(this.position);
     if (!refreshView) return;

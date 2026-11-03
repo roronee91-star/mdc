@@ -1,5 +1,8 @@
 {
   "facade": {
+    "frontGlazingContinuous": true,
+    "frontGlass": true,
+    "frontFrames": 22,
     "rearEnclosed": true,
     "sill": 1,
     "glass": 1,

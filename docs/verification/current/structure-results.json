@@ -4,8 +4,8 @@
     "Closed landing door blocks shaft entry",
     "Approved roof bounds restored; roof cannot intersect B1 seating",
     "37 pews on 12 descending tiers and curved stage footprint 10.8m × 4.4m",
-    "3F dining tables form three unobstructed rows behind an enclosed rear elevation",
-    "2F prayer and small-group rooms contain round tables and chairs",
+    "3F dining rows sit behind continuous front glazing and enclosed rear elevation",
+    "2F group room contains meeting furniture and two prayer rooms contain floor cushions",
     "Mother enclosed walls / viewing window / ceiling",
     "Engineer enclosed walls / viewing window / ceiling",
     "Continuous B1 → 4F staircase ascent",
@@ -20,13 +20,13 @@
     "EV ride / exit / reentry 3.2",
     "EV ride / exit / reentry 9.6",
     "EV ride / exit / reentry 12.8",
-    "647 protected facade / stage / pew / environment meshes unchanged",
+    "659 protected facade / stage / pew / environment meshes unchanged",
     "100 original pew mesh geometries retained while positions follow tiers",
     "Cross tower front / right / left / roof exterior planes retained",
     "1F side entrance → EV lobby"
   ],
   "visualDrawBatches": 65,
-  "collisionMeshes": 2235,
+  "collisionMeshes": 2224,
   "repairs": [
     "ROOF_Setback restored to approved horizontal roof at 15.8–16m; no B1 intrusion",
     "Landscape base opened under building to preserve B1 stair headroom",
@@ -38,7 +38,7 @@
     "B1 full structural ceiling 9m (visual target ~10m); cross below 6.2 × 3.49m screen; 1.65m adult reference",
     "Expanded curved stage 10.8m × 4.4m; 37 upholstered pews on 12 descending 12cm terraces; 0.9m minimum front circulation band",
     "Rear fragments replaced by separate Mother and Engineer rooms with continuous walls, ceilings, viewing windows and 1.2m open doorways",
-    "3F dining hall unified: internal glass and 11 orphaned frames removed; rear elevation enclosed with sill and glazing; three table rows retained",
-    "2F prayer and small-group rooms furnished with three round tables and twelve chairs"
+    "3F front curtain wall restored continuously; all three dining rows moved behind facade glazing; rear elevation enclosed",
+    "2F large group room furnished with meeting table and eight chairs; two small prayer rooms furnished with eight floor cushions"
   ]
 }

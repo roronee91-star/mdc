@@ -129,29 +129,23 @@ export class BuildingWorld {
     // the inner vertical quads make every 12cm descent visible as a real step.
     for(let i=0;i<=11;i++){
       const inner=5.2+i*1.3,outer=inner+1.3,y=floor+i*.12+.02,positions=[];
-      for(let s=0;s<64;s++){
-        const a=s/64*Math.PI/2,b=(s+1)/64*Math.PI/2,m=(a+b)/2;
-        const mx=center.x+Math.sin(m)*(inner+outer)/2,mz=center.y+Math.cos(m)*(inner+outer)/2;
-        if(mx>8||mz>6.4||(mx>5.8&&mz>.85&&mz<2.35)||(mx>4.3&&mx<7.8&&mz>2.5&&mz<6.5))continue;
+      for(let s=0;s<128;s++){
+        const a=s/128*Math.PI/2,b=(s+1)/128*Math.PI/2;
         const p=(r,t,h)=>[center.x+Math.sin(t)*r,h,center.y+Math.cos(t)*r];
         const ia=p(inner,a,y),ib=p(inner,b,y),oa=p(outer,a,y),ob=p(outer,b,y);
+        const valid=([x,,z])=>x<=8&&z<=6.4&&!(x>5.3&&z>.6&&z<2.2)&&!(x>4.3&&x<7.8&&z>2.5&&z<6.5);
+        if(![ia,ib,oa,ob].every(valid))continue;
         positions.push(...ia,...oa,...ob,...ia,...ob,...ib);
         if(i>0){const low=y-.12;positions.push(...p(inner,a,low),...ia,...ib,...p(inner,a,low),...ib,...p(inner,b,low))}
       }
       const g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(positions,3));g.computeVertexNormals();
       const tier=new T.Mesh(g,tierMaterial);tier.name='B1_Seating_Tier_'+i;this.root.add(tier);
     }
-    // The east aisle connects the highest rear terrace back to the B1 floor in
-    // 12cm increments, so the seating rake never creates a cliff on the lift route.
-    for(let i=0;i<11;i++){
-      const h=(11-i)*.12;
-      this.box('B1_Seating_Tier_AisleStep_'+i,5.61+(i+.5)*.22,floor+h/2,1.6,.225,h,1.3,tierMaterial);
-    }
-    // Finish the exposed seating edge beside the sunken stair core. Segmenting
-    // the face follows the radial tier heights and removes the floating-slab look.
-    for(let i=0;i<16;i++){
-      const z=2.625+i*.24,r=Math.hypot(4.3-center.x,z-center.y),level=Math.max(1,Math.min(11,Math.floor((r-5.2)/1.3))),h=level*.12+.02;
-      this.box('B1_Seating_Retaining_Edge_'+i,4.24,floor+h/2,z,.12,h,.245,tierMaterial);
+    // A conventional eight-step aisle descends from the seating rake to the
+    // original B1 stair landing, eliminating the former jump and loose wedges.
+    for(let i=0;i<9;i++){
+      const h=(9-i)*.12;
+      this.box('B1_Seating_Tier_AisleStep_'+i,4.45+(i+.5)*.4,floor+h/2,1.4,.405,h,1.55,tierMaterial);
     }
     for(const o of pewMeshes)o.position.y+=tiers.get(sourceName(o).match(/^(B1_Pew_\d+)_/)[1])*.12;
     // Four separate cushions per bench echo the reference seating without losing the existing pew frames.
@@ -216,12 +210,11 @@ export class BuildingWorld {
     this.repairs.push('Rear fragments replaced by separate Mother and Engineer rooms with continuous walls, ceilings, viewing windows and 1.2m open doorways');
   }
   openDiningHall(){
-    // The full-width setback glass at z=-2.8 crossed the middle of the 3F dining
-    // furniture. Remove that internal barrier and the fourth furniture column,
-    // leaving three clear table rows in one continuous hall.
-    this.original.get('Upper_Setback_Glass')?.removeFromParent();
+    // Upper_Setback_Glass is the 3F front curtain wall. Keep it continuous and
+    // move all dining rows behind it so no table is split by the facade plane.
     for(const [name,o] of this.original)if(/^03_Dining_3_/.test(name))o.removeFromParent();
-    for(let i=7;i<=17;i++)this.original.get('FRAME_Setback'+i)?.removeFromParent();
+    const rowTargets=[-3.7,-5.9,-8];
+    for(const [name,o] of this.original){const match=name.match(/^03_Dining_[0-2]_(\d+)_/);if(match)o.position.z+=rowTargets[Number(match[1])]-[-1.1,-4.1,-7.1][Number(match[1])]}
     // Close the previously open rear elevation without cutting through the hall:
     // an opaque sill and upper glazing sit on the actual rear boundary at z=-9m.
     const wall=new T.MeshStandardMaterial({color:0xd6d0c2,roughness:.9});
@@ -231,24 +224,22 @@ export class BuildingWorld {
     this.box('03_Dining_Rear_Glass',1.45,11.55,-8.98,12.78,2.1,.055,glass);
     this.box('03_Dining_Rear_Header',1.45,12.55,-8.98,12.78,.1,.16,frame);
     for(let x=-4.94;x<=7.85;x+=1.6)this.box('03_Dining_Rear_Mullion',x,11.55,-8.91,.055,2.1,.07,frame);
-    this.diningHall={floor:9.6,tableRows:3,barrierRemoved:'Upper_Setback_Glass',framesRemoved:11,rearEnclosed:true,bounds:{x1:-4.2,x2:4.2,z1:-8.3,z2:.1}};
-    this.repairs.push('3F dining hall unified: internal glass and 11 orphaned frames removed; rear elevation enclosed with sill and glazing; three table rows retained');
+    this.diningHall={floor:9.6,tableRows:3,frontGlazingContinuous:true,rearEnclosed:true,bounds:{x1:-4.2,x2:4.2,z1:-8.9,z2:-2.85}};
+    this.repairs.push('3F front curtain wall restored continuously; all three dining rows moved behind facade glazing; rear elevation enclosed');
   }
   furnishEducationRooms(){
     const floor=3.2,wood=new T.MeshStandardMaterial({color:0xb58c5a,roughness:.88}),fabric=new T.MeshStandardMaterial({color:0x9caa9e,roughness:1});
-    const rooms=[{id:'Prayer',label:'기도실',x:7.25,z:-.83},{id:'SmallGroupA',label:'소그룹실 1',x:7.25,z:-4.08},{id:'SmallGroupB',label:'소그룹실 2',x:7.25,z:-7.33}];
-    for(const room of rooms){
-      const top=new T.Mesh(new T.CylinderGeometry(.7,.7,.08,32),wood);top.name='02_'+room.id+'_RoundTable';top.position.set(room.x,floor+.75,room.z);top.receiveShadow=true;this.root.add(top);
-      const pedestal=new T.Mesh(new T.CylinderGeometry(.11,.18,.72,20),wood);pedestal.name='02_'+room.id+'_TablePedestal';pedestal.position.set(room.x,floor+.36,room.z);this.root.add(pedestal);
-      for(let i=0;i<4;i++){
-        const a=i*Math.PI/2,x=room.x+Math.cos(a)*1.05,z=room.z+Math.sin(a)*1.05;
-        const seat=new T.Mesh(new T.CylinderGeometry(.25,.25,.08,20),fabric);seat.name='02_'+room.id+'_ChairSeat_'+i;seat.position.set(x,floor+.46,z);this.root.add(seat);
-        const leg=new T.Mesh(new T.CylinderGeometry(.055,.075,.44,12),wood);leg.name='02_'+room.id+'_ChairLeg_'+i;leg.position.set(x,floor+.22,z);this.root.add(leg);
-        const back=this.box('02_'+room.id+'_ChairBack_'+i,x+Math.cos(a)*.22,floor+.78,z+Math.sin(a)*.22,.48,.56,.08,fabric);back.rotation.y=Math.PI/2-a;
-      }
+    const large={id:'GroupRoom',label:'소그룹실',x:-.8,z:-4.1};
+    this.box('02_GroupRoom_TableTop',large.x,floor+.76,large.z,3.6,.1,1.4,wood);
+    for(const x of[large.x-1.48,large.x+1.48])for(const z of[large.z-.48,large.z+.48])this.box('02_GroupRoom_TableLeg',x,floor+.37,z,.12,.74,.12,wood);
+    for(const x of[-2.15,-1.25,-.35,.55])for(const side of[-1,1]){
+      const z=large.z+side*1.05,i=(side+1)*2+Math.round((x+2.15)/.9),seat=this.box('02_GroupRoom_ChairSeat_'+i,x,floor+.46,z,.55,.09,.52,fabric);
+      this.box('02_GroupRoom_ChairBase_'+i,x,floor+.23,z,.12,.46,.12,wood);const back=this.box('02_GroupRoom_ChairBack_'+i,x,floor+.78,z+side*.22,.55,.56,.08,fabric);back.rotation.y=0;
     }
-    this.educationRooms={rooms:rooms.map(r=>({id:r.id,label:r.label,center:[r.x,floor,r.z]})),roundTables:3,chairs:12};
-    this.repairs.push('2F prayer and small-group rooms furnished with three round tables and twelve chairs');
+    const prayer=[{id:'PrayerA',label:'기도실 1',x:7.25,z:-.83},{id:'PrayerB',label:'기도실 2',x:7.25,z:-4.08}];
+    for(const room of prayer)for(let i=0;i<4;i++){const dx=(i%2-.5)*1.1,dz=(Math.floor(i/2)-.5)*1.1;this.box('02_'+room.id+'_FloorCushion_'+i,room.x+dx,floor+.09,room.z+dz,.72,.18,.72,fabric)}
+    this.educationRooms={rooms:[{...large,center:[large.x,floor,large.z]},...prayer.map(r=>({...r,center:[r.x,floor,r.z]}))],tables:1,chairs:8,cushions:8};
+    this.repairs.push('2F large group room furnished with meeting table and eight chairs; two small prayer rooms furnished with eight floor cushions');
   }
   buildLift(){
     const steel=new T.MeshStandardMaterial({color:0x7b898c,metalness:.5,roughness:.35});
@@ -362,5 +353,5 @@ export class BuildingWorld {
       if(floor!==null&&Math.abs(x)<24&&Math.abs(z)<24&&this.clearBody(x,z,floor)){p.set(x,floor,z)}
     }
   }
-  spawn(id){const f=FLOORS.find(f=>f.id===id)||FLOORS[1];return new T.Vector3(id==='outside'?14:7.85,id==='outside'?-.05:f.y,2.5)}
+  spawn(id){const f=FLOORS.find(f=>f.id===id)||FLOORS[1];if(id==='outside')return new T.Vector3(14,-.05,2.5);if(id==='community')return new T.Vector3(4.7,f.y,-3.35);return new T.Vector3(7.85,f.y,2.5)}
 }

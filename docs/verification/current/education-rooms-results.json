@@ -2,8 +2,21 @@
   "rooms": {
     "rooms": [
       {
-        "id": "Prayer",
-        "label": "기도실",
+        "id": "GroupRoom",
+        "label": "소그룹실",
+        "x": -0.8,
+        "z": -4.1,
+        "center": [
+          -0.8,
+          3.2,
+          -4.1
+        ]
+      },
+      {
+        "id": "PrayerA",
+        "label": "기도실 1",
+        "x": 7.25,
+        "z": -0.83,
         "center": [
           7.25,
           3.2,
@@ -11,28 +24,22 @@
         ]
       },
       {
-        "id": "SmallGroupA",
-        "label": "소그룹실 1",
+        "id": "PrayerB",
+        "label": "기도실 2",
+        "x": 7.25,
+        "z": -4.08,
         "center": [
           7.25,
           3.2,
           -4.08
         ]
-      },
-      {
-        "id": "SmallGroupB",
-        "label": "소그룹실 2",
-        "center": [
-          7.25,
-          3.2,
-          -7.33
-        ]
       }
     ],
-    "roundTables": 3,
-    "chairs": 12,
-    "tables": 3,
-    "seats": 12
+    "tables": 1,
+    "chairs": 8,
+    "cushions": 8,
+    "seats": 8,
+    "cushionMeshes": 8
   },
   "errors": []
 }
