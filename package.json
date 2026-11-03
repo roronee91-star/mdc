@@ -8,7 +8,8 @@
     "test:occlusion": "node tests/pew-occlusion.cjs",
     "test:sanctuary": "node tests/sanctuary-scale.cjs",
     "test:roof": "node tests/roof-regression.cjs",
-    "test:layout": "node tests/sanctuary-layout.cjs"
+    "test:layout": "node tests/sanctuary-layout.cjs",
+    "test:rooms": "node tests/rear-rooms.cjs"
   },
   "devDependencies": {
     "playwright": "1.62.1",

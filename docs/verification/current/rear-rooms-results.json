@@ -1,0 +1,50 @@
+{
+  "rooms": [
+    {
+      "id": "Mother",
+      "label": "자모실",
+      "detail": "보호자 · 유아",
+      "x1": -13,
+      "x2": -4.1,
+      "door": [
+        -5.6,
+        -4.4
+      ],
+      "window": [
+        -11.9,
+        -6.2
+      ],
+      "front": 7.4,
+      "back": 10.98,
+      "floor": -9.4,
+      "height": 3,
+      "doorCenter": -5
+    },
+    {
+      "id": "Engineer",
+      "label": "엔지니어룸",
+      "detail": "음향 · 영상",
+      "x1": -4.1,
+      "x2": 3.1,
+      "door": [
+        1.5,
+        2.7
+      ],
+      "window": [
+        -3.4,
+        0.9
+      ],
+      "front": 7.4,
+      "back": 10.98,
+      "floor": -9.4,
+      "height": 3,
+      "doorCenter": 2.1
+    }
+  ],
+  "enteredBoth": true,
+  "exitedBoth": true,
+  "glassBlocks": true,
+  "sideWallBlocks": true,
+  "liftRouteClear": true,
+  "errors": []
+}

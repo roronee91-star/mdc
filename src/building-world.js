@@ -14,7 +14,7 @@ export class BuildingWorld {
     this.repairs=[];this.ray=new T.Raycaster();this.ray.layers.enableAll();this.meshes=[];this.walkables=[];this.solids=[];this.doors=[];
     this.original=new Map();this.root.traverse(o=>{if(o.isMesh)this.original.set(sourceName(o),o)});
     this.trim=new T.MeshStandardMaterial({color:0xd6d0c2,roughness:.7});
-    this.fixStructure();this.fitSanctuary();this.expandSanctuary();this.buildLift();this.index();this.batchVisuals();
+    this.fixStructure();this.fitSanctuary();this.expandSanctuary();this.buildRearRooms();this.buildLift();this.index();this.batchVisuals();
   }
   box(name,x,y,z,w,h,d,material=this.trim,parent=this.root){
     const o=new T.Mesh(new T.BoxGeometry(w,h,d),material);o.name=name;o.position.set(x,y,z);o.receiveShadow=true;parent.add(o);return o;
@@ -134,6 +134,50 @@ export class BuildingWorld {
     }
     this.sanctuary.pewCount=35;this.sanctuary.stageWidth=10.8;this.sanctuary.stageDepth=4.4;
     this.repairs.push('Expanded curved stage 10.8m × 4.4m; wider pulpit; 35 upholstered pews with aisle access');
+  }
+  buildRearRooms(){
+    const floor=-9.4,front=7.4,back=10.98,height=3;
+    for(const name of ['B1_Room_Front_A_0','B1_Room_Front_A_-7','B1_South_Room_Partition_-4','B1_South_Room_Partition_3'])this.original.get(name)?.removeFromParent();
+    const wall=new T.MeshStandardMaterial({color:0xd9d3c7,roughness:.9});
+    const timber=new T.MeshStandardMaterial({color:0x917957,roughness:.85});
+    const glass=new T.MeshStandardMaterial({color:0xb9d9df,transparent:true,opacity:.2,depthWrite:false,roughness:.15,side:T.DoubleSide});
+    const floorMaterial=new T.MeshStandardMaterial({color:0xbab09c,roughness:1});
+    const ceilingMaterial=new T.MeshStandardMaterial({color:0xe5dfd3,roughness:.95,emissive:0xe5dfd3,emissiveIntensity:.22}),roomLight=new T.MeshBasicMaterial({color:0xffeccb,toneMapped:false});
+    const fabric=new T.MeshStandardMaterial({color:0x9ba997,roughness:1});
+    const dark=new T.MeshStandardMaterial({color:0x37474a,roughness:.7});
+    const display=new T.MeshBasicMaterial({color:0x467f8e,toneMapped:false});
+    this.roomSigns=[];
+    this.rearRooms=[{id:'Mother',label:'자모실',detail:'보호자 · 유아',x1:-13,x2:-4.1,door:[-5.6,-4.4],window:[-11.9,-6.2]},
+      {id:'Engineer',label:'엔지니어룸',detail:'음향 · 영상',x1:-4.1,x2:3.1,door:[1.5,2.7],window:[-3.4,.9]}];
+    for(const r of this.rearRooms){
+      const prefix='B1_'+r.id+'_',width=r.x2-r.x1,center=(r.x1+r.x2)/2,[d1,d2]=r.door,[w1,w2]=r.window;
+      r.front=front;r.back=back;r.floor=floor;r.height=height;r.doorCenter=(d1+d2)/2;
+      this.box(prefix+'floor',center,floor+.0075,(front+back)/2,width-.12,.015,back-front-.12,floorMaterial);
+      this.box(prefix+'Ceiling',center,floor+height+.06,(front+back)/2,width,.12,back-front,ceilingMaterial);
+      this.box(prefix+'Ceiling_Light',center,floor+height-.04,(front+back)/2,1.2,.035,.5,roomLight);
+      this.box(prefix+'Rear_Wall',center,floor+height/2,back,width,height,.12,wall);
+      for(const[a,b]of[[r.x1,w1],[w2,d1],[d2,r.x2]])this.box(prefix+'Front_Pier',(a+b)/2,floor+height/2,front,b-a,height,.14,wall);
+      this.box(prefix+'Window_Sill',(w1+w2)/2,floor+.5,front,w2-w1,1,.14,wall);
+      this.box(prefix+'Window_Header',(w1+w2)/2,floor+2.65,front,w2-w1,.7,.14,wall);
+      this.box(prefix+'View_Glass',(w1+w2)/2,floor+1.65,front,w2-w1,1.3,.035,glass);
+      for(const y of [1,2.3])this.box(prefix+'Window_Frame',(w1+w2)/2,floor+y,front-.08,w2-w1,.045,.05,timber);
+      for(let x=w1;x<=w2+.001;x+=(w2-w1)/3)this.box(prefix+'Window_Mullion',x,floor+1.65,front-.08,.045,1.3,.05,timber);
+      this.box(prefix+'Door_Header',r.doorCenter,floor+2.6,front,d2-d1,.8,.14,wall);
+      for(const x of[d1,d2])this.box(prefix+'Door_Jamb',x,floor+1.1,front,.05,2.2,.18,timber);
+      // Fixed-open door leaf: 1.2m framed opening, no hidden teleport or missing wall.
+      this.box(prefix+'Open_Door',d2-.035,floor+1.075,front+.59,.055,2.15,1.12,timber);
+      const sign=new T.Mesh(new T.PlaneGeometry(1.8,.46),new T.MeshBasicMaterial({color:0xffffff,toneMapped:false}));sign.name=prefix+'Room_Sign';sign.position.set(r.doorCenter,floor+2.57,front-.09);sign.rotation.y=Math.PI;this.root.add(sign);this.roomSigns.push({mesh:sign,label:r.label,detail:r.detail});
+    }
+    for(const x of[-13,-4.1,3.1])this.box('B1_Rear_Room_Side_Wall',x,floor+height/2,(front+back)/2,.14,height,back-front,wall);
+    for(const x of[-10.8,-7.4]){this.box('B1_Mother_Sofa_Base',x,floor+.24,10.25,2.5,.48,.7,timber);this.box('B1_Mother_Sofa_Cushion',x,floor+.51,10.2,2.4,.12,.65,fabric);this.box('B1_Mother_Sofa_Back',x,floor+.84,10.57,2.5,.6,.14,fabric)}
+    this.box('B1_Mother_Play_floor',-8.5,floor+.022,8.9,3.5,.014,1.2,fabric);
+    this.box('B1_Mother_Changing_Cabinet',-12.3,floor+.43,8.7,.8,.86,1.1,timber);
+    this.box('B1_Mother_Changing_Pad',-12.3,floor+.9,8.7,.76,.08,1.04,fabric);
+    this.box('B1_Engineer_Console_Base',-1.2,floor+.34,8.04,4,.68,.7,timber);
+    this.box('B1_Engineer_Console_Top',-1.2,floor+.74,8.04,4.1,.12,.8,dark);
+    for(const x of[-2.5,-.5]){this.box('B1_Engineer_Monitor',x,floor+1.08,7.85,.75,.44,.06,display);this.box('B1_Engineer_Control_Surface',x,floor+.83,8.19,.8,.06,.35,dark);this.box('B1_Engineer_Chair_Base',x,floor+.24,9.25,.5,.48,.5,dark);this.box('B1_Engineer_Chair_Back',x,floor+.77,9.48,.5,.6,.08,dark)}
+    this.box('B1_Engineer_Equipment_Rack',-3.5,floor+.85,10.25,.65,1.7,.65,dark);
+    this.repairs.push('Rear fragments replaced by separate Mother and Engineer rooms with continuous walls, ceilings, viewing windows and 1.2m open doorways');
   }
   buildLift(){
     const steel=new T.MeshStandardMaterial({color:0x7b898c,metalness:.5,roughness:.35});

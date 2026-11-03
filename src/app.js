@@ -24,6 +24,10 @@ const screenTexture=new T.CanvasTexture(screenCanvas);screenTexture.colorSpace=T
 world.screen.material.map=screenTexture;world.screen.material.color.set(0xffffff);world.screen.material.needsUpdate=true;
 // The render batch owns a cloned material; update its screen copy as well.
 const screenProxy=world.screen.userData.visualProxy;if(screenProxy){screenProxy.material.map=screenTexture;screenProxy.material.color.set(0xffffff);screenProxy.material.needsUpdate=true}
+for(const {mesh,label,detail} of world.roomSigns){
+ const canvas=document.createElement('canvas');canvas.width=768;canvas.height=196;const ctx=canvas.getContext('2d');ctx.fillStyle='#24433c';ctx.fillRect(0,0,768,196);ctx.textAlign='center';ctx.fillStyle='#f3e7cb';ctx.font='600 76px sans-serif';ctx.fillText(label,384,91);ctx.font='32px sans-serif';ctx.fillText(detail,384,150);const texture=new T.CanvasTexture(canvas);texture.colorSpace=T.SRGBColorSpace;
+ for(const target of[mesh,mesh.userData.visualProxy].filter(Boolean)){target.material.map=texture;target.material.color.set(0xffffff);target.material.needsUpdate=true}
+}
 for(const mesh of world.visualBatches)installOcclusion(mesh.material);
 scene.add(world.root);
 const groups=Object.fromEntries(FLOORS.map(f=>[f.id,world.root])),obstacles={};
