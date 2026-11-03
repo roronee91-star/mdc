@@ -1,0 +1,93 @@
+{
+  "meshCount": 2070,
+  "method": "World-space identical triangles at 0.01mm tolerance; signed-volume winding candidates; furniture-leg support rays; furniture/wall AABB overlap candidates (not confirmed intersections). Hanging fixtures excluded from floor support checks.",
+  "duplicateTriangles": [
+    [
+      "02_EastRoom_0_N",
+      "02_EastRoom_1_DoorWall1"
+    ],
+    [
+      "02_EastRoom_0_N",
+      "02_EastRoom_1_DoorWall1"
+    ],
+    [
+      "02_EastRoom_0_N",
+      "02_EastRoom_1_DoorWall-1"
+    ],
+    [
+      "02_EastRoom_0_N",
+      "02_EastRoom_1_DoorWall-1"
+    ],
+    [
+      "02_EastRoom_1_N",
+      "02_EastRoom_2_DoorWall1"
+    ],
+    [
+      "02_EastRoom_1_N",
+      "02_EastRoom_2_DoorWall1"
+    ],
+    [
+      "02_EastRoom_1_N",
+      "02_EastRoom_2_DoorWall-1"
+    ],
+    [
+      "02_EastRoom_1_N",
+      "02_EastRoom_2_DoorWall-1"
+    ],
+    [
+      "02_Office_DoorWall-1",
+      "02_SmallRoom_N"
+    ],
+    [
+      "02_Office_DoorWall-1",
+      "02_SmallRoom_N"
+    ],
+    [
+      "03_GroupRoom_0_N",
+      "03_GroupRoom_1_DoorWall1"
+    ],
+    [
+      "03_GroupRoom_0_N",
+      "03_GroupRoom_1_DoorWall1"
+    ],
+    [
+      "03_GroupRoom_0_N",
+      "03_GroupRoom_1_DoorWall-1"
+    ],
+    [
+      "03_GroupRoom_0_N",
+      "03_GroupRoom_1_DoorWall-1"
+    ],
+    [
+      "03_GroupRoom_1_N",
+      "03_GroupRoom_2_DoorWall1"
+    ],
+    [
+      "03_GroupRoom_1_N",
+      "03_GroupRoom_2_DoorWall1"
+    ],
+    [
+      "03_GroupRoom_1_N",
+      "03_GroupRoom_2_DoorWall-1"
+    ],
+    [
+      "03_GroupRoom_1_N",
+      "03_GroupRoom_2_DoorWall-1"
+    ],
+    [
+      "B1_Ceiling_core_openings",
+      "Ground_floor_0m"
+    ],
+    [
+      "B1_Ceiling_core_openings",
+      "Ground_floor_0m"
+    ],
+    [
+      "B1_Ceiling_core_openings",
+      "Ground_floor_0m"
+    ]
+  ],
+  "inwardCandidates": [],
+  "floatingCandidates": [],
+  "wallOverlapCandidates": []
+}

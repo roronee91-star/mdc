@@ -3,7 +3,7 @@
   "results": [
     "Closed landing door blocks shaft entry",
     "Approved roof bounds restored after 4m floor normalization; roof cannot intersect B1 seating",
-    "37 pews on one flat sanctuary floor; B1 stairs and seating tiers removed",
+    "35 pews on one flat sanctuary floor; B1 stairs and seating tiers removed",
     "3F dining rows and glazing stay below the clear 4F entry level",
     "2F group room contains meeting furniture and two prayer rooms contain floor cushions",
     "Mother enclosed walls / viewing window / ceiling",
@@ -26,7 +26,7 @@
     "1F side entrance → EV lobby"
   ],
   "visualDrawBatches": 63,
-  "collisionMeshes": 2102,
+  "collisionMeshes": 2070,
   "repairs": [
     "Upper floors normalized to 2F 3.2m, 3F 7.2m, 4F 11.2m; 2F and 3F each 4m",
     "Removed 99 B1 stair and guard meshes; sanctuary circulation uses elevator",
@@ -38,7 +38,7 @@
     "Removed obsolete 01_Lobby_E and B1 stair-intersecting partition B1_Room_Front_A_6",
     "Cross tower internal fill hollowed; exterior front/right/left/top bounds retained",
     "B1 full structural ceiling 9m (visual target ~10m); cross below 6.2 × 3.49m screen; 1.65m adult reference",
-    "Expanded curved stage 10.8m × 4.4m; 37 upholstered pews retained on a continuous flat floor; sanctuary stairs removed",
+    "Expanded curved stage 10.8m × 4.4m; 35 distinct upholstered pews retained on a continuous flat floor; duplicate pew sets 38/39 removed",
     "Rear fragments replaced by separate Mother and Engineer rooms with continuous walls, ceilings, viewing windows and 1.2m open doorways",
     "3F front curtain wall restored continuously; all three dining rows moved behind facade glazing; rear elevation enclosed",
     "2F large group room furnished with meeting table and eight chairs; two small prayer rooms furnished with eight floor cushions"

@@ -1,6 +1,6 @@
 {
   "layout": {
-    "pews": 37,
+    "pews": 35,
     "stairsRemoved": 99,
     "floor": -9.4,
     "ceiling": -0.4,
@@ -9,7 +9,7 @@
     "personHeight": 1.65,
     "screenWidth": 6.2,
     "screenHeight": 3.49,
-    "pewCount": 37,
+    "pewCount": 35,
     "stageWidth": 10.8,
     "stageDepth": 4.4,
     "frontAisleClearance": 0.9,

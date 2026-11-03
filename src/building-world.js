@@ -132,7 +132,7 @@ export class BuildingWorld {
     }
     const added=new Map();
     const rows=[[25,21,.315,1.26],[26,22,.65,1.126],[27,23,1.126,.65],[28,24,1.26,.315],[29,26,.65,1.126],[30,27,1.126,.65],[31,28,1.26,.315],[32,31,1.26,.315],[33,30,1.126,.65],[34,32,1.26,.315],
-      [38,30,1.126,.65],[39,31,1.26,.315]];
+      ]; // 38/39 duplicated 33/32 exactly; retain the original visible benches.
     for(const[id,source,dx,dz]of rows){const prefix='B1_Pew_'+String(source).padStart(2,'0')+'_',next='B1_Pew_'+id+'_';
       const originals=source<25?[...this.original].filter(([n])=>n.startsWith(prefix)).map(([,o])=>o):added.get(source);
       const copies=originals.map(o=>{const c=o.clone();c.name=(o.userData.name||o.name).replace(prefix,next);c.userData={name:c.name};c.position.x+=dx;c.position.z+=dz;this.root.add(c);return c});added.set(id,copies);
@@ -153,8 +153,8 @@ export class BuildingWorld {
       this.box('B1_Lighting_Track_'+row,0,0,0,width,.055,.06,trackMaterial,track);
       for(let u=-width/2+.5;u<width/2;u+=1.5){this.box('B1_Light_Housing',u,-.09,0,.13,.15,.17,trackMaterial,track);this.box('B1_Light_Diffuser',u,-.17,.015,.11,.018,.14,lampMaterial,track)}
     }
-    this.sanctuary.pewCount=37;this.sanctuary.stageWidth=10.8;this.sanctuary.stageDepth=4.4;this.sanctuary.frontAisleClearance=.9;this.sanctuary.tierRise=0;this.sanctuary.tierCount=0;this.sanctuary.flatSeating=true;
-    this.repairs.push('Expanded curved stage 10.8m × 4.4m; 37 upholstered pews retained on a continuous flat floor; sanctuary stairs removed');
+    this.sanctuary.pewCount=35;this.sanctuary.stageWidth=10.8;this.sanctuary.stageDepth=4.4;this.sanctuary.frontAisleClearance=.9;this.sanctuary.tierRise=0;this.sanctuary.tierCount=0;this.sanctuary.flatSeating=true;
+    this.repairs.push('Expanded curved stage 10.8m × 4.4m; 35 distinct upholstered pews retained on a continuous flat floor; duplicate pew sets 38/39 removed');
   }
   buildRearRooms(){
     const floor=-9.4,front=7.4,back=10.98,height=3;
