@@ -1,15 +1,19 @@
 {
   "layout": {
-    "pews": 35,
+    "pews": 37,
     "floor": -9.4,
-    "ceiling": -3.4000000000000004,
-    "height": 6,
+    "ceiling": -0.4,
+    "height": 9,
+    "visualHeight": "약 10m",
     "personHeight": 1.65,
     "screenWidth": 6.2,
-    "screenHeight": 2.475,
-    "pewCount": 35,
+    "screenHeight": 3.49,
+    "pewCount": 37,
     "stageWidth": 10.8,
-    "stageDepth": 4.4
+    "stageDepth": 4.4,
+    "frontAisleClearance": 0.9,
+    "tierRise": 0.12,
+    "tierCount": 12
   },
   "stageAccessible": true,
   "aisleToLift": true,

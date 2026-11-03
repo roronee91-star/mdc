@@ -4,7 +4,7 @@
     {
       "test": "Live follow camera / full body",
       "framed": true,
-      "distance": 5.419846783554733,
+      "distance": 5.19931559746266,
       "fade": 0,
       "yaw": 1.2624806645994682,
       "zoom": 7.5
@@ -12,7 +12,7 @@
     {
       "test": "Live drag rotation / zoom",
       "framed": true,
-      "distance": 5.016813851205088,
+      "distance": 4.583445565507941,
       "fade": 0,
       "yaw": 0.6624806645994682,
       "zoom": 6.85
@@ -20,7 +20,7 @@
     {
       "test": "Live portrait framing",
       "framed": true,
-      "distance": 4.9697484824597815,
+      "distance": 4.611744762302262,
       "fade": 0,
       "yaw": 0.6624806645994682,
       "zoom": 6.85

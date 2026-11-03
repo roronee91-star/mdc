@@ -1,0 +1,26 @@
+{
+  "hall": {
+    "floor": 9.6,
+    "tableRows": 3,
+    "barrierRemoved": "Upper_Setback_Glass",
+    "bounds": {
+      "x1": -4.2,
+      "x2": 4.2,
+      "z1": -8.3,
+      "z2": 0.1
+    },
+    "tables": 9,
+    "removed": true,
+    "fourth": 0
+  },
+  "walkedAcrossFormerGlassLine": true,
+  "walk": {
+    "position": [
+      1.5,
+      9.600000001490116,
+      -8.313333333333384
+    ],
+    "steps": 254
+  },
+  "errors": []
+}

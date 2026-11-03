@@ -81,7 +81,7 @@ function liftUI(){
  const p=thirdPerson.position,l=world.lift;liftPanel.hidden=!walking||!world.nearLift(p)&&!l.passenger;
  const inside=world.insideCar(p);document.querySelectorAll('[data-lift]').forEach(b=>b.disabled=!inside||['moving','closing'].includes(l.phase));
  const floor=world.nearestFloor(p.y);if(walking){space=floor.id;document.querySelectorAll('[data-space]').forEach(b=>b.classList.toggle('active',b.dataset.space===space))}document.querySelector('#lift-status').textContent=l.phase==='moving'?'승강기 이동 중':inside?'도착 층을 선택하세요':floor.label+' · 승강기';
- if(walking){document.querySelector('#mode').textContent=floor.label+(floor.id==='sanctuary'?' · 천장 6m / 사람 1.65m':'')+' · WASD 이동 · 드래그 회전 · 휠 줌 · E 승강기 · Esc 전체 보기'}
+ if(walking){document.querySelector('#mode').textContent=floor.label+(floor.id==='sanctuary'?' · 본당 약 10m 공간감 / 실제 9m · 사람 1.65m':'')+' · WASD 이동 · 드래그 회전 · 휠 줌 · E 승강기 · Esc 전체 보기'}
 }
 function tick(dt,refreshView=true){
  if(walking&&!dialog.open){world.update(dt,thirdPerson.position);thirdPerson.update(dt,keys,allowed,floorHeight,world.root,(p,dx,dz,dt)=>world.move(p,dx,dz,dt),refreshView);if(refreshView)liftUI()}

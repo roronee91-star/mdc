@@ -1,11 +1,11 @@
 {
   "result": {
-    "faded": 16,
+    "faded": 17,
     "hiddenPews": 1,
     "totalPews": 25,
     "exact": true,
-    "opaqueBatches": 46,
-    "fov": 64
+    "opaqueBatches": 58,
+    "fov": 70
   },
   "restored": true,
   "errors": []
