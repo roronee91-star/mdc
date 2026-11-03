@@ -6,7 +6,7 @@ import {BuildingWorld,FLOORS} from '../src/building-world.js';
 const bytes=fs.readFileSync(new URL('../assets/church-v13.glb',import.meta.url));
 const scene=(await new GLTFLoader().parseAsync(bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength),'')).scene;
 scene.updateMatrixWorld(true);
-const protectedParts=new Map();scene.traverse(o=>{if(o.isMesh&&/Pew|Stage|Glass|FIN_|FRAME_|Cross/.test(o.name)&&o.name!=='HERO_Cross_Tower')protectedParts.set(o,{matrix:o.matrixWorld.toArray(),vertices:Array.from(o.geometry.attributes.position.array)})});
+const protectedParts=new Map();scene.traverse(o=>{if(o.isMesh&&/Pew|Stage|Glass|FIN_|FRAME_|Cross/.test(o.name)&&o.name!=='HERO_Cross_Tower'&&!/^B1_(Cross_|Stage_Backdrop)/.test(o.name))protectedParts.set(o,{matrix:o.matrixWorld.toArray(),vertices:Array.from(o.geometry.attributes.position.array)})});
 const w=new BuildingWorld(scene),p=new T.Vector3(5.35,-9.4,3.65),results=[];
 const closedDoorProbe=new T.Vector3(9.2,-9.4,6.265);for(let i=0;i<100;i++)w.move(closedDoorProbe,.025,0,1/60);assert(closedDoorProbe.x<9.75);results.push('Closed landing door blocks shaft entry');
 function go(x,z){for(let i=0;i<2000;i++){const dx=x-p.x,dz=z-p.z,n=Math.hypot(dx,dz);if(n<.015)return;const before=p.clone();w.move(p,dx/n*Math.min(n,.025),dz/n*Math.min(n,.025),1/60);assert(before.distanceTo(p)>.000001,`Blocked ${p.toArray()} toward ${x},${z}`)}throw Error('Route timeout')}

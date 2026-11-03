@@ -5,7 +5,8 @@
     "test": "node tests/world.test.mjs",
     "test:browser": "node tests/v13-browser.cjs",
     "test:camera": "node tests/camera-live.cjs",
-    "test:occlusion": "node tests/pew-occlusion.cjs"
+    "test:occlusion": "node tests/pew-occlusion.cjs",
+    "test:sanctuary": "node tests/sanctuary-scale.cjs"
   },
   "devDependencies": {
     "playwright": "1.62.1",

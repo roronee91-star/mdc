@@ -15,7 +15,15 @@ let space='outside';
 let world;
 try {world=await BuildingWorld.load()} catch(error){document.querySelector('#loading').textContent='모델을 불러오지 못했습니다. 새로고침해 주세요.';throw error}
 // Preserve geometry/colors while keeping software WebGL usable.
-if(softwareRenderer){const fallback=new Map();world.root.traverse(o=>{if(!o.isMesh)return;const convert=m=>{if(!fallback.has(m)){const glass=m.transmission>0;fallback.set(m,new T.MeshLambertMaterial({color:m.color,map:m.map,emissive:m.emissive,emissiveIntensity:m.emissiveIntensity,side:m.side,transparent:glass||m.transparent,opacity:glass?.45:m.opacity,depthWrite:glass?false:m.depthWrite}))}return fallback.get(m)};o.material=Array.isArray(o.material)?o.material.map(convert):convert(o.material)})}
+if(softwareRenderer){const fallback=new Map();world.root.traverse(o=>{if(!o.isMesh)return;const convert=m=>{if(m.isMeshBasicMaterial)return m;if(!fallback.has(m)){const glass=m.transmission>0;fallback.set(m,new T.MeshLambertMaterial({color:m.color,map:m.map,emissive:m.emissive,emissiveIntensity:m.emissiveIntensity,side:m.side,transparent:glass||m.transparent,opacity:glass?.45:m.opacity,depthWrite:glass?false:m.depthWrite}))}return fallback.get(m)};o.material=Array.isArray(o.material)?o.material.map(convert):convert(o.material)})}
+// Screen artwork is a local canvas texture, with no external image dependency.
+const screenCanvas=document.createElement('canvas');screenCanvas.width=1600;screenCanvas.height=900;
+const screenContext=screenCanvas.getContext('2d'),sky=screenContext.createLinearGradient(0,0,0,900);sky.addColorStop(0,'#162f40');sky.addColorStop(1,'#719295');screenContext.fillStyle=sky;screenContext.fillRect(0,0,1600,900);
+screenContext.fillStyle='#ffffff';screenContext.textAlign='center';screenContext.font='600 94px sans-serif';screenContext.fillText('물댄동산교회',800,415);screenContext.font='38px sans-serif';screenContext.fillText('함께 예배하는 공동체',800,505);
+const screenTexture=new T.CanvasTexture(screenCanvas);screenTexture.colorSpace=T.SRGBColorSpace;
+world.screen.material.map=screenTexture;world.screen.material.color.set(0xffffff);world.screen.material.needsUpdate=true;
+// The render batch owns a cloned material; update its screen copy as well.
+const screenProxy=world.screen.userData.visualProxy;if(screenProxy){screenProxy.material.map=screenTexture;screenProxy.material.color.set(0xffffff);screenProxy.material.needsUpdate=true}
 for(const mesh of world.visualBatches)installOcclusion(mesh.material);
 scene.add(world.root);
 const groups=Object.fromEntries(FLOORS.map(f=>[f.id,world.root])),obstacles={};
@@ -23,7 +31,7 @@ const data=Object.fromEntries(FLOORS.map(f=>[f.id,{
  title:({outside:'물댄동산교회',sanctuary:'함께 예배하는 본당',education:'배움과 성장',community:'식탁의 교제',terrace:'쉼과 사색'})[f.id],
  description:f.id==='outside'?'승인 외관을 담은 모델로 탐방을 시작하세요.':'계단과 승강기로 층을 오가며 둘러보세요.',
  chapter:f.label+' — 물댄동산교회',
- eye:f.id==='outside'?[32,23,38]:[10,f.y+2.2,2.5],target:f.id==='outside'?[0,6,0]:[0,f.y+1,0],
+ eye:f.id==='outside'?[32,23,38]:[10,f.y+2.2,2.5],target:f.id==='outside'?[0,6,0]:f.id==='sanctuary'?[-10.3,-6.1,-8.2]:[0,f.y+1,0],
  walk:world.spawn(f.id).toArray(),plan:({sanctuary:2,outside:3,education:4,community:5,terrace:6})[f.id]
 }]));
 const seatCount=[...world.original.keys()].filter(n=>/Pew.*Seat/.test(n)).length;
@@ -41,9 +49,10 @@ function setWalk(on){
  document.querySelector('#walk').textContent=on?'공간 전체 둘러보기':'캐릭터와 함께 걷기';
  liftPanel.hidden=!on;document.querySelector('#mode').textContent=on?'WASD / 방향키 이동 · 드래그 회전 · 휠 줌 · Esc 전체 보기':'둘러보기 · 드래그로 회전 / 휠로 확대';
  if(on){
-  const p=world.spawn(space);
+  const p=space==='sanctuary'?new T.Vector3(-1,-9.4,-2):world.spawn(space);
   const v=new T.Vector3(...data[space].target).sub(p);
   thirdPerson.start(p,Math.atan2(-v.x,-v.z),groups[space],space==='outside');
+  if(space==='sanctuary'){thirdPerson.follow.pose.pitch=.12;thirdPerson.follow.snap()}
   document.body.classList.add('compact');
   document.querySelector('#spaces-toggle').setAttribute('aria-expanded','false');
   thirdPerson.update(0,keys,allowed,floorHeight,world.root,()=>{});
@@ -68,7 +77,7 @@ function liftUI(){
  const p=thirdPerson.position,l=world.lift;liftPanel.hidden=!walking||!world.nearLift(p)&&!l.passenger;
  const inside=world.insideCar(p);document.querySelectorAll('[data-lift]').forEach(b=>b.disabled=!inside||['moving','closing'].includes(l.phase));
  const floor=world.nearestFloor(p.y);if(walking){space=floor.id;document.querySelectorAll('[data-space]').forEach(b=>b.classList.toggle('active',b.dataset.space===space))}document.querySelector('#lift-status').textContent=l.phase==='moving'?'승강기 이동 중':inside?'도착 층을 선택하세요':floor.label+' · 승강기';
- if(walking){document.querySelector('#mode').textContent=floor.label+' · WASD 이동 · 드래그 회전 · 휠 줌 · E 승강기 · Esc 전체 보기'}
+ if(walking){document.querySelector('#mode').textContent=floor.label+(floor.id==='sanctuary'?' · 천장 6m / 사람 1.65m':'')+' · WASD 이동 · 드래그 회전 · 휠 줌 · E 승강기 · Esc 전체 보기'}
 }
 function tick(dt,refreshView=true){
  if(walking&&!dialog.open){world.update(dt,thirdPerson.position);thirdPerson.update(dt,keys,allowed,floorHeight,world.root,(p,dx,dz,dt)=>world.move(p,dx,dz,dt),refreshView);if(refreshView)liftUI()}

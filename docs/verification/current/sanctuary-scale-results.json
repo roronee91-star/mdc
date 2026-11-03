@@ -1,0 +1,15 @@
+{
+  "metrics": {
+    "height": 5.999999903142452,
+    "person": 1.6499999987334002,
+    "ratio": 3.6363635804534966,
+    "screenBottom": 3.2000000461935993,
+    "screenTop": 5.674999950826168,
+    "crossTop": 2.899999998509884,
+    "screenTexture": true,
+    "spawnClear": true,
+    "pews": 25
+  },
+  "walked": true,
+  "errors": []
+}

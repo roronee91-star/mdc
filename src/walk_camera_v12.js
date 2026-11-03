@@ -12,7 +12,7 @@ export function createFollowCamera(THREE, camera, avatar, getWorld = () => null)
   const allowed = {
     minDistance: 5.5,
     maxDistance: 11.0,
-    minPitch: 0.22,
+    minPitch: 0.10,
     maxPitch: 0.72,
   };
   let blockers = [];
@@ -58,7 +58,7 @@ export function createFollowCamera(THREE, camera, avatar, getWorld = () => null)
     refreshBlockers();
 
     // Center the camera on the avatar's torso: feet and head remain visible.
-    anchor.copy(avatar.position).add(new THREE.Vector3(0, 1.08, 0));
+    anchor.copy(avatar.position).add(new THREE.Vector3(0, 1.0, 0));
     view.set(
       Math.sin(pose.yaw) * Math.cos(pose.pitch),
       Math.sin(pose.pitch),

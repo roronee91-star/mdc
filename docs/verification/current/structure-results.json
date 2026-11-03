@@ -14,17 +14,18 @@
     "EV ride / exit / reentry 3.2",
     "EV ride / exit / reentry 9.6",
     "EV ride / exit / reentry 12.8",
-    "254 protected facade / stage / pew meshes unchanged",
+    "251 protected facade / stage / pew meshes unchanged",
     "Cross tower front / right / left / roof exterior planes retained",
     "1F side entrance → EV lobby"
   ],
-  "visualDrawBatches": 20,
-  "collisionMeshes": 1065,
+  "visualDrawBatches": 23,
+  "collisionMeshes": 1069,
   "repairs": [
     "B1_Ceiling: stair and EV openings",
     "SITE_Sidewalk: stair and EV openings",
     "1F internal EV corridor doorway added; front facade unchanged",
     "Removed obsolete 01_Lobby_E and B1 stair-intersecting partition B1_Room_Front_A_6",
-    "Cross tower internal fill hollowed; exterior front/right/left/top bounds retained"
+    "Cross tower internal fill hollowed; exterior front/right/left/top bounds retained",
+    "B1 finished ceiling 6m; cross below 4.4 × 2.475m screen; 1.65m adult reference"
   ]
 }

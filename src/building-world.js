@@ -14,7 +14,7 @@ export class BuildingWorld {
     this.repairs=[];this.ray=new T.Raycaster();this.ray.layers.enableAll();this.meshes=[];this.walkables=[];this.solids=[];this.doors=[];
     this.original=new Map();this.root.traverse(o=>{if(o.isMesh)this.original.set(sourceName(o),o)});
     this.trim=new T.MeshStandardMaterial({color:0xd6d0c2,roughness:.7});
-    this.fixStructure();this.buildLift();this.index();this.batchVisuals();
+    this.fixStructure();this.fitSanctuary();this.buildLift();this.index();this.batchVisuals();
   }
   box(name,x,y,z,w,h,d,material=this.trim,parent=this.root){
     const o=new T.Mesh(new T.BoxGeometry(w,h,d),material);o.name=name;o.position.set(x,y,z);o.receiveShadow=true;parent.add(o);return o;
@@ -62,6 +62,30 @@ export class BuildingWorld {
       tower.removeFromParent();this.repairs.push('Cross tower internal fill hollowed; exterior front/right/left/top bounds retained');
     }
     // The existing 1F reception blocks the landing exit; keep it, using the north corridor around it.
+  }
+  fitSanctuary(){
+    const floor=-9.4,ceiling=floor+6;
+    this.sanctuary={floor,ceiling,height:6,personHeight:1.65,screenWidth:4.4,screenHeight:2.475};
+    // A suspended finish ceiling preserves the B1/1F levels and the open circulation cores.
+    const finish=this.root.getObjectByName('B1_Ceiling_core_openings');
+    finish.geometry.translate(0,-3,0);
+    finish.material=new T.MeshStandardMaterial({color:0xe5dfd3,roughness:.95,emissive:0xe5dfd3,emissiveIntensity:.22});
+    for(const [name,o]of this.original)if(name.startsWith('B1_CeilingLamp_'))o.position.y-=3;
+    const backdrop=this.original.get('B1_Stage_Backdrop');
+    backdrop.geometry.computeBoundingBox();backdrop.scale.y=5.55/(backdrop.geometry.boundingBox.max.y-backdrop.geometry.boundingBox.min.y);backdrop.position.y=floor+.3+5.55/2;
+    const vertical=this.original.get('B1_Cross_Vertical'),horizontal=this.original.get('B1_Cross_Horizontal');
+    vertical.geometry.computeBoundingBox();vertical.scale.y=1.8/(vertical.geometry.boundingBox.max.y-vertical.geometry.boundingBox.min.y);vertical.position.y=floor+2;
+    horizontal.scale.x=1.05/.8;horizontal.position.y=floor+2.45;
+    const frame=new T.MeshStandardMaterial({color:0x202a2b,roughness:.7});
+    const screenMaterial=new T.MeshBasicMaterial({color:0xffffff,toneMapped:false});
+    this.screen=this.box('B1_Projection_Screen',-10.28,floor+3.2+2.475/2,-8.18,4.4,2.475,.045,screenMaterial);
+    this.screen.quaternion.copy(backdrop.quaternion);
+    const border=this.box('B1_Screen_Frame',-10.32,this.screen.position.y,-8.22,4.56,2.635,.06,frame);border.quaternion.copy(backdrop.quaternion);
+    // Fine wall bands make the room height readable without changing its footprint.
+    const band=new T.MeshStandardMaterial({color:0xaaa08e,roughness:.9});
+    this.box('B1_Height_Band_N',0,floor+3,-10.98,26.2,.045,.025,band);
+    this.box('B1_Height_Band_W',-13.08,floor+3,0,.025,.045,22,band);
+    this.repairs.push('B1 finished ceiling 6m; cross below 4.4 × 2.475m screen; 1.65m adult reference');
   }
   buildLift(){
     const steel=new T.MeshStandardMaterial({color:0x7b898c,metalness:.5,roughness:.35});
@@ -153,7 +177,7 @@ export class BuildingWorld {
   }
   clearBody(x,z,y){
     const radius=.2;
-    const min=new T.Vector3(x-radius,y+.26,z-radius),max=new T.Vector3(x+radius,y+1.72,z+radius);
+    const min=new T.Vector3(x-radius,y+.26,z-radius),max=new T.Vector3(x+radius,y+1.65,z+radius);
     const nearby=this.candidates(this.solids,min,max);
     // Cardinal and diagonal capsule cross sections detect actual holes, not whole-mesh boxes.
     for(const h of [.30,.95,1.62])for(let i=0;i<8;i++){
@@ -161,7 +185,7 @@ export class BuildingWorld {
       this.ray.set(new T.Vector3(x,y+h,z),direction);this.ray.near=0;this.ray.far=radius;
       if(this.ray.intersectObjects(nearby,false).length)return false;
     }
-    this.ray.set(new T.Vector3(x,y+.25,z),new T.Vector3(0,1,0));this.ray.far=1.47;
+    this.ray.set(new T.Vector3(x,y+.25,z),new T.Vector3(0,1,0));this.ray.far=1.4;
     return this.ray.intersectObjects(nearby,false).length===0;
   }
   move(p,dx,dz,dt){

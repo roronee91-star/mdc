@@ -25,7 +25,7 @@ const out=path.join(__dirname,'../docs/verification/current');fs.mkdirSync(out,{
  results.push({test:'1F side entrance → EV lobby via WASD',pass:true,state:await state()});await shot('02-entrance-ev');
  // Closed wall: walk against the north wall outside its doorway.
  await go('z',4.95);await go('x',8.1);const before=await state();await page.keyboard.down('w');await page.evaluate(()=>__church.advance(1));await page.keyboard.up('w');const after=await state();assert(after.p[2]>3.9&&after.p[2]<before.p[2]);results.push({test:'wall collision',pass:true,state:after});
- await menu('sanctuary');await yaw0();await go('x',5.35);await go('z',3.65);await shot('03-b1-start');
+ await menu('sanctuary');await page.evaluate(()=>{const c=__church;c.thirdPerson.position.copy(c.world.spawn('sanctuary'));c.thirdPerson.avatar.position.copy(c.thirdPerson.position)});await yaw0();await go('x',5.35);await go('z',3.65);await shot('03-b1-start');
  const tops=[-6.266667,-3.133333,0,3.2,6.4,9.6,12.8];
  for(let i=0;i<7;i++){
   await go('z',7.65);await go('x',6.65);await go('z',3.65);await go('x',5.35);

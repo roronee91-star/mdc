@@ -24,10 +24,21 @@ export class ThirdPerson {
       this.avatar.add(mesh);
       return mesh;
     };
-    part(new T.SphereGeometry(.17, 16, 12), skin, 1.55);
-    part(new T.CapsuleGeometry(.22, .36, 4, 12), cloth, 1.05);
-    this.legs = [-1, 1].map(side => part(new T.CapsuleGeometry(.09, .49, 4, 8), pants, .35, side * .12));
-    this.arms = [-1, 1].map(side => part(new T.CapsuleGeometry(.065, .42, 4, 8), cloth, 1.02, side * .3));
+    // Adult proportions, standing bounds exactly 0–1.65m (including shoes).
+    part(new T.SphereGeometry(.11, 20, 16), skin, 1.54);
+    part(new T.CylinderGeometry(.055,.06,.12,12), skin, 1.4);
+    part(new T.CylinderGeometry(.17,.135,.48,16), cloth, 1.12);
+    part(new T.CapsuleGeometry(.135,.05,4,12), pants, .81);
+    this.legs = [-1,1].map(side=>{
+      const leg=part(new T.CapsuleGeometry(.065,.59,4,10),pants,.39,side*.085);
+      const shoe=new T.Mesh(new T.BoxGeometry(.13,.06,.23),pants);shoe.position.set(0,-.36,.035);leg.add(shoe);return leg;
+    });
+    this.arms = [-1,1].map(side=>{
+      const arm=part(new T.CapsuleGeometry(.045,.44,4,10),cloth,1.05,side*.215);
+      const hand=new T.Mesh(new T.SphereGeometry(.05,12,8),skin);hand.position.y=-.29;arm.add(hand);return arm;
+    });
+    const contact=new T.Mesh(new T.CircleGeometry(.22,24),new T.MeshBasicMaterial({color:0x29251e,transparent:true,opacity:.18,depthWrite:false}));
+    contact.rotation.x=-Math.PI/2;contact.position.y=.008;this.avatar.add(contact);
     this.avatar.visible = false;
     scene.add(this.avatar);
     this.follow = createFollowCamera(T, camera, this.avatar, () => this.world);
@@ -92,7 +103,7 @@ export class ThirdPerson {
     group.updateMatrixWorld(true);
     const occluders = new Set();
     if(this.targetWorld!==group){this.targetWorld=group;this.targets=[];group.traverse(o=>{if(o.isMesh&&!o.userData.visualBatch)this.targets.push(o)})}
-    const samples = [[0, .1], [0, 1.7], ...Array.from({length: 15}, (_, i) => [(i - 7) * .055, .9])];
+    const samples = [[0, .1], [0, 1.64], ...Array.from({length: 15}, (_, i) => [(i - 7) * .055, .9])];
     for (const [x, y] of samples) {
       const sample = this.position.clone().add(new T.Vector3(Math.cos(this.yaw) * x, y, -Math.sin(this.yaw) * x));
       const direction = sample.sub(this.camera.position);
