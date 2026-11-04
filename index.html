@@ -6,418 +6,117 @@
   <title>월림동산교회 가상공간 투어</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
-    body, html { width: 100%; height: 100%; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, "Pretendard", "Segoe UI", Roboto, sans-serif; background: #0f172a; color: #fff; }
+    body, html { width: 100%; height: 100%; overflow: hidden; background: #87ceeb; font-family: sans-serif; }
     #canvas-container { width: 100%; height: 100%; position: absolute; top: 0; left: 0; }
-    #ui-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; display: flex; flex-direction: column; justify-content: space-between; padding: 16px; }
     
-    .top-bar { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; pointer-events: auto; }
-    .church-badge {
-      background: rgba(15, 23, 42, 0.9); backdrop-filter: blur(16px);
-      padding: 14px 20px; border-radius: 16px; border: 1px solid rgba(255, 255, 255, 0.15);
-      box-shadow: 0 12px 36px rgba(0,0,0,0.5);
+    #ui-overlay {
+      position: absolute; top: 16px; left: 16px; z-index: 10;
+      background: rgba(15, 23, 42, 0.85); color: #fff; padding: 14px 20px;
+      border-radius: 14px; border: 1px solid rgba(255,255,255,0.2);
     }
-    .church-title { font-size: 16px; font-weight: 800; color: #f8fafc; display: flex; align-items: center; gap: 8px; }
-    .church-sub { font-size: 11px; color: #94a3b8; margin-top: 3px; }
-    .nav-pills { display: flex; gap: 6px; margin-top: 10px; }
-    .pill {
-      background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15);
-      color: #e2e8f0; font-size: 11px; padding: 6px 12px; border-radius: 20px;
-      cursor: pointer; transition: all 0.2s; pointer-events: auto;
+    .title { font-size: 16px; font-weight: bold; }
+    .nav-btns { display: flex; gap: 6px; margin-top: 8px; }
+    .nav-btns button {
+      background: #2563eb; color: #fff; border: none; padding: 6px 12px;
+      border-radius: 8px; font-size: 12px; cursor: pointer; font-weight: bold;
     }
-    .pill:hover, .pill.active { background: #2563eb; border-color: #60a5fa; color: #fff; font-weight: 700; }
-
-    .action-btn {
-      pointer-events: auto; background: rgba(15, 23, 42, 0.9); backdrop-filter: blur(16px);
-      border: 1px solid rgba(255, 255, 255, 0.15); color: #fff;
-      padding: 10px 16px; border-radius: 12px; font-size: 12px; font-weight: 600;
-      cursor: pointer; box-shadow: 0 8px 24px rgba(0,0,0,0.4);
-    }
-
-    .guide-chip {
-      pointer-events: auto; background: rgba(15, 23, 42, 0.9); backdrop-filter: blur(14px);
-      padding: 10px 16px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.12);
-      font-size: 12px; color: #cbd5e1; max-width: fit-content;
-    }
-    .guide-chip kbd {
-      background: rgba(255, 255, 255, 0.2); padding: 2px 6px; border-radius: 4px;
-      font-weight: 700; color: #fff; font-size: 11px;
-    }
-
-    #loading-screen {
-      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-      background: #0b0f19; display: flex; flex-direction: column; align-items: center; justify-content: center;
-      z-index: 999; transition: opacity 0.5s ease;
-    }
-    .spinner {
-      width: 44px; height: 44px; border: 4px solid rgba(255, 255, 255, 0.1);
-      border-top-color: #38bdf8; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 16px;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
   </style>
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+  <!-- 가장 호환성 높은 단일 번들 스크립트 로드 -->
+  <script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
+  <script src="https://unpkg.com/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 </head>
 <body>
 
-  <div id="loading-screen">
-    <div class="spinner"></div>
-    <div style="font-size:16px; font-weight:700;">월림동산교회 가상 성전 로딩 중...</div>
-    <div id="loading-txt" style="font-size:12px; color:#64748b; margin-top:6px;">3D 공간 및 주변 환경 구성 중</div>
+  <div id="ui-overlay">
+    <div class="title">⛪ 월림동산교회 가상성전</div>
+    <div style="font-size: 12px; color: #cbd5e1;">W, A, S, D로 걷기 / 마우스 드래그로 시선 회전</div>
+    <div class="nav-btns">
+      <button onclick="goTo('plaza')">1. 광장</button>
+      <button onclick="goTo('lobby')">2. 로비</button>
+      <button onclick="goTo('chapel')">3. 본당</button>
+    </div>
   </div>
 
   <div id="canvas-container"></div>
 
-  <div id="ui-overlay">
-    <div class="top-bar">
-      <div class="church-badge">
-        <div class="church-title">
-          <span>⛪ 월림동산교회 가상성전</span>
-          <span style="font-size:10px; background:#22c55e; color:#fff; padding:2px 7px; border-radius:12px;">Live 3D</span>
-        </div>
-        <div class="church-sub">성도님들이 미리 걷고 소통하는 온·오프 메타버스</div>
-        <div class="nav-pills">
-          <button class="pill active" id="btn-plaza" onclick="goToLocation('plaza')">1. 교회 앞 광장</button>
-          <button class="pill" id="btn-lobby" onclick="goToLocation('lobby')">2. 1층 로비</button>
-          <button class="pill" id="btn-chapel" onclick="goToLocation('chapel')">3. 지하1층 본당</button>
-        </div>
-      </div>
-      <button class="action-btn" id="bgmBtn">🎵 잔잔한 묵상 찬양</button>
-    </div>
-
-    <div class="guide-chip">
-      <b>[조작법]</b> <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> 또는 <kbd>방향키</kbd>로 걷기 • <b>마우스 드래그:</b> 3인칭 360도 시선 회전 • <b>휠:</b> 줌 인/아웃
-    </div>
-  </div>
-
   <script>
-    // 1. 씬, 카메라, 렌더러
+    // 1. 씬 & 하늘색 배경 (절대 까맣게 나오지 않도록 맑은 하늘색 고정)
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0xdbeafe); // 맑은 하늘색
-    scene.fog = new THREE.FogExp2(0xdbeafe, 0.012);
+    scene.background = new THREE.Color(0x93c5fd);
 
     const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     document.getElementById('canvas-container').appendChild(renderer.domElement);
 
-    // 2. 조명
-    const hemiLight = new THREE.HemisphereLight(0xffffff, 0x64748b, 0.9);
-    hemiLight.position.set(0, 50, 0);
-    scene.add(hemiLight);
+    // 2. 밝은 야외 조명
+    const hemi = new THREE.HemisphereLight(0xffffff, 0x444444, 1.2);
+    scene.add(hemi);
 
-    const dirLight = new THREE.DirectionalLight(0xfff5e6, 1.3);
-    dirLight.position.set(20, 40, 25);
-    dirLight.castShadow = true;
-    dirLight.shadow.mapSize.width = 1024;
-    dirLight.shadow.mapSize.height = 1024;
-    scene.add(dirLight);
+    const dir = new THREE.DirectionalLight(0xfff5e6, 1.4);
+    dir.position.set(20, 40, 20);
+    scene.add(dir);
 
-    // 3. 교회 앞 광장 바닥
+    // 3. 교회 앞마당 바닥
     const ground = new THREE.Mesh(
-      new THREE.PlaneGeometry(160, 160),
+      new THREE.PlaneGeometry(150, 150),
       new THREE.MeshStandardMaterial({ color: 0x94a3b8, roughness: 0.8 })
     );
     ground.rotation.x = -Math.PI / 2;
-    ground.position.y = -0.01;
-    ground.receiveShadow = true;
     scene.add(ground);
 
-    // 가로수 나무 생성
-    function addTree(x, z, s = 1) {
+    // 4. 가로수 나무 배치
+    function makeTree(x, z) {
       const tree = new THREE.Group();
       const trunk = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.18 * s, 0.25 * s, 2.5 * s, 8),
-        new THREE.MeshStandardMaterial({ color: 0x5c4033, roughness: 0.9 })
+        new THREE.CylinderGeometry(0.2, 0.25, 2.5, 8),
+        new THREE.MeshStandardMaterial({ color: 0x5c4033 })
       );
-      trunk.position.y = (2.5 * s) / 2;
-      trunk.castShadow = true;
+      trunk.position.y = 1.25;
       tree.add(trunk);
 
-      const leaves = new THREE.Mesh(
-        new THREE.SphereGeometry(1.2 * s, 8, 8),
-        new THREE.MeshStandardMaterial({ color: 0x2e6b38, roughness: 0.8 })
+      const leaf = new THREE.Mesh(
+        new THREE.SphereGeometry(1.2, 8, 8),
+        new THREE.MeshStandardMaterial({ color: 0x2e6b38 })
       );
-      leaves.position.y = 2.5 * s;
-      leaves.scale.set(1, 1.25, 1);
-      leaves.castShadow = true;
-      tree.add(leaves);
+      leaf.position.y = 2.6;
+      tree.add(leaf);
 
       tree.position.set(x, 0, z);
       scene.add(tree);
     }
-    const treeLocs = [
-      [-14, 12], [-10, 14], [-6, 12], [3, 13], [8, 14], [13, 12],
-      [-16, 5], [-16, -4], [-16, -12], [8, -4], [9, -12],
-      [-8, 20], [0, 22], [8, 21], [15, 23]
-    ];
-    treeLocs.forEach(([tx, tz]) => addTree(tx, tz, 0.85 + Math.random() * 0.3));
+    const treePos = [[-10, 12], [-5, 12], [4, 12], [9, 12], [-14, 5], [14, 5], [-8, 20], [6, 20]];
+    treePos.forEach(([x, z]) => makeTree(x, z));
 
-    // 4. 아바타 캐릭터
+    // 5. 아바타 캐릭터 (월림이)
     const avatar = new THREE.Group();
-    const bodyMesh = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.32, 0.38, 0.85, 16),
-      new THREE.MeshStandardMaterial({ color: 0x3b82f6, roughness: 0.5 })
+    const body = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.35, 0.4, 0.9, 16),
+      new THREE.MeshStandardMaterial({ color: 0x2563eb })
     );
-    bodyMesh.position.y = 0.42;
-    bodyMesh.castShadow = true;
-    avatar.add(bodyMesh);
+    body.position.y = 0.45;
+    avatar.add(body);
 
-    const headMesh = new THREE.Mesh(
-      new THREE.SphereGeometry(0.34, 16, 16),
-      new THREE.MeshStandardMaterial({ color: 0xffedd5, roughness: 0.5 })
+    const head = new THREE.Mesh(
+      new THREE.SphereGeometry(0.35, 16, 16),
+      new THREE.MeshStandardMaterial({ color: 0xffedd5 })
     );
-    headMesh.position.y = 1.15;
-    headMesh.castShadow = true;
-    avatar.add(headMesh);
-
-    // 이름표
-    const nameCanvas = document.createElement('canvas');
-    nameCanvas.width = 256; nameCanvas.height = 64;
-    const nCtx = nameCanvas.getContext('2d');
-    nCtx.fillStyle = 'rgba(15, 23, 42, 0.8)';
-    nCtx.fillRect(10, 10, 236, 44);
-    nCtx.strokeStyle = '#38bdf8'; nCtx.lineWidth = 3;
-    nCtx.strokeRect(10, 10, 236, 44);
-    nCtx.fillStyle = '#ffffff'; nCtx.font = 'bold 22px sans-serif'; nCtx.textAlign = 'center';
-    nCtx.fillText('월림이 ✨', 128, 40);
-
-    const nameSpr = new THREE.Sprite(new THREE.SpriteMaterial({
-      map: new THREE.CanvasTexture(nameCanvas),
-      transparent: true
-    }));
-    nameSpr.position.set(0, 1.8, 0);
-    nameSpr.scale.set(1.4, 0.35, 1);
-    avatar.add(nameSpr);
+    head.position.y = 1.15;
+    avatar.add(head);
 
     avatar.position.set(0, 0, 15);
     scene.add(avatar);
 
-    // 5. 3인칭 카메라 파라미터
+    // 6. 3인칭 카메라 조작
     let camYaw = 0;
-    let camPitch = 0.28;
-    let camDist = 6.5;
+    let camPitch = 0.25;
+    let camDist = 7.0;
     let isMouseDown = false;
-    let prevMouseX = 0, prevMouseY = 0;
+    let px = 0, py = 0;
 
     window.addEventListener('mousedown', (e) => {
       if (e.target.tagName === 'BUTTON') return;
       isMouseDown = true;
-      prevMouseX = e.clientX;
-      prevMouseY = e.clientY;
-    });
-    window.addEventListener('mouseup', () => isMouseDown = false);
-    window.addEventListener('mousemove', (e) => {
-      if (!isMouseDown) return;
-      camYaw -= (e.clientX - prevMouseX) * 0.005;
-      camPitch += (e.clientY - prevMouseY) * 0.004;
-      camPitch = Math.max(0.08, Math.min(1.4, camPitch));
-      prevMouseX = e.clientX;
-      prevMouseY = e.clientY;
-    });
-    window.addEventListener('wheel', (e) => {
-      camDist = Math.max(2.5, Math.min(20, camDist + e.deltaY * 0.005));
-    });
-
-    // 6. 모델 로드 및 최적화
-    const loader = new THREE.GLTFLoader();
-    const loadScreen = document.getElementById('loading-screen');
-    const loadTxt = document.getElementById('loading-txt');
-    let church = null;
-
-    loader.load(
-      'Untitled.glb',
-      (gltf) => {
-        church = gltf.scene;
-        const removeList = [];
-
-        church.traverse((c) => {
-          if (c.isMesh) {
-            c.castShadow = true;
-            c.receiveShadow = true;
-
-            // 중복 씬 제거
-            if (c.name.includes('.001') || c.name === 'Cube') {
-              removeList.push(c);
-              return;
-            }
-
-            // 유리창 투명화
-            if (c.name.includes('GLASS') && c.material) {
-              c.material.transparent = true;
-              c.material.opacity = 0.4;
-              c.material.roughness = 0.1;
-              c.material.depthWrite = false;
-            }
-          }
-        });
-
-        removeList.forEach(obj => { if (obj.parent) obj.parent.remove(obj); });
-
-        // 본당 대형 LED 스크린
-        const ledCanvas = document.createElement('canvas');
-        ledCanvas.width = 512; ledCanvas.height = 180;
-        const lCtx = ledCanvas.getContext('2d');
-        lCtx.fillStyle = '#2563eb';
-        lCtx.fillRect(0, 0, 512, 180);
-        lCtx.fillStyle = '#ffffff';
-        lCtx.font = 'bold 36px sans-serif';
-        lCtx.textAlign = 'center';
-        lCtx.fillText('하나님은 사랑이시라', 256, 95);
-
-        const ledMesh = new THREE.Mesh(
-          new THREE.PlaneGeometry(8, 2.8),
-          new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(ledCanvas) })
-        );
-        ledMesh.position.set(-6.3, -2.8, -17.2);
-        church.add(ledMesh);
-
-        // 정렬
-        const box = new THREE.Box3().setFromObject(church);
-        const center = box.getCenter(new THREE.Vector3());
-        church.position.x -= center.x;
-        church.position.z -= center.z;
-        church.position.y -= box.min.y;
-        scene.add(church);
-
-        loadScreen.style.opacity = '0';
-        setTimeout(() => loadScreen.style.display = 'none', 500);
-      },
-      (xhr) => {
-        if (xhr.lengthComputable) {
-          const p = Math.round((xhr.loaded / xhr.total) * 100);
-          loadTxt.innerText = `성전 모델 불러오는 중 (${p}%)`;
-        }
-      },
-      (err) => {
-        console.error(err);
-        loadTxt.innerHTML = "<b style='color:#f87171;'>Untitled.glb 로드 실패</b><br>파일이 저장소 최상단에 있는지 확인해주세요.";
-      }
-    );
-
-    // 7. 위치 이동 버튼
-    window.goToLocation = function(loc) {
-      document.querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
-      document.getElementById('btn-' + loc).classList.add('active');
-
-      if (loc === 'plaza') {
-        avatar.position.set(0, 0, 15);
-        camYaw = 0; camPitch = 0.25; camDist = 6.5;
-      } else if (loc === 'lobby') {
-        avatar.position.set(-4.5, 0.2, 0.5);
-        camYaw = Math.PI; camPitch = 0.2; camDist = 4.0;
-      } else if (loc === 'chapel') {
-        avatar.position.set(-6.3, -4.2, -4.5);
-        camYaw = Math.PI; camPitch = 0.15; camDist = 4.5;
-      }
-    };
-
-    // 8. 키보드 조작
-    const keys = { w: false, a: false, s: false, d: false };
-    window.addEventListener('keydown', (e) => {
-      const k = e.key.toLowerCase();
-      if (k === 'w' || k === 'arrowup') keys.w = true;
-      if (k === 's' || k === 'arrowdown') keys.s = true;
-      if (k === 'a' || k === 'arrowleft') keys.a = true;
-      if (k === 'd' || k === 'arrowright') keys.d = true;
-    });
-    window.addEventListener('keyup', (e) => {
-      const k = e.key.toLowerCase();
-      if (k === 'w' || k === 'arrowup') keys.w = false;
-      if (k === 's' || k === 'arrowdown') keys.s = false;
-      if (k === 'a' || k === 'arrowleft') keys.a = false;
-      if (k === 'd' || k === 'arrowright') keys.d = false;
-    });
-
-    // 9. 배경 BGM
-    let audioCtx = null, bgmActive = false, bgmTimer = null;
-    const chords = [[261.63, 329.63, 392.00], [220.00, 261.63, 329.63], [174.61, 220.00, 261.63], [196.00, 246.94, 293.66]];
-    let cStep = 0;
-
-    function playChord() {
-      if (!bgmActive || !audioCtx) return;
-      const cur = chords[cStep % chords.length];
-      cStep++;
-      cur.forEach(f => {
-        const o = audioCtx.createOscillator();
-        const g = audioCtx.createGain();
-        o.type = 'sine';
-        o.frequency.setValueAtTime(f, audioCtx.currentTime);
-        g.gain.setValueAtTime(0, audioCtx.currentTime);
-        g.gain.linearRampToValueAtTime(0.03, audioCtx.currentTime + 1.0);
-        g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 4.8);
-        o.connect(g); g.connect(audioCtx.destination);
-        o.start(); o.stop(audioCtx.currentTime + 5.0);
-      });
-      bgmTimer = setTimeout(playChord, 4200);
-    }
-
-    document.getElementById('bgmBtn').addEventListener('click', () => {
-      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      bgmActive = !bgmActive;
-      const btn = document.getElementById('bgmBtn');
-      if (bgmActive) {
-        if (audioCtx.state === 'suspended') audioCtx.resume();
-        btn.innerText = '🔊 찬양 반주 중 (정지)';
-        btn.style.background = '#2563eb';
-        playChord();
-      } else {
-        btn.innerText = '🎵 잔잔한 묵상 찬양';
-        btn.style.background = 'rgba(15, 23, 42, 0.9)';
-        clearTimeout(bgmTimer);
-      }
-    });
-
-    // 10. 메인 루프
-    const clock = new THREE.Clock();
-    const moveSpeed = 0.14;
-
-    function animate() {
-      requestAnimationFrame(animate);
-      const delta = clock.getDelta();
-
-      const forward = new THREE.Vector3(-Math.sin(camYaw), 0, -Math.cos(camYaw)).normalize();
-      const side = new THREE.Vector3(forward.z, 0, -forward.x).normalize();
-
-      const move = new THREE.Vector3();
-      if (keys.w) move.add(forward);
-      if (keys.s) move.sub(forward);
-      if (keys.a) move.sub(side);
-      if (keys.d) move.add(side);
-
-      if (move.lengthSq() > 0) {
-        move.normalize().multiplyScalar(moveSpeed);
-        avatar.position.add(move);
-        avatar.rotation.y = Math.atan2(move.x, move.z);
-
-        bodyMesh.position.y = 0.42 + Math.sin(clock.getElapsedTime() * 14) * 0.035;
-        headMesh.position.y = 1.15 + Math.sin(clock.getElapsedTime() * 14) * 0.035;
-      } else {
-        bodyMesh.position.y = 0.42;
-        headMesh.position.y = 1.15;
-      }
-
-      // 카메라 3인칭 추적
-      const target = avatar.position.clone().add(new THREE.Vector3(0, 1.2, 0));
-      camera.position.set(
-        target.x + Math.sin(camYaw) * Math.cos(camPitch) * camDist,
-        target.y + Math.sin(camPitch) * camDist,
-        target.z + Math.cos(camYaw) * Math.cos(camPitch) * camDist
-      );
-      camera.lookAt(target);
-
-      renderer.render(scene, camera);
-    }
-    animate();
-
-    window.addEventListener('resize', () => {
-      camera.aspect = window.innerWidth / window.innerHeight;
-      camera.updateProjectionMatrix();
-      renderer.setSize(window.innerWidth, window.innerHeight);
-    });
-  </script>
-</body>
-</html>
+      px = e.clientX
