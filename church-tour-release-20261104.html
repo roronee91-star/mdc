@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>우리교회 가상 성전 투어 (Virtual Tour)</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+    }
+    body, html {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, "Pretendard", "Segoe UI", Roboto, sans-serif;
+      background-color: #1a1e24;
+      color: #fff;
+    }
+    #canvas-container {
+      width: 100%;
+      height: 100%;
+      position: absolute;
+      top: 0;
+      left: 0;
+    }
+    #ui-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 20px;
+    }
+    .header-box {
+      pointer-events: auto;
+      background: rgba(15, 23, 42, 0.75);
+      backdrop-filter: blur(12px);
+      padding: 14px 22px;
+      border-radius: 14px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      display: inline-flex;
+      align-items: center;
+      gap: 16px;
+      max-width: fit-content;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    }
+    .header-title {
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+    }
+    .header-desc {
+      font-size: 12px;
+      color: #94a3b8;
+    }
+    .status-badge {
+      font-size: 11px;
+      background: #2563eb;
+      padding: 3px 8px;
+      border-radius: 20px;
+      font-weight: 600;
+    }
+    .guide-box {
+      pointer-events: auto;
+      background: rgba(15, 23, 42, 0.75);
+      backdrop-filter: blur(12px);
+      padding: 12px 18px;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      font-size: 12px;
+      line-height: 1.6;
+      color: #cbd5e1;
+      max-width: fit-content;
+      margin-bottom: 10px;
+    }
+    .guide-box kbd {
+      background: rgba(255, 255, 255, 0.15);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 700;
+      font-size: 11px;
+      color: #fff;
+    }
+    .bgm-btn {
+      pointer-events: auto;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #fff;
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 12px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+    .bgm-btn:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+    #loading-screen {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: #0f172a;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 999;
+      transition: opacity 0.5s ease;
+    }
+    .spinner {
+      width: 48px;
+      height: 48px;
+      border: 4px solid rgba(255, 255, 255, 0.1);
+      border-top-color: #38bdf8;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-bottom: 20px;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    #loading-text {
+      font-size: 15px;
+      font-weight: 600;
+      color: #e2e8f0;
+      margin-bottom: 8px;
+    }
+    #loading-sub {
+      font-size: 12px;
+      color: #64748b;
+    }
+    /* 모바일 가상 조이스틱 */
+    #mobile-controls {
+      display: none;
+      position: absolute;
+      bottom: 24px;
+      left: 24px;
+      width: 110px;
+      height: 110px;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      border-radius: 50%;
+      pointer-events: auto;
+      touch-action: none;
+    }
+    #stick {
+      position: absolute;
+      top: 35px;
+      left: 35px;
+      width: 40px;
+      height: 40px;
+      background: rgba(56, 189, 248, 0.85);
+      border-radius: 50%;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    }
+  </style>
+
+  <!-- Three.js & 필수 로더 CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+</head>
+<body>
+
+  <div id="loading-screen">
+    <div class="spinner"></div>
+    <div id="loading-text">가상 성전 공간을 불러오는 중입니다...</div>
+    <div id="loading-sub">Untitled.glb 모델 및 조명 렌더링 세팅 중</div>
+  </div>
+
+  <div id="canvas-container"></div>
+
+  <div id="ui-overlay">
+    <div class="header-box">
+      <div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span class="header-title">우리교회 신축성전 온·오프 메타버스 투어</span>
+          <span class="status-badge">배포 확인 · 20261104</span>
+        </div>
+        <div class="header-desc">교회 본당 및 외관을 자유롭게 둘러보실 수 있습니다.</div>
+      </div>
+      <button class="bgm-btn" id="bgmToggle">
+        <span>🎵 잔잔한 묵상 찬양</span>
+      </button>
+    </div>
+
+    <div>
+      <div class="guide-box">
+        <b>[조작 안내]</b><br>
+        • <b>PC:</b> <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> 또는 <kbd>방향키</kbd>로 걷기 / 마우스 좌클릭 드래그로 시선 회전 / 휠로 줌<br>
+        • <b>모바일:</b> 왼쪽 화면 터치 드래그로 이동 / 오른쪽 화면 터치 드래그로 시선 회전
+      </div>
+    </div>
+  </div>
+
+  <div id="mobile-controls">
+    <div id="stick"></div>
+  </div>
+
+  <script>
+    // --- 씬 및 렌더러 초기화 ---
+    const container = document.getElementById('canvas-container');
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0xdce7f3);
+    scene.fog = new THREE.FogExp2(0xdce7f3, 0.015);
+
+    const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.set(0, 5, 18);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.1;
+    container.appendChild(renderer.domElement);
+
+    // OrbitControls
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+    controls.maxPolarAngle = Math.PI / 2 - 0.02; // 바닥 아래로 안 내려가게 방지
+    controls.minDistance = 2;
+    controls.maxDistance = 60;
+    controls.target.set(0, 2, 0);
+
+    // --- 자연스러운 야외 및 성전 조명 ---
+    const hemiLight = new THREE.HemisphereLight(0xffffff, 0x64748b, 0.85);
+    hemiLight.position.set(0, 50, 0);
+    scene.add(hemiLight);
+
+    const sunLight = new THREE.DirectionalLight(0xfff6e5, 1.4);
+    sunLight.position.set(20, 40, 25);
+    sunLight.castShadow = true;
+    sunLight.shadow.mapSize.width = 2048;
+    sunLight.shadow.mapSize.height = 2048;
+    sunLight.shadow.camera.near = 0.5;
+    sunLight.shadow.camera.far = 120;
+    sunLight.shadow.camera.left = -25;
+    sunLight.shadow.camera.right = 25;
+    sunLight.shadow.camera.top = 25;
+    sunLight.shadow.camera.bottom = -25;
+    sunLight.shadow.bias = -0.0005;
+    scene.add(sunLight);
+
+    // 바닥 기본 베이스 그리드
+    const gridHelper = new THREE.GridHelper(80, 80, 0x94a3b8, 0xcfd8dc);
+    gridHelper.position.y = -0.02;
+    scene.add(gridHelper);
+
+    // --- 캐릭터(아바타) 생성 (온라인 사찰/성당 스타일) ---
+    const characterGroup = new THREE.Group();
+    
+    // 캐릭터 몸체 (심플한 미니멀 디자인)
+    const bodyGeo = new THREE.CylinderGeometry(0.35, 0.4, 0.9, 16);
+    const bodyMat = new THREE.MeshStandardMaterial({ color: 0x3b82f6, roughness: 0.4 });
+    const body = new THREE.Mesh(bodyGeo, bodyMat);
+    body.position.y = 0.45;
+    body.castShadow = true;
+    characterGroup.add(body);
+
+    const headGeo = new THREE.SphereGeometry(0.32, 16, 16);
+    const headMat = new THREE.MeshStandardMaterial({ color: 0xffedd5, roughness: 0.6 });
+    const head = new THREE.Mesh(headGeo, headMat);
+    head.position.y = 1.15;
+    head.castShadow = true;
+    characterGroup.add(head);
+
+    characterGroup.position.set(0, 0, 8); // 교회 입구 앞 시작 위치
+    scene.add(characterGroup);
+
+    // --- GLB 모델 로더 (중복 컬렉션 자동 필터링 기능 탑재) ---
+    const loader = new THREE.GLTFLoader();
+    const loadingScreen = document.getElementById('loading-screen');
+    const loadingSub = document.getElementById('loading-sub');
+
+    // 같은 폴더의 Untitled.glb 로드
+    loader.load(
+      'church-model-release-20261104.glb',
+      (gltf) => {
+        const model = gltf.scene;
+
+        // 아까 발견된 문제: .001이 붙은 중복 오브젝트 자동 제거 및 유리창 투명 처리
+        const toRemove = [];
+        model.traverse((child) => {
+          if (child.isMesh) {
+            child.castShadow = true;
+            child.receiveShadow = true;
+
+            // 중복 씬/오브젝트 정리
+            if (child.name.includes('.001') || child.name === 'Cube') {
+              toRemove.push(child);
+            }
+
+            // 유리창 재질 보정 (창문이 막혀보이지 않도록 투명 처리)
+            if (child.name.includes('GLASS')) {
+              child.material.transparent = true;
+              child.material.opacity = 0.45;
+              child.material.roughness = 0.1;
+              child.material.metalness = 0.1;
+              child.material.depthWrite = false;
+            }
+          }
+        });
+
+        toRemove.forEach((obj) => {
+          if (obj.parent) obj.parent.remove(obj);
+        });
+
+        // 모델 바닥 중심 정렬
+        const box = new THREE.Box3().setFromObject(model);
+        const center = box.getCenter(new THREE.Vector3());
+        model.position.x -= center.x;
+        model.position.z -= center.z;
+        model.position.y -= box.min.y; // 바닥 레벨 0에 맞춤
+
+        scene.add(model);
+
+        loadingScreen.style.opacity = '0';
+        setTimeout(() => loadingScreen.style.display = 'none', 500);
+      },
+      (xhr) => {
+        if (xhr.lengthComputable) {
+          const percent = Math.round((xhr.loaded / xhr.total) * 100);
+          loadingSub.innerText = `모델 데이터 로딩 중... (${percent}%)`;
+        }
+      },
+      (error) => {
+        console.error('모델 로드 에러:', error);
+        loadingSub.innerHTML = "<b style='color:#f87171;'>Untitled.glb 파일을 찾을 수 없습니다.</b><br>HTML 파일과 같은 폴더에 'Untitled.glb' 파일이 있는지 확인해주세요.";
+      }
+    );
+
+    // --- 키보드 및 캐릭터 이동 조작 로직 ---
+    const keys = { w: false, a: false, s: false, d: false };
+
+    window.addEventListener('keydown', (e) => {
+      const k = e.key.toLowerCase();
+      if (k === 'w' || k === 'arrowup') keys.w = true;
+      if (k === 's' || k === 'arrowdown') keys.s = true;
+      if (k === 'a' || k === 'arrowleft') keys.a = true;
+      if (k === 'd' || k === 'arrowright') keys.d = true;
+    });
+
+    window.addEventListener('keyup', (e) => {
+      const k = e.key.toLowerCase();
+      if (k === 'w' || k === 'arrowup') keys.w = false;
+      if (k === 's' || k === 'arrowdown') keys.s = false;
+      if (k === 'a' || k === 'arrowleft') keys.a = false;
+      if (k === 'd' || k === 'arrowright') keys.d = false;
+    });
+
+    // --- 가상 오디오 (웹 오디오 API 신디사이저: 잔잔한 오르간/피아노 묵상 코드 반주) ---
+    let audioCtx = null;
+    let isPlaying = false;
+    let audioTimer = null;
+    const chords = [
+      [261.63, 329.63, 392.00], // C
+      [220.00, 261.63, 329.63], // Am
+      [174.61, 220.00, 261.63], // F
+      [196.00, 246.94, 293.66]  // G
+    ];
+    let chordIdx = 0;
+
+    function playCalmChord() {
+      if (!isPlaying || !audioCtx) return;
+      const currentChord = chords[chordIdx % chords.length];
+      chordIdx++;
+
+      currentChord.forEach(freq => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+
+        gain.gain.setValueAtTime(0, audioCtx.currentTime);
+        gain.gain.linearRampToValueAtTime(0.04, audioCtx.currentTime + 1.5);
+        gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 5.5);
+
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        osc.start();
+        osc.stop(audioCtx.currentTime + 5.6);
+      });
+      audioTimer = setTimeout(playCalmChord, 4800);
+    }
+
+    document.getElementById('bgmToggle').addEventListener('click', () => {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      isPlaying = !isPlaying;
+      const btn = document.getElementById('bgmToggle');
+      if (isPlaying) {
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        btn.innerHTML = '<span>🔊 찬양 반주 중 (정지)</span>';
+        btn.style.background = '#2563eb';
+        playCalmChord();
+      } else {
+        btn.innerHTML = '<span>🎵 잔잔한 묵상 찬양 (재생)</span>';
+        btn.style.background = 'rgba(255,255,255,0.1)';
+        clearTimeout(audioTimer);
+      }
+    });
+
+    // --- 메인 루프 (캐릭터 추적 및 애니메이션) ---
+    const moveSpeed = 0.12;
+    const clock = new THREE.Clock();
+
+    function animate() {
+      requestAnimationFrame(animate);
+      const delta = clock.getDelta();
+
+      // 카메라가 바라보는 방향 기준 이동 벡터 계산
+      const forward = new THREE.Vector3();
+      camera.getWorldDirection(forward);
+      forward.y = 0;
+      forward.normalize();
+
+      const side = new THREE.Vector3();
+      side.crossVectors(camera.up, forward).normalize();
+
+      const moveVec = new THREE.Vector3();
+      if (keys.w) moveVec.add(forward);
+      if (keys.s) moveVec.sub(forward);
+      if (keys.a) moveVec.add(side);
+      if (keys.d) moveVec.sub(side);
+
+      if (moveVec.lengthSq() > 0) {
+        moveVec.normalize().multiplyScalar(moveSpeed);
+        characterGroup.position.add(moveVec);
+        
+        // 이동 방향으로 캐릭터 시선 회전
+        const targetRot = Math.atan2(moveVec.x, moveVec.z);
+        characterGroup.rotation.y = targetRot;
+
+        // 걸을 때 가벼운 들썩임 모션
+        body.position.y = 0.45 + Math.sin(clock.getElapsedTime() * 12) * 0.04;
+        head.position.y = 1.15 + Math.sin(clock.getElapsedTime() * 12) * 0.04;
+
+        // 카메라 추적 (캐릭터 따라가기)
+        controls.target.lerp(characterGroup.position.clone().add(new THREE.Vector3(0, 1.2, 0)), 0.08);
+      } else {
+        body.position.y = 0.45;
+        head.position.y = 1.15;
+      }
+
+      controls.update();
+      renderer.render(scene, camera);
+    }
+
+    animate();
+
+    // 화면 리사이즈 대응
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+  </script>
+</body>
+</html>
