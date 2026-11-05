@@ -323,6 +323,7 @@
     #voiceRec { position: absolute; right: 72px; bottom: 128px; z-index: 6; background: rgba(15, 23, 42, 0.88); color: #fff; font-size: 13px; padding: 7px 12px; border-radius: 999px; white-space: nowrap; }
     #voiceRec:not([hidden]) { animation: uiIn 0.2s ease-out both; }
     #voiceRec .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #ff6b6b; margin-right: 4px; animation: recPulse 1s infinite; }
+    .action-btn.on { background: #c98a2b; border-color: #f0c46a; }
   </style>
 
   <script src="./vendor/supabase/supabase.js"></script>
@@ -379,6 +380,7 @@
       <div class="action-group">
         <button class="action-btn" id="btnElevator" hidden>🛗 엘리베이터 타기</button>
         <button class="action-btn" id="btnPrayerWrite" hidden>📝 기도제목 쓰기</button>
+        <button class="action-btn" id="btnLight" hidden>💡 불 켜기</button>
         <button class="action-btn" id="btnActionPew">🪑 의자 착석</button>
         <button class="action-btn" id="btnActionPray">🙏 기도</button>
         <button class="action-btn" id="btnActionEat">🍚 밥먹기</button>
@@ -492,6 +494,7 @@
       renderer.toneMappingExposure = n ? 1.05 : 1.15;
       nightGlows.forEach((gm) => { gm.mat.opacity = n ? gm.night : gm.day; });
       glassMats.forEach((m) => { if (!m.emissive) return; m.emissive.set(n ? 0xffc27a : 0x000000); m.emissiveIntensity = n ? 0.55 : 0; });
+      treeLeaves.forEach((m) => { if (!m.emissive) return; m.emissive.set(n ? 0x4f6a2e : 0x000000); m.emissiveIntensity = n ? 0.32 : 0; });   // 밤: 나무 아래 조명이 잎을 따뜻하게 비춤
       outdoorCross.forEach((m) => { if (!m.material.emissive) return; m.material.emissive.set(n ? 0xfff2d8 : 0x000000); m.material.emissiveIntensity = n ? 1.6 : 0; });
       if (!nightLights) {   // 밤에만 켜는 바깥 빛: 건물 앞을 비추는 빛 2개 + 십자가 탑 위로 비추는 빛
         nightLights = new THREE.Group(); scene.add(nightLights);
@@ -500,6 +503,18 @@
         glowSpot(nightLights, -0.93, 7.5, 0.6, 2.4, 14, 0xffd6a0, [0, 0, 0], 0, 0.45);                  // 십자가 탑 앞면에 번지는 빛
         glowSpot(nightLights, -6.0, 7.0, 0.7, 8.5, 12, 0xffcf8a, [0, 0, 0], 0, 0.22);                   // 앞면 유리 쪽
         [-11.0, -8.6, -6.2, -3.8].forEach((x) => glowSpot(nightLights, x, 0.03, 3.4, 1.6, 1.6, 0xffd9a0, [-Math.PI / 2, 0, 0], 0, 0.6));   // 광장 바닥 조명
+        // 바깥 나무: 밑동에서 위로 비추는 조명 — 바닥의 둥근 빛 + 작은 조명 기구 + 잎 아래쪽이 따뜻하게 물드는 빛
+        const fixtureM = new THREE.MeshBasicMaterial({ color: 0xfff1d0, toneMapped: false });
+        treeTrunks.forEach((tr) => {
+          tr.geometry.computeBoundingBox(); const bb = tr.geometry.boundingBox.clone().applyMatrix4(tr.matrixWorld);
+          const x = (bb.min.x + bb.max.x) / 2, z = (bb.min.z + bb.max.z) / 2, y0 = bb.min.y, top = bb.max.y;
+          glowSpot(nightLights, x, y0 + 0.03, z, 2.6, 2.6, 0xffd29a, [-Math.PI / 2, 0, 0], 0, 0.55);
+          const fx = noHit(new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 0.08, 10), fixtureM)); fx.position.set(x + 0.35, y0 + 0.04, z + 0.35); nightLights.add(fx);
+          const sp = noHit(new THREE.Sprite(new THREE.SpriteMaterial({ map: GLOW_TEX, color: 0xffc77a, transparent: true, opacity: 0.38, depthWrite: false, blending: THREE.AdditiveBlending })));
+          sp.position.set(x, top + 0.6, z); sp.scale.set(5.2, 5.6, 1); nightLights.add(sp);
+          const tw = noHit(new THREE.Sprite(new THREE.SpriteMaterial({ map: GLOW_TEX, color: 0xffe0a8, transparent: true, opacity: 0.35, depthWrite: false, blending: THREE.AdditiveBlending })));
+          tw.position.set(x, (y0 + top) / 2, z); tw.scale.set(1.2, top - y0 + 0.6, 1); nightLights.add(tw);   // 줄기를 따라 올라가는 빛
+        });
       }
       nightLights.visible = n;
     }
@@ -812,7 +827,7 @@
     const b1ObstructingMeshes = [];
     const topMeshes = []; // 4층·지붕 (3층 내부를 위에서 볼 때 숨김)
     const outsideMeshes = []; // 본당(B1) 이외의 건물·주변 (본당을 위에서 볼 때 숨김)
-    const glassMats = [], outdoorCross = [];   // 밤에 창이 따뜻하게 빛나고 바깥 십자가가 켜지도록
+    const glassMats = [], outdoorCross = [], treeTrunks = [], treeLeaves = [];   // 밤에 창이 따뜻하게 빛나고 바깥 십자가가 켜지도록
 
     const loader = new GLTFLoader();
     const loadingScreen = document.getElementById('loading-screen');
@@ -830,6 +845,8 @@
             clickableObjects.push(child);
 
             // 유리창 투명화
+            if (/TREE.*_Trunk/.test(child.name)) treeTrunks.push(child);
+            else if (/TREE/.test(child.name)) { child.material = child.material.clone(); treeLeaves.push(child.material); }
             if (/^CROSS_(VERTICAL|HORIZONTAL)/.test(child.name)) { child.material = child.material.clone(); outdoorCross.push(child); }
             if (child.name.includes('GLASS') || child.name.includes('Glass')) {
               if (!glassMats.includes(child.material)) glassMats.push(child.material);
@@ -1574,6 +1591,33 @@
       addElevator(F3_Y, furn, 'F3', false);
       { const f4e = new THREE.Group(); f4e.name = 'F4_ELEVATOR'; scene.add(f4e); addElevator(F4_Y, f4e, 'F4', false); }
     }
+    // ---- 방 불 켜기·끄기: 3층 소그룹실 1~3, 4층 그룹실. 방 안(또는 문 앞)에 가면 '💡 불 켜기' 버튼.
+    //      켜면 천장 등이 빛나고 방이 따뜻하게 밝아짐. 같은 방에 있는 다른 성도님 화면에도 똑같이 켜짐.
+    const ROOM_LIGHTS = [];
+    function addRoomLight(id, name, lv, Y, x0, x1, z0, z1, ceilH, parent) {
+      const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
+      const lampOff = new THREE.MeshStandardMaterial({ color: 0xe9e2d4, roughness: 0.5 }), lampOn = new THREE.MeshBasicMaterial({ color: 0xfff1cf, toneMapped: false });
+      const shade = noHit(new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.26, 0.16, 20, 1, true), new THREE.MeshStandardMaterial({ color: 0xc9a97a, roughness: 0.6, side: THREE.DoubleSide })));
+      shade.position.set(cx, Y + ceilH - 0.45, cz); parent.add(shade);
+      const bulb = noHit(new THREE.Mesh(new THREE.SphereGeometry(0.07, 14, 10), lampOff)); bulb.position.set(cx, Y + ceilH - 0.48, cz); parent.add(bulb);
+      const cord = noHit(new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.006, 0.38, 6), new THREE.MeshStandardMaterial({ color: 0x333333 }))); cord.position.set(cx, Y + ceilH - 0.19, cz); parent.add(cord);
+      const light = new THREE.PointLight(0xffd9a8, 0, Math.max(x1 - x0, z1 - z0) + 2.5, 1.2); light.position.set(cx, Y + ceilH - 0.6, cz); light.visible = false; parent.add(light);
+      const pool = glowSpot(parent, cx, Y + 0.02, cz, (x1 - x0) * 1.2, (z1 - z0) * 1.2, 0xffd9a8, [-Math.PI / 2, 0, 0], 0, 0); nightGlows.pop();   // 바닥에 고이는 빛 (낮밤과 상관없이 스위치로만)
+      const halo = glowSpot(parent, cx, Y + ceilH - 0.5, cz, 1.2, 1.2, 0xffe6b8, [Math.PI / 2, 0, 0], 0, 0); nightGlows.pop();
+      const r = { id, name, lv, x0, x1, z0, z1, on: false, light, bulb, lampOn, lampOff, pool, halo };
+      ROOM_LIGHTS.push(r); return r;
+    }
+    function setRoomLight(id, on, fromNet) {
+      const r = ROOM_LIGHTS.find((x) => x.id === id); if (!r || r.on === on) return;
+      r.on = on; r.bulb.material = on ? r.lampOn : r.lampOff;
+      r.light.intensity = on ? 9 : 0; r.pool.material.opacity = on ? 0.5 : 0; r.halo.material.opacity = on ? 0.7 : 0;
+      if (!fromNet && window.mdcNet) window.mdcNet.send('light', { room: id, on });
+      if (typeof updateLightBtn === 'function') updateLightBtn();
+    }
+    {
+      for (let i = 0; i < 3; i++) addRoomLight('f3g' + (i + 1), '소그룹실 ' + (i + 1), 'F3', F3_Y, roomW, 0, roomZ[i], roomZ[i + 1], 3.2, furn);
+      addRoomLight('f4g', '그룹실', 'F4', F4_Y, -2.4, 0, -17.36, F4_IN_S, 3.15, f4);
+    }
     // ===FLOORS-END===
 
     // ===PEW-BEGIN===
@@ -2132,6 +2176,7 @@
       furn.visible = !hideOut; // 3층 가구는 본당을 위에서 볼 때 숨김
       levelLabels.forEach(l => { l.visible = l.userData.lv === wp.level; });   // 지금 층 이름표만
       Object.entries(floorLights).forEach(([lv, ls]) => ls.forEach((l) => { l.visible = lv === wp.level; }));
+      ROOM_LIGHTS.forEach((r) => { r.light.visible = r.lv === wp.level; });
       f3Light.visible = wp.level === 'F3'; ceilingRig.visible = wp.level === 'B1'; if (crossSpot) crossSpot.visible = wp.level === 'B1';
 
       // 지하 1층 모드일 때 외벽/천장 반투명 단면 모드 가동
@@ -2410,6 +2455,16 @@
     document.getElementById('nameBtn').addEventListener('click', askName);
     { const saved = loadName(), g = loadGender(); if (g) applyGender(characterGroup, g); if (saved) setNameTag(saved); if (!saved || !g) askName(); }   // 처음(또는 성별을 아직 안 고른 분)만 창을 띄움
     document.getElementById('btnPrayerWrite').addEventListener('click', () => openPrayers('write'));
+    let shownRoom = null;
+    function currentRoom() {                                   // 지금 있는 방 (문 앞 0.9m까지 포함)
+      const p = characterGroup.position, lv = curLevel();
+      return ROOM_LIGHTS.find((r) => r.lv === lv && p.x > r.x0 - 0.9 && p.x < r.x1 && p.z > r.z0 && p.z < r.z1) || null;
+    }
+    function updateLightBtn() {
+      const r = currentRoom(); if (!r) return;
+      const b = document.getElementById('btnLight'); b.innerHTML = r.on ? `💡 ${r.name} 불 끄기` : `💡 ${r.name} 불 켜기`; b.classList.toggle('on', r.on);
+    }
+    document.getElementById('btnLight').addEventListener('click', () => { const r = currentRoom(); if (r) setRoomLight(r.id, !r.on); });
     makePrayerBoard(0.6, -6.6 + 1.45, -6.0, -Math.PI / 2);     // 지하 본당 동쪽 벽 (뒤쪽 통로 옆)
     makePrayerBoard(-6.93, F2_Y + 1.35, -12.0, Math.PI / 2);   // 2층 홀: 소예배실 벽(복도 쪽)에 걸림
     updatePrayerBoards();
@@ -2468,6 +2523,7 @@
         ch.on('broadcast', { event: 'pos' }, ({ payload }) => this.onPos(payload));
         ch.on('broadcast', { event: 'chat' }, ({ payload }) => this.onChat(payload));
         ch.on('broadcast', { event: 'voice' }, ({ payload }) => Voice.onChunk(payload));
+        ch.on('broadcast', { event: 'light' }, ({ payload }) => { if (payload) setRoomLight(payload.room, !!payload.on, true); });
         ch.subscribe(async (status) => {
           if (status === 'SUBSCRIBED') { this.ready = true; this.subAt = performance.now(); await ch.track(myState()); this.setStatus(true); }
           else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') { this.ready = false; this.setStatus(false); }
@@ -2480,6 +2536,7 @@
           if (data.t === 'pos') { seen.set(data.p.id, performance.now()); if (!this.peers.has(data.p.id)) { this.peers.set(data.p.id, data.p); sysLine(`${data.p.n}님이 들어오셨어요 🙌`); this.syncPeers(); } else this.peers.set(data.p.id, data.p); this.onPos(data.p); }
           if (data.t === 'chat') this.onChat(data.p);
           if (data.t === 'voice') Voice.onChunk(data.p);
+          if (data.t === 'light' && data.p) setRoomLight(data.p.room, !!data.p.on, true);
         };
         setInterval(() => { const now = performance.now(); seen.forEach((t, id) => { if (now - t > 12000) { seen.delete(id); const p = this.peers.get(id); this.peers.delete(id); if (p) sysLine(`${p.n}님이 나가셨어요`); this.syncPeers(); } }); }, 2000);
         this.setStatus(true);
@@ -2500,6 +2557,8 @@
       onChat(c) { if (!c || !c.text) return; const r = remotes.get(c.id); chatLine(c.n, c.text); if (r) showBubble(r.group, c.text, r); },
       syncPeers() {
         const ids = new Set(this.peers.keys());
+        const fresh = [...ids].some((id) => id !== PrayerStore.device() && !remotes.has(id));
+        if (fresh) setTimeout(() => ROOM_LIGHTS.forEach((r) => { if (r.on) this.send('light', { room: r.id, on: true }); }), 800);   // 새로 온 분께 켜진 방 알려줌
         remotes.forEach((r, id) => { if (!ids.has(id)) { scene.remove(r.group); remotes.delete(id); } });
         this.peers.forEach((p, id) => { if (id !== PrayerStore.device() && p.x !== undefined) this.onPos(Object.assign({}, p, { id })); });   // 접속 정보의 열쇠(key)를 기기 번호로
         this.setStatus(true);
@@ -2686,7 +2745,7 @@
       vb.addEventListener('pointerdown', down); vb.addEventListener('pointerup', up); vb.addEventListener('pointercancel', up); vb.addEventListener('lostpointercapture', up);
       vb.addEventListener('contextmenu', (e) => e.preventDefault());
     }
-    window.__voice = Voice;
+    window.__voice = Voice; window.__rooms = ROOM_LIGHTS;
     window.mdcNet = Net; window.__remotes = remotes;
     Net.start();
     const guideCard = document.getElementById('guideCard');
@@ -3287,6 +3346,8 @@
       }
       const nearPulpit = curLevel() === 'B1' && Math.hypot(characterGroup.position.x - PULPIT_AT.x, characterGroup.position.z - PULPIT_AT.z) < 1.9;
       showEl(document.getElementById('btnPrayerWrite'), nearPulpit);
+      const lr = currentRoom(); showEl(document.getElementById('btnLight'), !!lr);
+      if (lr && lr !== shownRoom) { shownRoom = lr; updateLightBtn(); } if (!lr) shownRoom = null;
       const nearEl = nearElevator();
       showEl(btnElevator, nearEl);
       if (nearEl && !wasNearEl && walkedSinceRide && !pendingRide && !riding) openElevPanel();   // 걸어서 다가오면 층 선택 창
