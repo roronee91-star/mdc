@@ -1808,6 +1808,32 @@
       geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
       return geo;
     }
+    // ---- 투명 아크릴 강대상 (사용자 요청): 원래 강대상 상자는 보이지 않게만 하고(걷기 막힘은 그대로) 같은 자리에 새로 그림 ----
+    function acrylicPulpit(g, pulpit) {
+      const W = 1.1, D = 0.5, H = 0.6;                           // 화면에 보일 크기: 폭 1.1 · 깊이 0.5 · 높이 0.6 (캐릭터 0.8m)
+      pulpit.scale.x = W / 1.4; pulpit.scale.z = D / 0.65;        // 막힘 상자도 같은 크기로
+      pulpit.material = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false, colorWrite: false });
+      pulpit.castShadow = false; pulpit.userData.noCamBlock = true;
+      pulpit.updateWorldMatrix(true, false); pulpit.geometry.computeBoundingBox();
+      const wb = pulpit.geometry.boundingBox.clone().applyMatrix4(pulpit.matrixWorld), wp = new THREE.Vector3(); pulpit.getWorldPosition(wp);
+      const P = new THREE.Group(); P.position.set(wp.x, wb.min.y, wp.z); P.rotation.y = pulpit.rotation.y; g.add(P);   // 앞(+z)이 회중 쪽
+      const acr = new THREE.MeshStandardMaterial({ color: 0xeef8fc, roughness: 0.05, metalness: 0.0, transparent: true, opacity: 0.22, depthWrite: false, side: THREE.DoubleSide });
+      const edge = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.75 });
+      const wood = new THREE.MeshStandardMaterial({ color: 0x7a5232, roughness: 0.55 });
+      const part = (w, h, d, x, y, z, m, rx) => {
+        const geo = new THREE.BoxGeometry(w, h, d), me = new THREE.Mesh(geo, m); me.position.set(x, y, z); if (rx) me.rotation.x = rx; P.add(me);
+        if (m === acr) me.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo), edge)); else me.castShadow = true;
+        return me;
+      };
+      part(W, 0.02, D, 0, 0.01, 0, acr);                                          // 바닥 판
+      part(W, H - 0.06, 0.025, 0, 0.02 + (H - 0.06) / 2, D / 2 - 0.05, acr);      // 앞판
+      [-1, 1].forEach((sx) => part(0.025, H - 0.06, D - 0.12, sx * (W / 2 - 0.0125), 0.02 + (H - 0.06) / 2, 0.0, acr));   // 옆판
+      part(W + 0.04, 0.022, D - 0.04, 0, H - 0.01, -0.01, acr, -0.14);            // 위판 (설교자 쪽으로 기울어짐)
+      part(W + 0.04, 0.035, 0.03, 0, H - 0.045, -D / 2 + 0.02, wood);             // 위판 뒤 받침 (원고가 미끄러지지 않게)
+      const fz = D / 2 - 0.05 + 0.0125 + 0.008;                                   // 앞판 앞면에 나무 십자가
+      part(0.05, 0.36, 0.016, 0, 0.32, fz, wood); part(0.22, 0.05, 0.016, 0, 0.39, fz, wood);
+      P.traverse((o) => { o.userData.noCamBlock = true; o.userData.pickOnly = true; o.raycast = () => {}; });
+    }
     function applyB1Fixes(root) {
       const FLOOR = -6.6;
       const byName = {};
@@ -2055,6 +2081,7 @@
         const d = 4.6 / Math.SQRT2;
         pulpit.position.x = CORNER.x + d; pulpit.position.z = CORNER.z + d;
         PULPIT_AT.set(CORNER.x + d, -6.16, CORNER.z + d);
+        acrylicPulpit(g, pulpit);
       }
 
       // 4) 십자가: 참고 사진처럼 벽에 붙임. 회중이 무대를 볼 때 스크린 왼쪽 = 서쪽 벽.
