@@ -1223,7 +1223,7 @@
         controls.maxDistance = eye ? 8 : 55;
       }
 
-      rebuildWalk();
+      rebuildWalk(); buildNav(); walkPath = [];
       if (eye) { eyeCam(); return; }
       controls.target.copy(wp.camLook);
       camera.position.copy(wp.camPos);
@@ -1307,7 +1307,12 @@
           hit.y = currentFloorY;
         }
 
-        targetPos.set(hit.x, currentFloorY, hit.z);
+        const path = findPath(characterGroup.position, new THREE.Vector3(hit.x, currentFloorY, hit.z));
+        if (!path || !path.length) return;                 // 갈 수 없는 곳(벽 속 등)은 무시
+        walkPath = path;
+        targetPos.copy(walkPath.shift());
+        const goal = path.length ? path[path.length - 1] : targetPos;
+        hit = { x: goal.x, z: goal.z };
         isMoving = true;
         isPraying = false;
         isSitting = false;
@@ -1465,6 +1470,85 @@
       });
     }
     const BODY_R = 0.22;
+    // ---- 바닥 누르기 길찾기: 지금 층을 10cm 격자로 나눠 벽·가구(몸 반지름만큼 키움)를 막힘으로 표시하고 A* ----
+    let nav = null, walkPath = [];
+    function buildNav() {
+      const fy = currentFloorY;
+      const B = fy < -3 ? [-13.3, -17.9, 0.9, 0.5, 0.1] : fy > 5 ? [-12.6, -17.7, 0.4, 0.4, 0.1] : [-30, -30, 25, 30, 0.15];
+      const [x0, z0, x1, z1, S] = B, W = Math.ceil((x1 - x0) / S) + 1, H = Math.ceil((z1 - z0) / S) + 1;
+      const blocked = new Uint8Array(W * H), R = BODY_R + 0.03, R2 = R * R;
+      const v = new THREE.Vector3();
+      walkBlockers.forEach((o) => {
+        const lb = o.geometry.boundingBox, q = [];
+        [[lb.min.x, lb.min.z], [lb.max.x, lb.min.z], [lb.max.x, lb.max.z], [lb.min.x, lb.max.z]].forEach(([a, c]) => { v.set(a, lb.min.y, c).applyMatrix4(o.matrixWorld); q.push([v.x, v.z]); });
+        let ax = Infinity, az = Infinity, bx = -Infinity, bz = -Infinity;
+        q.forEach(([a, c]) => { ax = Math.min(ax, a); az = Math.min(az, c); bx = Math.max(bx, a); bz = Math.max(bz, c); });
+        const i0 = Math.max(0, Math.floor((ax - R - x0) / S)), i1 = Math.min(W - 1, Math.ceil((bx + R - x0) / S));
+        const j0 = Math.max(0, Math.floor((az - R - z0) / S)), j1 = Math.min(H - 1, Math.ceil((bz + R - z0) / S));
+        for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
+          const k = j * W + i; if (blocked[k]) continue;
+          const px = x0 + i * S, pz = z0 + j * S;
+          let inside = true, sg = 0, dmin = Infinity;
+          for (let e = 0; e < 4; e++) {
+            const [ex, ez] = q[e], [fx, fz] = q[(e + 1) % 4];
+            const cr = (fx - ex) * (pz - ez) - (fz - ez) * (px - ex);
+            if (cr !== 0) { if (!sg) sg = Math.sign(cr); else if (Math.sign(cr) !== sg) inside = false; }
+            const dx = fx - ex, dz = fz - ez, L = dx * dx + dz * dz;
+            const t = L ? Math.max(0, Math.min(1, ((px - ex) * dx + (pz - ez) * dz) / L)) : 0;
+            dmin = Math.min(dmin, (px - ex - t * dx) ** 2 + (pz - ez - t * dz) ** 2);
+          }
+          if (inside || dmin <= R2) blocked[k] = 1;
+        }
+      });
+      nav = { x0, z0, W, H, S, blocked };
+    }
+    const cellOf = (x, z) => [Math.round((x - nav.x0) / nav.S), Math.round((z - nav.z0) / nav.S)];
+    const freeCell = (i, j) => i >= 0 && j >= 0 && i < nav.W && j < nav.H && !nav.blocked[j * nav.W + i];
+    function nearestFree(i, j, maxR) {
+      if (freeCell(i, j)) return [i, j];
+      for (let r = 1; r <= maxR; r++) for (let dj = -r; dj <= r; dj++) for (let di = -r; di <= r; di++) {
+        if (Math.max(Math.abs(di), Math.abs(dj)) !== r) continue;
+        if (freeCell(i + di, j + dj)) return [i + di, j + dj];
+      }
+      return null;
+    }
+    function lineFree(a, b) {                     // 두 칸 사이 직선이 막힘 없이 지나가는지
+      const n = Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) * 2);
+      for (let t = 0; t <= n; t++) { const i = Math.round(a[0] + (b[0] - a[0]) * t / n), j = Math.round(a[1] + (b[1] - a[1]) * t / n); if (!freeCell(i, j)) return false; }
+      return true;
+    }
+    function findPath(from, to) {
+      if (!nav) return null;
+      const s0 = nearestFree(...cellOf(from.x, from.z), 6), g0 = nearestFree(...cellOf(to.x, to.z), 15);
+      if (!s0 || !g0) return null;
+      const { W, H } = nav, N = W * H, sk = s0[1] * W + s0[0], gk = g0[1] * W + g0[0];
+      const gS = new Float32Array(N).fill(Infinity), came = new Int32Array(N).fill(-1), closed = new Uint8Array(N);
+      const heap = [];   // [f, k]
+      const push = (f, k) => { heap.push([f, k]); let c = heap.length - 1; while (c > 0) { const p = (c - 1) >> 1; if (heap[p][0] <= heap[c][0]) break; [heap[p], heap[c]] = [heap[c], heap[p]]; c = p; } };
+      const pop = () => { const top = heap[0], last = heap.pop(); if (heap.length) { heap[0] = last; let c = 0; for (;;) { const l = 2 * c + 1, r = l + 1; let m = c; if (l < heap.length && heap[l][0] < heap[m][0]) m = l; if (r < heap.length && heap[r][0] < heap[m][0]) m = r; if (m === c) break; [heap[m], heap[c]] = [heap[c], heap[m]]; c = m; } } return top; };
+      const hgt = (k) => { const dx = Math.abs(k % W - g0[0]), dz = Math.abs(((k / W) | 0) - g0[1]); return Math.max(dx, dz) + 0.414 * Math.min(dx, dz); };
+      gS[sk] = 0; push(hgt(sk), sk);
+      const nb = [[1, 0, 1], [-1, 0, 1], [0, 1, 1], [0, -1, 1], [1, 1, 1.414], [1, -1, 1.414], [-1, 1, 1.414], [-1, -1, 1.414]];
+      let found = false, iter = 0;
+      while (heap.length && iter++ < 400000) {
+        const [, k] = pop(); if (closed[k]) continue; closed[k] = 1;
+        if (k === gk) { found = true; break; }
+        const i = k % W, j = (k / W) | 0;
+        for (const [di, dj, c] of nb) {
+          const ni = i + di, nj = j + dj; if (!freeCell(ni, nj)) continue;
+          if (di && dj && (!freeCell(i + di, j) || !freeCell(i, j + dj))) continue;   // 모서리 끼어가기 금지
+          const nk = nj * W + ni, ng = gS[k] + c;
+          if (ng < gS[nk]) { gS[nk] = ng; came[nk] = k; push(ng + hgt(nk), nk); }
+        }
+      }
+      if (!found) return null;
+      const cells = []; for (let k = gk; k !== -1; k = came[k]) cells.push([k % W, (k / W) | 0]);
+      cells.reverse();
+      // 직선으로 갈 수 있는 곳은 건너뛰어 자연스러운 경로로
+      const out = []; let a = 0;
+      while (a < cells.length - 1) { let b = cells.length - 1; while (b > a + 1 && !lineFree(cells[a], cells[b])) b--; out.push(cells[b]); a = b; }
+      return out.map(([i, j]) => new THREE.Vector3(nav.x0 + i * nav.S, currentFloorY, nav.z0 + j * nav.S));
+    }
     function pathBlocked(pos, d, step) {
       const perp = new THREE.Vector3(-d.z, 0, d.x);
       for (const h of [0.25, 0.45, 0.65]) for (const l of [-0.17, 0, 0.17]) {
@@ -1537,7 +1621,7 @@
       // 0. 키보드·조이스틱 입력
       const inp = moveInput();
       if (inp) {
-        keyDriving = true;
+        keyDriving = true; walkPath = [];
         targetPos.copy(characterGroup.position).addScaledVector(inp.d, 0.6);
         isMoving = true; isPraying = false; isSitting = false; isEating = false;
       } else if (keyDriving) {
@@ -1554,7 +1638,7 @@
           dir.normalize();
           const moved = tryMove(currentPos, dir, Math.min(dist, walkSpeed * (inp ? inp.mag : 1) * delta));
           followGround(currentPos);
-          if (!moved && !keyDriving) { isMoving = false; }    // 벽·가구에 막히면 그 자리에서 멈춤
+          if (!moved && !keyDriving) { if (walkPath.length) targetPos.copy(walkPath.shift()); else isMoving = false; }
           const targetRot = Math.atan2(dir.x, dir.z);
           let dr = targetRot - characterGroup.rotation.y;                   // 가장 짧은 쪽으로 돌기
           dr = Math.atan2(Math.sin(dr), Math.cos(dr));
@@ -1572,6 +1656,8 @@
           rightArmGroup.rotation.z = -0.15;
 
           if (viewMode !== 'eye') controls.target.lerp(new THREE.Vector3(currentPos.x, currentPos.y + 0.85, currentPos.z), 0.08);
+        } else if (walkPath.length) {
+          targetPos.copy(walkPath.shift());               // 다음 꺾이는 지점으로
         } else {
           isMoving = false;
         }
