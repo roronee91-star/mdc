@@ -376,27 +376,29 @@
     characterGroup.add(headGroup);
 
     // 움직이는 양팔 (어깨 관절 기준 회전)
-    const armMat = new THREE.MeshStandardMaterial({ color: 0x2563eb, roughness: 0.5 });
-    const armGeo = new THREE.CylinderGeometry(0.06, 0.055, 0.32, 12);
-    armGeo.translate(0, -0.14, 0); // 어깨 중심으로 피벗 세팅
+    // 몸보다 살짝 밝은 파란색을 적용하여 팔이 몸에 파묻히지 않게 구분
+    const armMat = new THREE.MeshStandardMaterial({ color: 0x3b82f6, roughness: 0.5 });
+    const armGeo = new THREE.CylinderGeometry(0.05, 0.045, 0.40, 12);
+    armGeo.translate(0, -0.20, 0); // 어깨 중심으로 피벗 세팅
 
     // 왼팔 그룹
     const leftArmGroup = new THREE.Group();
-    leftArmGroup.position.set(-0.25, 0.55, 0.0);
+    // 몸(radius 0.2) 밖으로 명확하게 돌출되도록 어깨 위치 -0.22 설정
+    leftArmGroup.position.set(-0.22, 0.55, 0.0);
     const leftArmMesh = new THREE.Mesh(armGeo, armMat);
     leftArmGroup.add(leftArmMesh);
-    const leftHand = new THREE.Mesh(new THREE.SphereGeometry(0.065, 12, 12), skinMat);
-    leftHand.position.set(0, -0.30, 0);
+    const leftHand = new THREE.Mesh(new THREE.SphereGeometry(0.06, 12, 12), skinMat);
+    leftHand.position.set(0, -0.38, 0);
     leftArmGroup.add(leftHand);
     characterGroup.add(leftArmGroup);
 
     // 오른팔 그룹
     const rightArmGroup = new THREE.Group();
-    rightArmGroup.position.set(0.25, 0.55, 0.0);
+    rightArmGroup.position.set(0.22, 0.55, 0.0);
     const rightArmMesh = new THREE.Mesh(armGeo, armMat);
     rightArmGroup.add(rightArmMesh);
-    const rightHand = new THREE.Mesh(new THREE.SphereGeometry(0.065, 12, 12), skinMat);
-    rightHand.position.set(0, -0.30, 0);
+    const rightHand = new THREE.Mesh(new THREE.SphereGeometry(0.06, 12, 12), skinMat);
+    rightHand.position.set(0, -0.38, 0);
     rightArmGroup.add(rightHand);
     characterGroup.add(rightArmGroup);
 
@@ -635,8 +637,8 @@
       isSitting = true;
       isPraying = true; // 착석 시 자동으로 기도 포즈
 
-      // 의자 등받이 속이 아니라, 방석 쿠션 상단(높이 -6.38m) 무릎 공간에 착석
-      characterGroup.position.set(-5.6, -6.6 + 0.18, -8.6);
+      // 의자 등받이 속이 아니라, 방석 쿠션 상단(높이 -6.38m) 무릎 공간에 정확히 안착
+      characterGroup.position.set(-5.6, -6.6 + 0.22, -8.6);
       characterGroup.rotation.y = Math.PI * 0.78; // 강단 정면 응시
       targetPos.copy(characterGroup.position);
 
@@ -738,9 +740,9 @@
           headGroup.rotation.x = 0;
 
           leftArmGroup.rotation.x = Math.sin(walkPhase) * 0.65;
-          leftArmGroup.rotation.z = 0.1;
+          leftArmGroup.rotation.z = 0.15;
           rightArmGroup.rotation.x = -Math.sin(walkPhase) * 0.65;
-          rightArmGroup.rotation.z = -0.1;
+          rightArmGroup.rotation.z = -0.15;
 
           controls.target.lerp(new THREE.Vector3(currentPos.x, currentPos.y + 0.85, currentPos.z), 0.08);
         } else {
@@ -750,29 +752,29 @@
       // 2. 기도 상태 (양팔 합장 + 고개 숙임 + 은은한 호흡)
       else if (isPraying) {
         const breathe = Math.sin(time * 2.2) * 0.015;
-        body.position.y = (isSitting ? 0.28 : 0.35) + breathe;
-        headGroup.position.y = (isSitting ? 0.68 : 0.78) + breathe * 0.5;
+        body.position.y = (isSitting ? 0.22 : 0.35) + breathe;
+        headGroup.position.y = (isSitting ? 0.65 : 0.78) + breathe * 0.5;
 
         // 경건하게 고개 숙임
         headGroup.rotation.x = THREE.MathUtils.lerp(headGroup.rotation.x, 0.22, 0.1);
 
         // 양팔을 앞으로 들고 가슴 중앙에서 두 손을 모아 합장(🙏)
-        leftArmGroup.rotation.x = THREE.MathUtils.lerp(leftArmGroup.rotation.x, -0.9, 0.12);
-        leftArmGroup.rotation.z = THREE.MathUtils.lerp(leftArmGroup.rotation.z, -0.65, 0.12);
-        leftArmGroup.rotation.y = THREE.MathUtils.lerp(leftArmGroup.rotation.y, 0.45, 0.12);
+        leftArmGroup.rotation.x = THREE.MathUtils.lerp(leftArmGroup.rotation.x, -0.8, 0.12);
+        leftArmGroup.rotation.z = THREE.MathUtils.lerp(leftArmGroup.rotation.z, 0.8, 0.12);
+        leftArmGroup.rotation.y = THREE.MathUtils.lerp(leftArmGroup.rotation.y, 0, 0.12);
 
-        rightArmGroup.rotation.x = THREE.MathUtils.lerp(rightArmGroup.rotation.x, -0.9, 0.12);
-        rightArmGroup.rotation.z = THREE.MathUtils.lerp(rightArmGroup.rotation.z, 0.65, 0.12);
-        rightArmGroup.rotation.y = THREE.MathUtils.lerp(rightArmGroup.rotation.y, -0.45, 0.12);
+        rightArmGroup.rotation.x = THREE.MathUtils.lerp(rightArmGroup.rotation.x, -0.8, 0.12);
+        rightArmGroup.rotation.z = THREE.MathUtils.lerp(rightArmGroup.rotation.z, -0.8, 0.12);
+        rightArmGroup.rotation.y = THREE.MathUtils.lerp(rightArmGroup.rotation.y, 0, 0.12);
       } 
       // 3. 평상시 기본 차렷 자세
       else {
-        body.position.y = 0.35;
-        headGroup.position.y = 0.78;
+        body.position.y = (isSitting ? 0.22 : 0.35);
+        headGroup.position.y = (isSitting ? 0.65 : 0.78);
         headGroup.rotation.x = 0;
 
-        leftArmGroup.rotation.set(0, 0, 0.12);
-        rightArmGroup.rotation.set(0, 0, -0.12);
+        leftArmGroup.rotation.set(0, 0, 0.15);
+        rightArmGroup.rotation.set(0, 0, -0.15);
       }
 
       controls.update();
