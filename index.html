@@ -332,7 +332,7 @@
     const camRay = new THREE.Raycaster();
     camRay.camera = camera; // 이름표(스프라이트) 판정에 필요
     let camWantDist = null, camPulled = false;
-    function resetCamPull() { camPulled = false; camWantDist = null; camCurDist = null; }
+    function resetCamPull() { camPulled = false; camWantDist = null; camCurDist = null; camWantDir = null; camLift = 0; }
     function isCamBlocker(o) {
       if (!o.isMesh || o.userData.noCamBlock) return false;
       for (let q = o; q; q = q.parent) { if (!q.visible) return false; if (q.userData && q.userData.noCamBlock) return false; }
@@ -341,66 +341,70 @@
       if (/ENV_|TREE|Leaf/.test(o.name)) return false;   // 바깥 나무는 막지 않음 (유리는 막아서 카메라가 건물 밖으로 안 나감)
       return true;
     }
+    // 카메라 = '사용자가 원하는 방향(camWantDir)·거리(camWantDist)'와 '실제 위치'를 따로 둔다.
+    // 매 프레임 실제 위치를 원하는 위치로 되돌려 놓고(OrbitControls가 원래 시점으로 계산하도록) 다시 벽을 검사한다.
+    let camWantDir = null;
     function camBeforeUpdate() {
-      if (camPulled && camWantDist) {
-        const dir = camera.position.clone().sub(controls.target).normalize();
-        camera.position.copy(controls.target).addScaledVector(dir, camWantDist);
-      }
+      if (camWantDir && camWantDist) camera.position.copy(controls.target).addScaledVector(camWantDir, camWantDist);
     }
-    // 카메라 몸통 크기만큼(가운데 + 상하좌우 4줄) 광선을 쏴서, 가장 가까운 벽보다 25cm 앞에 카메라를 둔다.
-    // 벽에 가까워질 때는 바로 당기고(벽 속이 보이지 않게), 멀어질 때는 천천히 원래 거리로 돌아간다.
-    let camCurDist = null, frameDt = 1 / 60;
-    const UP_V = new THREE.Vector3(0, 1, 0);
-    function camAfterUpdate() {
-      const off = camera.position.clone().sub(controls.target);
-      camWantDist = off.length();
-      const dir = off.normalize();
+    // 카메라 몸통 크기만큼(가운데 + 상하좌우 4줄) 광선을 쏴서 가장 가까운 벽보다 25cm 앞까지만 간다
+    function probeFree(dir, want) {
       let side = new THREE.Vector3().crossVectors(dir, UP_V);
       if (side.lengthSq() < 1e-6) side.set(1, 0, 0);
       side.normalize();
       const up2 = new THREE.Vector3().crossVectors(side, dir).normalize();
-      let dmin = camWantDist;
+      let dmin = want;
       [[0, 0], [0.2, 0], [-0.2, 0], [0, 0.16], [0, -0.16]].forEach(([a, b]) => {
         const o = controls.target.clone().addScaledVector(side, a).addScaledVector(up2, b);
-        const d = blockDistFrom(o, dir, camWantDist + 0.3);
+        const d = blockDistFrom(o, dir, want + 0.3);
         if (d !== null) dmin = Math.min(dmin, d - 0.25);
       });
-      dmin = Math.max(0.35, dmin);
-      if (camCurDist === null || dmin < camCurDist) camCurDist = dmin;
-      else camCurDist += (dmin - camCurDist) * 0.08;
-      camPulled = camCurDist < camWantDist - 1e-3;
-      camera.position.copy(controls.target).addScaledVector(dir, camCurDist);
-      if (camPulled && camCurDist < camWantDist * 0.7 && !userDragging) steerAround(dir);
-      setCharFade(camCurDist < 0.85);
+      return dmin;
     }
-    // 카메라 뒤가 벽이면 좌우로 각도를 바꿔 보며 탁 트인 방향을 찾아 그쪽으로 조금씩 돈다
+    // 뒤가 막혀 카메라가 캐릭터에 붙게 되면, 캐릭터를 투명하게 하는 대신 카메라를 위로 올려 내려다본다
+    let camCurDist = null, camLift = 0, frameDt = 1 / 60;
+    const UP_V = new THREE.Vector3(0, 1, 0);
+    const CAM_MIN_VIEW = 1.5;                       // 캐릭터와 최소 이만큼은 떨어져서 보이게
+    function camAfterUpdate() {
+      const off = camera.position.clone().sub(controls.target);
+      camWantDist = off.length();
+      const wdir = off.normalize();
+      camWantDir = wdir.clone();
+      const need = Math.min(camWantDist, CAM_MIN_VIEW);
+      let liftT = 0;
+      if (probeFree(wdir, camWantDist) < need) {
+        let bestT = 0, bestF = -1;
+        for (let t = 0.15; t <= 0.9; t += 0.15) {
+          const d = wdir.clone().lerp(UP_V, t).normalize();
+          const f = probeFree(d, camWantDist);
+          if (f > bestF + 0.05) { bestF = f; bestT = t; }
+          if (f >= need) { bestT = t; break; }
+        }
+        liftT = bestT;
+      }
+      camLift += (liftT - camLift) * (liftT > camLift ? 0.25 : 0.06);     // 올라갈 땐 빨리, 내려올 땐 천천히
+      const dir = wdir.clone().lerp(UP_V, camLift).normalize();
+      const dist = Math.max(0.45, probeFree(dir, camWantDist));
+      if (camCurDist === null || dist < camCurDist) camCurDist = dist;
+      else camCurDist += (dist - camCurDist) * 0.08;
+      camPulled = camCurDist < camWantDist - 1e-3 || camLift > 0.01;
+      camera.position.copy(controls.target).addScaledVector(dir, camCurDist);
+      if (camLift > 0.3 && !userDragging) steerAround(wdir);            // 많이 올라가 있으면 옆으로 트인 쪽을 찾아 천천히 돎
+    }
+    // 원하는 방향을 좌우로 조금씩 돌려 탁 트인 쪽을 찾는다 (실제 위치는 다음 프레임에 다시 계산)
     function steerAround(dir) {
       const flat = Math.hypot(dir.x, dir.z); if (flat < 0.2) return;
       const yaw0 = Math.atan2(dir.x, dir.z);
-      const step = Math.min(0.2, 2.5 * frameDt);                          // 초당 약 140도
-      // 좌우로 돌려 보고(0), 안 되면 조금 위에서 내려다보는 각도(낮은 책상·의자 넘어)로도 찾아본다
-      for (const lift of [0, 0.35]) for (const k of [0.35, -0.35, 0.7, -0.7, 1.05, -1.05, 1.57, -1.57, 2.1, -2.1, 2.6, -2.6, 3.14]) {
-        const y = yaw0 + k, ey = Math.min(0.75, dir.y + lift), fl = Math.sqrt(1 - ey * ey);
-        const d2 = new THREE.Vector3(Math.sin(y) * fl, ey, Math.cos(y) * fl);
-        const hit = blockDistFrom(controls.target, d2, camWantDist + 0.3);
-        if (hit === null || hit > camWantDist * 0.9) {
+      const step = Math.min(0.12, 1.5 * frameDt);                         // 초당 약 85도
+      for (const k of [0.35, -0.35, 0.7, -0.7, 1.05, -1.05, 1.57, -1.57, 2.1, -2.1, 2.6, -2.6, 3.14]) {
+        const y = yaw0 + k;
+        const d2 = new THREE.Vector3(Math.sin(y) * flat, dir.y, Math.cos(y) * flat).normalize();
+        if (probeFree(d2, camWantDist) >= Math.min(camWantDist, CAM_MIN_VIEW) + 0.3) {
           const ny = yaw0 + Math.sign(k) * Math.min(Math.abs(k), step);
-          const nyv = dir.y + Math.sign(ey - dir.y) * Math.min(Math.abs(ey - dir.y), step * 0.5);
-          const nf = Math.sqrt(Math.max(0, 1 - nyv * nyv));
-          const nd = new THREE.Vector3(Math.sin(ny) * nf, nyv, Math.cos(ny) * nf).normalize();
-          camera.position.copy(controls.target).addScaledVector(nd, camCurDist);
+          camWantDir.set(Math.sin(ny) * flat, dir.y, Math.cos(ny) * flat).normalize();
           return;
         }
       }
-    }
-    let charFaded = false;
-    function setCharFade(on) {
-      if (on === charFaded) return;
-      charFaded = on;
-      characterGroup.traverse((o) => { if (o.isMesh) {
-        const u = o.material.userData;
-        if (u.baseOpacity === undefined) { u.baseOpacity = o.material.opacity; u.wasTransparent = o.material.transparent; }
-        o.material.needsUpdate = true; o.material.transparent = on || o.material.userData.wasTransparent; o.material.opacity = on ? 0.35 * u.baseOpacity : u.baseOpacity; } });
     }
     function blockDistFrom(origin, dir, far) {
       camRay.set(origin, dir); camRay.far = far; camRay.near = 0.05;
@@ -1559,8 +1563,10 @@
         const wantT = new THREE.Vector3(p.x, p.y + EYE_H, p.z);
         const wantC = new THREE.Vector3(p.x - fx * CAM_BACK, p.y + EYE_H + CAM_UP, p.z - fz * CAM_BACK);
         controls.target.lerp(wantT, 0.12);
-        camera.position.lerp(wantC, 0.06);
-        if (camPulled) camWantDist = null;
+        if (camWantDir && camWantDist) {
+          const wp = controls.target.clone().addScaledVector(camWantDir, camWantDist).lerp(wantC, 0.06);
+          const o = wp.sub(controls.target); camWantDist = o.length(); camWantDir.copy(o.normalize());
+        } else camera.position.lerp(wantC, 0.06);
       }
     }
 
