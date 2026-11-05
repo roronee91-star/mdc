@@ -1072,10 +1072,11 @@
       const pic = new THREE.Mesh(new THREE.PlaneGeometry(0.3, 0.4), new THREE.MeshStandardMaterial({ map: ptex, roughness: 0.9 }));
       pic.position.set(x, F3_Y + 1.23, wallZ + 0.026); furn.add(pic);
     }
-    function table(x, z, len, wid) {
-      box(wid, 0.04, len, x, 0.34, z, mWood);             // 윗면 높이 0.38
+    function table(x, z, len, wid) {                   // 식당 긴 식탁: 따뜻한 흰 상판 + 원목 테두리·다리 (사진 분위기에 맞춤)
+      box(wid, 0.03, len, x, 0.35, z, mWhiteTop);          // 윗면 높이 0.38
+      box(wid + 0.01, 0.012, len + 0.01, x, 0.338, z, mOak);
       [[-1, -1], [-1, 1], [1, -1], [1, 1]].forEach(([sx, sz]) => {
-        box(0.04, 0.34, 0.04, x + sx * (wid / 2 - 0.03), 0, z + sz * (len / 2 - 0.05), mWood);
+        box(0.035, 0.338, 0.035, x + sx * (wid / 2 - 0.03), 0, z + sz * (len / 2 - 0.05), mOak);
       });
     }
     function label(text, x, z) {
@@ -1197,6 +1198,7 @@
     box(0.12, 0.1, 0.04, -8.5, 0.3, -13.25, mat(0x2f3338));
     cyl(0.025, 0.12, -8.58, 0.58, -13.25, mat(0xe9e4da));
 
+
     // ---- 주방 (서쪽 위) ----
     const kitchenE = planX(7.4);          // 주방 동쪽 벽 x
     const kitchenS = planZ(6.5);          // 주방 남쪽 벽 z
@@ -1256,6 +1258,73 @@
     box(0.8, 0.3, 0.08, -11.5, 1.9, wcS, mWall); makeSign(furn, '화장실', -11.5, F3_Y + 2.05, wcS + 0.05, 0);
     box(0.75, 0.3, 0.08, -9.33, 1.9, wcS, mWall); makeSign(furn, '창고', -9.33, F3_Y + 2.05, wcS + 0.05, 0);
 
+    // ---- 식당 빈자리 채우기 (사용자 사진의 따뜻한 카페 분위기만 참고): 남쪽 카페 탁자, 창가 안락의자, 큰 화분, 배식대 뒤 원목 벽, 간접 조명 ----
+    {
+      const mFab = new THREE.MeshStandardMaterial({ color: 0xece2d2, roughness: 0.95 });
+      const mFabBack = new THREE.MeshStandardMaterial({ color: 0xe6dac8, roughness: 0.95, side: THREE.DoubleSide });
+      const noPick = (o) => { o.userData.noCamBlock = true; o.raycast = () => {}; return o; };
+      // 패브릭 의자 (자리 크기·높이는 다른 의자와 같음). ang: 앉은 사람이 보는 방향 (0 = +z)
+      const cafeChair = (x, z, ang) => {
+        const g = new THREE.Group(); g.position.set(x, F3_Y, z); g.rotation.y = ang; furn.add(g);
+        const add = (geo, m, px, py, pz) => { const b = new THREE.Mesh(geo, m); b.position.set(px, py, pz); b.castShadow = b.receiveShadow = true; g.add(b); return b; };
+        [[-1, -1], [-1, 1], [1, -1], [1, 1]].forEach(([sx, sz]) => add(new THREE.CylinderGeometry(0.01, 0.013, 0.15, 8), mOak, sx * 0.11, 0.075, sz * 0.11));
+        add(new THREE.CylinderGeometry(0.16, 0.15, 0.055, 20), mFab, 0, 0.172, 0);                                  // 둥근 방석 (윗면 0.20)
+        add(new THREE.CylinderGeometry(0.165, 0.158, 0.17, 24, 1, true, Math.PI * 0.6, Math.PI * 0.8), mFabBack, 0, 0.285, 0);   // 뒤를 감싸는 등받이
+        add(new THREE.TorusGeometry(0.162, 0.014, 6, 24, Math.PI * 0.8), mFab, 0, 0.37, 0).rotation.set(-Math.PI / 2, 0, Math.PI * 0.1);  // 등받이 윗단 (뒤쪽 반원. 예전엔 +π/2라 앞에 떠 있었음)
+        g.userData.seat = { x, y: F3_Y + 0.20, z, rot: ang, kind: 'chair' };
+      };
+      const roundTable = (x, z, r) => {
+        cyl(r, 0.025, x, 0.355, z, mWhiteTop); cyl(r + 0.004, 0.01, x, 0.345, z, mOak);
+        cyl(0.025, 0.345, x, 0, z, mOak); cyl(0.14, 0.015, x, 0, z, mOak);
+        cyl(0.022, 0.035, x, 0.38, z, new THREE.MeshStandardMaterial({ color: 0xf3e9d8, roughness: 0.4, transparent: true, opacity: 0.8 }));   // 작은 초
+        const fl = noPick(new THREE.Mesh(new THREE.SphereGeometry(0.008, 6, 4), new THREE.MeshBasicMaterial({ color: 0xffd27a, toneMapped: false }))); fl.position.set(x, F3_Y + 0.425, z); furn.add(fl);
+      };
+      const cafeSet = (x, z, a0) => { roundTable(x, z, 0.27); [0, 1, 2].forEach((i) => { const a = a0 + i * 2.094; cafeChair(x + Math.sin(a) * 0.44, z + Math.cos(a) * 0.44, a + Math.PI); }); };
+      // 매달린 등: 줄 + 갓 + 따뜻한 전구 + 탁자에 고이는 빛
+      const pendant = (x, z, y = 1.55) => {
+        const top = 3.15, cord = noPick(new THREE.Mesh(new THREE.CylinderGeometry(0.003, 0.003, top - y, 4), mat(0x3a3027))); cord.position.set(x, F3_Y + (top + y) / 2, z); furn.add(cord);
+        const shade = noPick(new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.12, 0.11, 20, 1, true), new THREE.MeshStandardMaterial({ color: 0xe9dcc6, roughness: 0.7, side: THREE.DoubleSide, emissive: 0xffd9a0, emissiveIntensity: 0.25 })));
+        shade.position.set(x, F3_Y + y, z); furn.add(shade);
+        const bulb = noPick(new THREE.Mesh(new THREE.SphereGeometry(0.03, 10, 8), new THREE.MeshBasicMaterial({ color: 0xffe2b0, toneMapped: false }))); bulb.position.set(x, F3_Y + y - 0.04, z); furn.add(bulb);
+        glowSpot(furn, x, F3_Y + 0.39, z, 0.9, 0.9, 0xffd9a0, [-Math.PI / 2, 0, 0], 0.18, 0.5);
+      };
+      // 큰 화분 (잎 뭉치는 바깥 나무처럼 각진 공 모양)
+      const leafM = [mat(0x557f3d), mat(0x678f47), mat(0x4a7335)], potM = mat(0xd8cfc2), potDark = mat(0x4a4642);
+      const plant = (x, z, h = 1.2, dark) => {
+        const pm = dark ? potDark : potM;
+        const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.1, 0.3, 16), pm); pot.position.set(x, F3_Y + 0.15, z); pot.castShadow = true; furn.add(pot);
+        cyl(0.13, 0.01, x, 0.29, z, mat(0x5a4636));                                                               // 흙
+        const tr = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.018, h - 0.35, 6), mat(0x6b4f36)); tr.position.set(x, F3_Y + 0.3 + (h - 0.35) / 2, z); furn.add(tr);
+        for (let i = 0; i < 7; i++) { const a = i * 2.4, rr = 0.08 + (i % 3) * 0.05, yy = 0.55 + (i / 7) * (h - 0.6);
+          const lf = noPick(new THREE.Mesh(new THREE.IcosahedronGeometry(0.13 + (i % 2) * 0.04, 0), leafM[i % 3])); lf.position.set(x + Math.cos(a) * rr, F3_Y + yy, z + Math.sin(a) * rr); lf.rotation.set(i, i * 0.7, 0); lf.castShadow = true; furn.add(lf); }
+      };
+      const topiary = (x, z) => {
+        const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.08, 0.22, 14), potDark); pot.position.set(x, F3_Y + 0.11, z); furn.add(pot);
+        const st = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.01, 0.4, 5), mat(0x6b4f36)); st.position.set(x, F3_Y + 0.42, z); furn.add(st);
+        [[0.62, 0.15], [0.86, 0.11]].forEach(([y, r]) => { const b = noPick(new THREE.Mesh(new THREE.IcosahedronGeometry(r, 1), leafM[1])); b.position.set(x, F3_Y + y, z); b.castShadow = true; furn.add(b); });
+      };
+
+      // 남쪽 카페 자리 (화장실·창고 문 앞 1m, 계단·엘리베이터 앞 1.2m, 엘리베이터에서 식당으로 가는 길은 비움)
+      [[-10.9, -6.2, 0.3], [-10.9, -3.4, 1.2], [-8.4, -4.8, 0.7], [-6.0, -6.2, 0.2], [-6.0, -3.4, 1.0]].forEach(([x, z, a]) => { cafeSet(x, z, a); pendant(x, z); });
+      // 창가 쉼터: 창을 바라보는 안락의자 둘 + 작은 탁자
+      cafeChair(-0.55, -7.2, Math.PI / 2); cafeChair(-0.55, -6.2, Math.PI / 2); roundTable(-0.55, -6.7, 0.14);
+      // 화분: 카페 자리 둘레, 창가, 배식대 양옆, 식당 가장자리
+      [[-12.0, -7.4], [-12.0, -1.8], [-7.2, -1.4], [-1.9, -7.6], [-1.9, -4.6], [0.25, -7.7], [-8.45, -12.55]].forEach(([x, z], i) => plant(x, z, 1.05 + (i % 3) * 0.15, i % 2));
+      [[-8.45, -16.4], [-8.4, -11.0], [-8.4, -9.0], [-4.6, -8.0], [-7.6, -8.0]].forEach(([x, z]) => topiary(x, z));
+
+      // 배식대 뒤 주방 벽: 따뜻한 원목 판 (배식구는 비움) + 위에서 내려오는 간접 조명
+      const wood = (len, h) => { const t = woodPanelTexture().clone(); t.needsUpdate = true; t.repeat.set(len / 2.4, h / 2.4); return new THREE.MeshStandardMaterial({ map: t, roughness: 0.6 }); };
+      [[-17.4, -15.41], [-14.27, -12.9]].forEach(([z0, z1]) => box(0.012, 2.2, z1 - z0, kitchenE + 0.047, 0, (z0 + z1) / 2, wood(z1 - z0, 2.2)));
+      cove(furn, kitchenE + 0.06, -17.3, kitchenE + 0.06, -12.95, F3_Y + 2.15, 0xffd9a0, -0.9, 0.3, 0.85);
+      // 벽을 따라 위쪽 간접 조명 (서쪽 벽 · 소그룹실 벽 · 화장실 벽)
+      cove(furn, -12.2, -7.8, -12.2, -0.9, F3_Y + 2.9, 0xffd9a0, -1.1, 0.3, 0.85);
+      cove(furn, roomW - 0.05, -15.0, roomW - 0.05, -8.3, F3_Y + 2.15, 0xffd9a0, -0.9, 0.3, 0.85);
+      cove(furn, -12.3, wcS + 0.05, kitchenE, wcS + 0.05, F3_Y + 2.15, 0xffd9a0, -0.9, 0.3, 0.85);
+      // 3층 천장: 짙은 회색 슬래브 아래에 따뜻한 흰 천장판 (사진처럼 밝은 천장)
+      const ceil = box(12.31, 0.01, 17.44, (-12.26 + 0.05) / 2, 3.22, (-17.36 + 0.08) / 2, new THREE.MeshStandardMaterial({ color: 0xf4eee4, emissive: 0xf6eee2, emissiveIntensity: 0.45, roughness: 0.9 })); ceil.castShadow = false;   /* 아래에서 빛이 잘 안 닿아 스스로 은은하게 밝힘 */
+      // 긴 식탁 위 매달린 등 (열마다 두 개)
+      DINING_COLS.forEach((tx) => DINING_ROWS.forEach((tz) => pendant(tx, tz, 1.7)));
+    }
     // ---- 창고 선반·상자, 화장실 변기·칸막이·세면대 (3층) ----
     {
       const shelfM = mat(0x7d7f84), boxM = [mat(0xc49a6c), mat(0xb5895c), mat(0xd4b083)], white = mat(0xf7f7f5), tile = mat(0xdfe6ea);
@@ -1640,9 +1709,13 @@
       const floorM = new THREE.MeshStandardMaterial({ color: BEIGE_FLOOR, roughness: 0.75 });
       const wallM = new THREE.MeshStandardMaterial({ color: BEIGE_WALL, roughness: 0.85 });
       const lin = new THREE.Group(); lin.name = 'BEIGE_LINING'; scene.add(lin);
-      const plate = (x0, x1, z0, z1, y, m, h) => { const g = new THREE.Mesh(new THREE.BoxGeometry(x1 - x0, h || 0.006, z1 - z0), m); g.position.set((x0 + x1) / 2, y + (h || 0.006) / 2, (z0 + z1) / 2); g.receiveShadow = true; lin.add(g); };
+      const plate = (x0, x1, z0, z1, y, m, h) => { const g = new THREE.Mesh(new THREE.BoxGeometry(x1 - x0, h || 0.006, z1 - z0), m); g.position.set((x0 + x1) / 2, y + (h || 0.006) / 2, (z0 + z1) / 2); g.receiveShadow = true; lin.add(g); return g; };
+      // 2층 바닥: 매끈한 베이지 대리석 (사용자 요청) — 본당 바닥과 같은 그림 방식, 얼룩을 줄인 판
+      const f2Tex = marbleTexture(41, true);
+      const f2FloorM = new THREE.MeshStandardMaterial({ map: f2Tex, color: 0xfff2e0, emissiveMap: f2Tex, emissive: 0xfff0dc, emissiveIntensity: 0.2, roughness: 0.2 });
       [[F2_Y, 3.3], [F3_Y, 3.2]].forEach(([Y, H]) => {
-        plate(-12.26, 0.05, -17.36, 0.08, Y + 0.002, floorM);                      // 바닥
+        const fl = plate(-12.26, 0.05, -17.36, 0.08, Y + 0.002, Y === F2_Y ? f2FloorM : floorM);   // 바닥
+        if (Y === F2_Y) { fl.updateMatrixWorld(true); fl.geometry = planarUV(fl, 1.6); }
         plate(-12.26, 0.0, -17.36, -17.33, Y, wallM, H);                             // 북쪽 벽 안쪽
         plate(-12.26, -12.23, -17.33, 0.0, Y, wallM, H);                             // 서쪽 벽 안쪽
       });
@@ -1875,6 +1948,44 @@
       if ('colorSpace' in tex) tex.colorSpace = THREE.SRGBColorSpace;
       return tex;
     }
+    // ---- 원목 패널 (1024px = 2.4m: 판 4장 × 2단, 판 하나 0.6 × 1.2m) ----
+    var _woodTex;   // var: 3층 가구가 먼저 불러도 되게
+    function woodPanelTexture() {
+      if (_woodTex) return _woodTex;
+      const N = 1024, c = document.createElement('canvas'); c.width = c.height = N; const x = c.getContext('2d');
+      let sd = 11; const rnd = () => { sd = (sd * 16807) % 2147483647; return sd / 2147483647; };
+      const base = ['#cf9f6c', '#c79766', '#d4a674', '#c39060', '#cc9c69'];
+      for (let i = 0; i < 4; i++) for (let j = 0; j < 2; j++) {
+        const X = i * 256, Y = j * 512; x.fillStyle = base[(i * 2 + j * 3) % 5]; x.fillRect(X, Y, 256, 512);
+        for (let k = 0; k < 46; k++) {                                   // 세로 나뭇결
+          const gx = X + rnd() * 256, w = 0.6 + rnd() * 2.2, a = 0.05 + rnd() * 0.14, ph = rnd() * 6;
+          x.strokeStyle = rnd() < 0.7 ? `rgba(120,78,42,${a})` : `rgba(240,205,160,${a})`; x.lineWidth = w; x.beginPath();
+          for (let yy = 0; yy <= 512; yy += 16) { const px = gx + Math.sin(yy / 90 + ph) * 3 + Math.sin(yy / 23 + ph * 2) * 0.8; yy ? x.lineTo(px, Y + yy) : x.moveTo(px, Y + yy); }
+          x.stroke();
+        }
+      }
+      x.fillStyle = 'rgba(80,52,30,0.75)';                               // 판 사이 줄눈
+      for (let i = 0; i <= 4; i++) x.fillRect(i * 256 - 2, 0, 4, N);
+      for (let j = 0; j <= 2; j++) x.fillRect(0, j * 512 - 2, N, 4);
+      const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 8; if ('colorSpace' in t) t.colorSpace = THREE.SRGBColorSpace;
+      return (_woodTex = t);
+    }
+    // ---- 베이지 석재 타일 (1024px = 2.4m: 타일 4 × 4, 하나 0.6m) ----
+    function stoneTileTexture() {
+      const N = 1024, T = 256, c = document.createElement('canvas'); c.width = c.height = N; const x = c.getContext('2d');
+      let sd = 5; const rnd = () => { sd = (sd * 16807) % 2147483647; return sd / 2147483647; };
+      x.fillStyle = '#ede1cd'; x.fillRect(0, 0, N, N);
+      for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) {
+        x.fillStyle = rnd() < 0.5 ? `rgba(255,248,236,${0.15 + rnd() * 0.2})` : `rgba(214,190,156,${0.08 + rnd() * 0.12})`; x.fillRect(i * T, j * T, T, T);
+        for (let k = 0; k < 5; k++) { const cx = i * T + rnd() * T, cy = j * T + rnd() * T, r = 30 + rnd() * 70, gr = x.createRadialGradient(cx, cy, 0, cx, cy, r);
+          gr.addColorStop(0, 'rgba(222,200,168,0.18)'); gr.addColorStop(1, 'rgba(222,200,168,0)'); x.fillStyle = gr; x.fillRect(i * T, j * T, T, T); }
+      }
+      for (let k = 0; k < 2500; k++) { x.fillStyle = rnd() < 0.5 ? 'rgba(190,165,130,0.25)' : 'rgba(255,252,245,0.35)'; x.fillRect(rnd() * N, rnd() * N, 1.5, 1.5); }   // 잔 알갱이
+      x.fillStyle = 'rgba(200,180,150,0.85)';
+      for (let i = 0; i <= 4; i++) { x.fillRect(i * T - 1.5, 0, 3, N); x.fillRect(0, i * T - 1.5, N, 3); }
+      const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 8; if ('colorSpace' in t) t.colorSpace = THREE.SRGBColorSpace;
+      return t;
+    }
     // 화면에 그릴 복사본 바닥에 위에서 내려다본 무늬 좌표(x, z)를 붙임 (원본 모양·위치는 그대로)
     function planarUV(mesh, span) {
       mesh.updateWorldMatrix(true, false);
@@ -1956,6 +2067,11 @@
       // 본당 바닥: 베이지 대리석 (사용자 요청 · 참고 사진 기준). 그림은 코드로 그리고, 바닥 판의 모양은 그대로 두고 무늬 좌표만 화면용 복사본에 붙임
       { const fm = byName['B1_FINAL_Floor_Main']; if (fm) { const mt = marbleTexture(); fm.material = new THREE.MeshStandardMaterial({ map: mt, color: 0xfff4e4, emissiveMap: mt, emissive: 0xfff0dc, emissiveIntensity: 0.24, roughness: 0.22, metalness: 0.0 });   /* 윤이 나는 따뜻한 크림색 */ fm.geometry = planarUV(fm, MARBLE_SPAN); fm.receiveShadow = true; } }
       ['B1_FINAL_Wall_North', 'B1_FINAL_Wall_West', 'B1_FINAL_Wall_East', 'B1_FINAL_Wall_South_L', 'B1_FINAL_Wall_South_R'].forEach((n) => { const m = byName[n]; if (m && m.material) { m.material = m.material.clone(); m.material.color.setHex(BEIGE_WALL); } });
+      // 벽 분위기 (사용자 사진 참고): 십자가 벽(서쪽)·북쪽은 큰 베이지 석재 타일, 동쪽·남쪽은 따뜻한 원목 패널. 벽 모양은 그대로, 무늬만 화면에서
+      { const tile = stoneTileTexture(), woodT = woodPanelTexture();
+        const tileM = new THREE.MeshStandardMaterial({ map: tile, roughness: 0.6 }), woodM = new THREE.MeshStandardMaterial({ map: woodT, roughness: 0.62 });
+        [['B1_FINAL_Wall_West', tileM], ['B1_FINAL_Wall_North', tileM], ['B1_FINAL_Wall_East', woodM], ['B1_FINAL_Wall_South_L', woodM], ['B1_FINAL_Wall_South_R', woodM]].forEach(([n, mm]) => {
+          const m = byName[n]; if (!m) return; m.material = mm; m.geometry = planarUV(m, 2.4); }); }
       // 1) 의자: 줄과 간격을 새로 계산해서 다시 놓기 (겹침 · 벽 침범 없음)
       const fT = byName['B1_FINAL_Pew_Frame_0_0'], pT = byName['B1_FINAL_Pew_Pad_0_0'];
       if (fT && pT) {
