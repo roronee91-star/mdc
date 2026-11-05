@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
   <title>물댄동산교회 가상 성전 메타버스 투어</title>
   <style>
     * {
@@ -11,6 +11,8 @@
       padding: 0;
       user-select: none;
     }
+    html, body { position: fixed; inset: 0; overscroll-behavior: none; }   /* 화면이 밀리지 않게 */
+    input, textarea, button { touch-action: manipulation; }
     body, html {
       width: 100%;
       height: 100%;
@@ -230,7 +232,7 @@
     .name-card { width: min(320px, 88vw); background: #fffaf2; color: #3b2f22; border-radius: 18px; padding: 20px; display: flex; flex-direction: column; gap: 10px; box-shadow: 0 10px 40px rgba(0,0,0,0.35); }
     .name-title { font-size: 17px; font-weight: 800; }
     .name-sub { font-size: 13px; color: #7a6a58; }
-    #nameInput { font-size: 17px; padding: 11px 12px; border-radius: 10px; border: 1.5px solid #d8c7ab; outline: none; user-select: text; }
+    #nameInput { font-size: 17px; width: 100%; padding: 11px 12px; border-radius: 10px; border: 1.5px solid #d8c7ab; outline: none; user-select: text; }
     #nameInput:focus { border-color: #b08a5a; }
     #nameOk { font-size: 15px; font-weight: 700; padding: 11px; border-radius: 10px; border: none; background: #8a6a42; color: #fff; cursor: pointer; }
     #prayerPanel { position: absolute; inset: 0; z-index: 8; background: rgba(15, 23, 42, 0.45); display: flex; align-items: center; justify-content: center; }
@@ -255,7 +257,7 @@
     .pp-del { border: none; background: none; color: #b08a6a; font-size: 12px; cursor: pointer; }
     .pp-empty { text-align: center; color: #8b7a66; padding: 26px 0; font-size: 14px; }
     .pp-label { font-size: 13px; color: #7a6a58; display: block; margin-bottom: 6px; }
-    #ppText { width: 100%; font-size: 15px; padding: 10px; border-radius: 10px; border: 1.5px solid #d8c7ab; resize: vertical; user-select: text; font-family: inherit; }
+    #ppText { width: 100%; font-size: 16px; padding: 10px; border-radius: 10px; border: 1.5px solid #d8c7ab; resize: vertical; user-select: text; font-family: inherit; }
     .pp-count { text-align: right; font-size: 12px; color: #9a8a76; margin: 3px 0 8px; }
     .pp-check { display: flex; gap: 6px; align-items: center; font-size: 14px; margin-bottom: 10px; }
     .pp-submits { display: flex; gap: 8px; }
@@ -295,9 +297,11 @@
       background: #8a6a42; color: #fff; box-shadow: 0 4px 14px rgba(0,0,0,0.3); cursor: pointer; }
     #chatBar { position: absolute; left: 50%; bottom: 58px; transform: translateX(-50%); z-index: 6; width: min(520px, 94vw); display: flex; gap: 6px;
       background: rgba(15, 23, 42, 0.88); padding: 8px; border-radius: 14px; }
-    #chatBar:not([hidden]) { animation: uiIn 0.25s ease-out both; }
-    #chatBar.leaving { animation: uiOut 0.2s ease-in both; }
-    #chatInput { flex: 1; min-width: 0; font-size: 15px; padding: 9px 11px; border-radius: 10px; border: none; outline: none; user-select: text; }
+    @keyframes barIn { from { opacity: 0; transform: translate(-50%, 10px); } to { opacity: 1; transform: translate(-50%, 0); } }
+    @keyframes barOut { from { opacity: 1; transform: translate(-50%, 0); } to { opacity: 0; transform: translate(-50%, 8px); } }
+    #chatBar:not([hidden]) { animation: barIn 0.25s ease-out both; }   /* 가운데 맞춤(translateX -50%)을 유지한 채 움직임 */
+    #chatBar.leaving { animation: barOut 0.2s ease-in both; }
+    #chatInput { flex: 1; min-width: 0; font-size: 16px; padding: 9px 11px; border-radius: 10px; border: none; outline: none; user-select: text; }
     #chatSend { border: none; border-radius: 10px; padding: 0 14px; background: #8a6a42; color: #fff; font-weight: 800; font-size: 14px; cursor: pointer; }
     #chatClose { border: none; background: none; color: #cbd5e1; font-size: 16px; cursor: pointer; padding: 0 6px; }
     #chatLog { position: absolute; left: 12px; bottom: 190px; z-index: 4; width: min(300px, 70vw); display: flex; flex-direction: column; gap: 4px; pointer-events: none; }
@@ -693,6 +697,45 @@
     const CHAR_SCALE = 0.8;
     characterGroup.scale.setScalar(CHAR_SCALE);
     characterGroup.userData.noCamBlock = true;
+    // 기도 빛: 위에서 내려오는 따뜻한 빛기둥 + 바닥 빛 + 천천히 내려오는 빛 알갱이 (기도할 때만 서서히 켜짐)
+    function makePrayLight() {
+      const g = new THREE.Group(); g.name = 'prayLight';
+      const c = document.createElement('canvas'); c.width = 4; c.height = 128; const x = c.getContext('2d');
+      const gr = x.createLinearGradient(0, 0, 0, 128); gr.addColorStop(0, 'rgba(255,240,200,0)'); gr.addColorStop(0.25, 'rgba(255,236,190,0.55)'); gr.addColorStop(1, 'rgba(255,226,170,0.9)');
+      x.fillStyle = gr; x.fillRect(0, 0, 4, 128);
+      const tex = new THREE.CanvasTexture(c); if ('colorSpace' in tex) tex.colorSpace = THREE.SRGBColorSpace;
+      const beamMat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending });
+      const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.5, 2.6, 28, 1, true), beamMat); beam.position.y = 1.3; g.add(beam);
+      const inner = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.24, 2.6, 20, 1, true), beamMat.clone()); inner.position.y = 1.3; g.add(inner);
+      const dc = document.createElement('canvas'); dc.width = dc.height = 64; const dx = dc.getContext('2d');
+      const rg = dx.createRadialGradient(32, 32, 0, 32, 32, 32); rg.addColorStop(0, 'rgba(255,236,190,0.9)'); rg.addColorStop(1, 'rgba(255,236,190,0)');
+      dx.fillStyle = rg; dx.fillRect(0, 0, 64, 64);
+      const dtex = new THREE.CanvasTexture(dc);
+      const disc = new THREE.Mesh(new THREE.PlaneGeometry(1.3, 1.3), new THREE.MeshBasicMaterial({ map: dtex, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending }));
+      disc.rotation.x = -Math.PI / 2; disc.position.y = 0.02; g.add(disc);
+      const N = 22, pos = new Float32Array(N * 3), seed = [];
+      for (let i = 0; i < N; i++) { const a = Math.random() * Math.PI * 2, r = Math.random() * 0.35; seed.push([a, r, Math.random()]); pos[i * 3] = Math.cos(a) * r; pos[i * 3 + 2] = Math.sin(a) * r; pos[i * 3 + 1] = Math.random() * 2.4; }
+      const pg = new THREE.BufferGeometry(); pg.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+      const sparks = new THREE.Points(pg, new THREE.PointsMaterial({ map: dtex, size: 0.09, color: 0xfff2cc, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending }));
+      g.add(sparks);
+      g.userData = { level: 0, beam, inner, disc, sparks, seed, noCamBlock: true };
+      g.traverse((o) => { o.userData.noCamBlock = true; o.raycast = () => {}; });   // 누르기·걷기·카메라 판정에서 빠짐
+      g.visible = false;
+      return g;
+    }
+    function updatePrayLight(g, on, time, dt) {
+      const u = g.userData; u.level += ((on ? 1 : 0) - u.level) * (1 - Math.exp(-(on ? 2.2 : 3.5) * dt));   // 켜질 땐 천천히(약 1초), 꺼질 땐 조금 빨리
+      g.visible = u.level > 0.01; if (!g.visible) return;
+      const flick = 0.9 + 0.1 * Math.sin(time * 2.1);
+      u.beam.material.opacity = 0.32 * u.level * flick; u.inner.material.opacity = 0.42 * u.level * flick;
+      u.disc.material.opacity = 0.75 * u.level; u.sparks.material.opacity = 0.9 * u.level;
+      u.beam.rotation.y += dt * 0.15; u.inner.rotation.y -= dt * 0.25;
+      const a = u.sparks.geometry.attributes.position;
+      for (let i = 0; i < a.count; i++) { let y = a.getY(i) - dt * (0.25 + u.seed[i][2] * 0.25); if (y < 0.1) y = 2.4; a.setY(i, y);
+        const [ang, r] = u.seed[i]; const w = ang + time * 0.4; a.setX(i, Math.cos(w) * r * (0.6 + y / 4)); a.setZ(i, Math.sin(w) * r * (0.6 + y / 4)); }
+      a.needsUpdate = true;
+    }
+    const myPrayLight = makePrayLight(); characterGroup.add(myPrayLight);
 
     // 초기 시작 위치 (외관 횡단보도 위)
     characterGroup.position.set(-1.5, 0.0, 7.5);
@@ -2278,8 +2321,11 @@
         if (!recolor.has(o.material)) { const m = o.material.clone(); m.color.setHex(o.material === hoodieMat ? hue : new THREE.Color(hue).multiplyScalar(0.82).getHex()); recolor.set(o.material, m); }
         o.material = recolor.get(o.material); } });
       g.userData.noCamBlock = true; scene.add(g);
+      const pl = g.getObjectByName('prayLight');
+      if (pl) { const src = myPrayLight.userData; pl.userData = { level: 0, beam: pl.children[0], inner: pl.children[1], disc: pl.children[2], sparks: pl.children[3], seed: src.seed, noCamBlock: true };
+        pl.children.forEach((o) => { o.material = o.material.clone(); o.raycast = () => {}; }); pl.children[3].geometry = pl.children[3].geometry.clone(); }
       const k = g.children;
-      r = { group: g, parts: { body: k[ix.body], head: k[ix.head], la: k[ix.la], ra: k[ix.ra], ll: k[ix.ll], rl: k[ix.rl] }, target: null, name: '' };
+      r = { light: g.getObjectByName('prayLight'), group: g, parts: { body: k[ix.body], head: k[ix.head], la: k[ix.la], ra: k[ix.ra], ll: k[ix.ll], rl: k[ix.rl] }, target: null, name: '' };
       remotes.set(id, r); setRemoteName(r, name);
       return r;
     }
@@ -2291,6 +2337,7 @@
       const g = r.group, P = r.parts, k = 1 - Math.exp(-10 * dt);
       g.visible = t.lv === curLevel();
       if (!g.visible) return;
+      if (r.light) updatePrayLight(r.light, !!t.p, time, dt);
       const goal = new THREE.Vector3(t.x, t.y, t.z);
       if (g.position.distanceTo(goal) > 3) g.position.copy(goal); else g.position.lerp(goal, k);
       let dr = t.r - g.rotation.y; dr = Math.atan2(Math.sin(dr), Math.cos(dr)); g.rotation.y += dr * k;
@@ -2972,6 +3019,7 @@
       camAfterUpdate();
       levelLabels.forEach(l => { if (l.visible) l.material.opacity = THREE.MathUtils.clamp((l.position.distanceTo(camera.position) - 2.5) / 2.5, 0, 1); }); // 너무 가까운 이름표는 흐리게
       ceilingRig.visible = camera.position.y < -1.0; // 천장 위에서 내려다보면 조명 줄이 객석을 가리므로 숨김
+      updatePrayLight(myPrayLight, isPraying, time, frameDt);
       Net.tick(performance.now());
       remotes.forEach((r) => { if (r.target) poseRemote(r, r.target, time, frameDt); });
       fadeBubbles();
@@ -2985,6 +3033,17 @@
       camera.updateProjectionMatrix();
       renderer.setSize(window.innerWidth, window.innerHeight);
     });
+    // 휴대폰 키보드: 대화창을 키보드 바로 위에 두고, 키보드가 내려가면 화면을 제자리로
+    if (window.visualViewport) {
+      const vv = window.visualViewport;
+      const place = () => {
+        const kb = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+        document.getElementById('chatBar').style.bottom = (kb > 60 ? kb + 8 : 58) + 'px';
+        if (kb <= 60) window.scrollTo(0, 0);
+      };
+      vv.addEventListener('resize', place); vv.addEventListener('scroll', place);
+    }
+    document.addEventListener('focusout', () => setTimeout(() => window.scrollTo(0, 0), 60));
   </script>
 </body>
 </html>
