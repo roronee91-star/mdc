@@ -273,6 +273,7 @@
 
     <div class="guide-card" id="guideCard" hidden>
       <b>바닥 누르기</b> 캐릭터가 그곳으로 걸어가요<br>
+      <b>의자 누르기</b> 그 자리에 가서 앉아요 (장의자는 기도, 식당은 밥먹기)<br>
       <b>W A S D · 방향키</b> 걷기 (폰은 왼쪽 아래 동그라미)<br>
       <b>화면 끌기</b> 돌려 보기<br>
       <b>두 손가락 벌리기·오므리기 / 휠</b> 멀리·가까이<br>
@@ -551,6 +552,12 @@
       return g;
     }
     const leftArmGroup = makeArm(-1), rightArmGroup = makeArm(1);
+    // 기도 자세: 어깨(±0.18)에서 손끝이 (±0.03, 어깨 -0.08, 앞 0.25)를 향하도록 팔(아래 방향)을 돌림
+    const PRAY_Q = (() => {
+      const down = new THREE.Vector3(0, -1, 0);
+      const q = (sx) => new THREE.Quaternion().setFromUnitVectors(down, new THREE.Vector3(-sx * 0.155, -0.08, 0.25).normalize());
+      return { left: q(-1), right: q(1) };
+    })();
 
     // 다리: 엉덩이 관절(허벅지) → 무릎 관절(정강이 + 운동화). 엉덩이 높이는 body를 따라간다.
     const thighGeo = new THREE.CylinderGeometry(0.065, 0.06, 0.13, 12); thighGeo.translate(0, -0.065, 0);
@@ -735,10 +742,15 @@
       box(w, h || 2.2, d, (xa + xb) / 2, 0, (za + zb) / 2, mWall);
     }
     function chair(x, z, dir) { // dir = +1 이면 동쪽(+x)을 보고 앉는 의자. 다리 4개, 앉는 면 윗면 0.20m
-      box(0.30, 0.03, 0.30, x, 0.17, z, mSeat);                                   // 앉는 면
-      [[-1, -1], [-1, 1], [1, -1], [1, 1]].forEach(([sx, sz]) => box(0.03, 0.17, 0.03, x + sx * 0.13, 0, z + sz * 0.13, mBack)); // 다리 4개
-      [-1, 1].forEach((sz) => box(0.03, 0.30, 0.03, x - dir * 0.135, 0.20, z + sz * 0.13, mBack));                         // 등받이 기둥
-      box(0.025, 0.14, 0.28, x - dir * 0.135, 0.34, z, mBack);                     // 등받이 판
+      const rotY = dir > 0 ? Math.PI / 2 : -Math.PI / 2;
+      const g = new THREE.Group(); g.position.set(x, F3_Y, z); g.rotation.y = rotY; furn.add(g);
+      const add = (w, h, d, px, py, pz, m) => { const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); b.position.set(px, py + h / 2, pz); b.castShadow = true; b.receiveShadow = true; g.add(b); };
+      add(0.30, 0.03, 0.30, 0, 0.17, 0, mSeat);                                                   // 앉는 면
+      [[-1, -1], [-1, 1], [1, -1], [1, 1]].forEach(([sx, sz]) => add(0.03, 0.17, 0.03, sx * 0.13, 0, sz * 0.13, mBack)); // 다리 4개
+      [-1, 1].forEach((sx) => add(0.03, 0.30, 0.03, sx * 0.13, 0.20, -0.135, mBack));             // 등받이 기둥
+      add(0.28, 0.14, 0.025, 0, 0.34, -0.135, mBack);                                              // 등받이 판
+      // 눌러서 앉는 자리: 식당(소그룹실 칸막이 서쪽)은 밥먹기, 소그룹실은 그냥 앉기
+      g.userData.seat = { x, y: F3_Y + 0.20, z, rot: rotY, kind: x < -2.3 ? 'dine' : 'chair' };
     }
     function table(x, z, len, wid) {
       box(wid, 0.04, len, x, 0.34, z, mWood);             // 윗면 높이 0.38
@@ -889,6 +901,7 @@
           [[-1, -1], [-1, 1], [1, -1], [1, 1]].forEach(([sx, sz]) => add(0.03, 0.17, 0.03, sx * 0.13, 0, sz * 0.13, k.mWood));
           [-1, 1].forEach((sx) => add(0.03, 0.30, 0.03, sx * 0.13, 0.20, -0.135, k.mWood));
           add(0.28, 0.14, 0.025, 0, 0.34, -0.135, mat || k.mSeat);
+          g.userData.seat = { x, y: Y + 0.20, z, rot: rotY, kind: 'chair' };
         },
         table(x, z, w, d, mat) {
           k.box(w, 0.04, d, x, 0.34, z, mat || k.mWood);
@@ -1315,9 +1328,11 @@
           });
           bench.position.set(p.x, FLOOR, p.z); bench.rotation.set(0, p.yaw, 0);
           g.add(bench);
+          bench.userData.seats = [];
           [-0.27, 0.27].forEach((t) => {
             const sx = p.x + t * Math.sin(p.yaw), sz = p.z + t * Math.cos(p.yaw);
-            b1Seats.push({ x: sx, z: sz, y: FLOOR + SEAT_TOP, rot: Math.atan2(-13.0 - sx, -17.5 - sz) });
+            const seat = { x: sx, z: sz, y: FLOOR + SEAT_TOP, rot: Math.atan2(-13.0 - sx, -17.5 - sz), kind: 'pew' };
+            b1Seats.push(seat); bench.userData.seats.push(seat);
           });
         });
 
@@ -1682,7 +1697,7 @@
         controls.maxDistance = eye ? 18 : 55;   // 휠·두 손가락으로 멀리(18m)부터 가까이(1m)까지
       }
 
-      rebuildWalk(); buildNav(); walkPath = []; updateActions();
+      rebuildWalk(); buildNav(); rebuildSeats(); walkPath = []; pendingSeat = null; updateActions();
       if (eye) { eyeCam(); return; }
       controls.target.copy(wp.camLook);
       camera.position.copy(wp.camPos);
@@ -1824,6 +1839,23 @@
       downPos.y = e.clientY;
     });
 
+    const seatHover = new THREE.Mesh(new THREE.RingGeometry(0.13, 0.18, 28), new THREE.MeshBasicMaterial({ color: 0xffd27a, transparent: true, opacity: 0.9, depthTest: false, side: THREE.DoubleSide }));
+    seatHover.rotation.x = -Math.PI / 2; seatHover.renderOrder = 11; seatHover.visible = false; scene.add(seatHover);
+    let hoverT = 0;
+    window.addEventListener('pointermove', (e) => {
+      if (e.pointerType !== 'mouse' || performance.now() - hoverT < 70) return;
+      hoverT = performance.now();
+      if (e.target !== renderer.domElement) { seatHover.visible = false; return; }
+      const m = new THREE.Vector2((e.clientX / window.innerWidth) * 2 - 1, -(e.clientY / window.innerHeight) * 2 + 1);
+      raycaster.setFromCamera(m, camera);
+      const hs = raycaster.intersectObjects(seatPick, false);
+      const h = hs.find((x) => !x.object.userData.pickOnly) || hs[0];
+      let st = h && seatFromHit(h);
+      if (st && isSitting && Math.hypot(st.x - characterGroup.position.x, st.z - characterGroup.position.z) < 0.05) st = null;   // 지금 앉은 자리
+      seatHover.visible = !!st;
+      renderer.domElement.style.cursor = st ? 'pointer' : '';
+      if (st) seatHover.position.set(st.x, st.y + 0.04, st.z);
+    });
     window.addEventListener('pointerup', (e) => {
       const diffTime = performance.now() - downTime;
       const dist = Math.hypot(e.clientX - downPos.x, e.clientY - downPos.y);
@@ -1834,6 +1866,16 @@
       mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
 
       raycaster.setFromCamera(mouse, camera);
+      const seatHits = raycaster.intersectObjects(seatPick, false);
+      const seatHit = seatHits.find((h) => !h.object.userData.pickOnly) || seatHits[0];
+      if (seatHit) {
+        const st = seatFromHit(seatHit);
+        if (st) {
+          goSit(st);
+          targetRing.position.set(st.x, st.y + 0.03, st.z); targetRing.scale.set(0.1, 0.1, 0.1); targetRing.material.opacity = 0.9; targetMarkerTimer = 1.0;
+          return;
+        }
+      }
       const intersects = raycaster.intersectObjects(clickableObjects, true);
 
       if (intersects.length > 0) {
@@ -1850,7 +1892,7 @@
 
         const path = findPath(characterGroup.position, new THREE.Vector3(hit.x, currentFloorY, hit.z));
         if (!path || !path.length) return;                 // 갈 수 없는 곳(벽 속 등)은 무시
-        walkPath = path;
+        walkPath = path; pendingSeat = null;
         targetPos.copy(walkPath.shift());
         const goal = path.length ? path[path.length - 1] : targetPos;
         hit = { x: goal.x, z: goal.z };
@@ -1990,14 +2032,59 @@
     // 걷기 충돌: 지금 층 높이대(바닥+0.2 ~ +1.0m)에 걸치는 벽·가구만 모아 두고, 몸 앞쪽으로 9줄 광선을 쏜다.
     // 바닥에서 20cm 이하(매트·문턱)는 넘어가고, 강단 단(Stage_Tier)은 올라선다.
     let walkBlockers = [], groundMeshes = [];
+    let pendingSeat = null;
+    // 의자에 앉기: 장의자 = 앉아서 기도, 식당 의자 = 앉아서 밥먹기, 그 밖 = 앉기
+    function sitAtSeat(st) {
+      walkPath = []; isMoving = false; pendingSeat = null;
+      characterGroup.position.set(st.x, st.y, st.z);
+      characterGroup.rotation.y = st.rot;
+      targetPos.copy(characterGroup.position);
+      isSitting = true; isPraying = st.kind === 'pew'; isEating = st.kind === 'dine';
+      seatHover.visible = false;   // 앉은 자리 표시는 지움
+      const bp = document.getElementById('btnActionPray');
+      bp.innerHTML = isPraying ? '✨ 일어서기' : '🙏 기도'; bp.style.background = isPraying ? '#0284c7' : '';
+    }
+    function goSit(st) {
+      const path = findPath(characterGroup.position, new THREE.Vector3(st.x, currentFloorY, st.z));
+      isSitting = false; isPraying = false; isEating = false;
+      if (!path || !path.length) { sitAtSeat(st); return; }
+      walkPath = path; targetPos.copy(walkPath.shift()); isMoving = true; pendingSeat = st;
+    }
     const walkRay = new THREE.Raycaster();
+    // 지금 층의 앉을 수 있는 의자들(눌러서 앉기)
+    let seatPick = [];
+    function rebuildSeats() {
+      const fy = currentFloorY; seatPick = [];
+      scene.traverse((o) => {
+        if (!(o.userData.seat || o.userData.seats)) return;
+        for (let q = o; q; q = q.parent) if (!q.visible) return;
+        const sy = o.userData.seat ? o.userData.seat.y : o.userData.seats[0].y;
+        if (sy < fy - 0.1 || sy > fy + 0.6) return;
+        if (!o.userData.pickAdded) { (o.userData.seat ? [o.userData.seat] : o.userData.seats).forEach((st) => addPickBox(o, st)); o.userData.pickAdded = true; }
+        o.traverse((m) => { if (m.isMesh) { m.userData.seatOwner = o; seatPick.push(m); } });
+      });
+    }
+    const PICK_GEO = new THREE.BoxGeometry(0.36, 0.5, 0.36), PICK_MAT = new THREE.MeshBasicMaterial({ visible: false });
+    function addPickBox(owner, st) {
+      const m = new THREE.Mesh(PICK_GEO, PICK_MAT);
+      owner.updateMatrixWorld(true);
+      const local = owner.worldToLocal(new THREE.Vector3(st.x, st.y + 0.12, st.z));
+      m.position.copy(local); m.userData.pickOnly = true; m.userData.noCamBlock = true; owner.add(m);
+    }
+    function seatFromHit(hit) {
+      const o = hit.object.userData.seatOwner; if (!o) return null;
+      if (o.userData.seat) return o.userData.seat;
+      let best = null, bd = Infinity;
+      o.userData.seats.forEach((st) => { const d = Math.hypot(st.x - hit.point.x, st.z - hit.point.z); if (d < bd) { bd = d; best = st; } });
+      return best;
+    }
     function rebuildWalk() {
       const fy = currentFloorY; walkBlockers = []; groundMeshes = [];
       scene.updateMatrixWorld(true);
       scene.traverse((o) => {
         if (!o.isMesh) return;
         for (let q = o; q; q = q.parent) { if (!q.visible || q === characterGroup || q === ceilingRig) return; }
-        if (o === targetRing) return;
+        if (o === targetRing || o === seatHover || o.userData.pickOnly) return;
         if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
         const bb = o.geometry.boundingBox.clone().applyMatrix4(o.matrixWorld);
         if (bb.max.y < fy + 0.05 || bb.min.y > fy + 1.0) return;
@@ -2159,7 +2246,7 @@
       // 0. 키보드·조이스틱 입력
       const inp = moveInput();
       if (inp) {
-        keyDriving = true; walkPath = [];
+        keyDriving = true; walkPath = []; pendingSeat = null;
         targetPos.copy(characterGroup.position).addScaledVector(inp.d, 0.6);
         isMoving = true; isPraying = false; isSitting = false; isEating = false;
       } else if (keyDriving) {
@@ -2176,7 +2263,7 @@
           dir.normalize();
           const moved = tryMove(currentPos, dir, Math.min(dist, walkSpeed * (inp ? inp.mag : 1) * delta));
           followGround(currentPos);
-          if (!moved && !keyDriving) { if (walkPath.length) targetPos.copy(walkPath.shift()); else isMoving = false; }
+          if (!moved && !keyDriving) { if (walkPath.length) targetPos.copy(walkPath.shift()); else { isMoving = false; if (pendingSeat) sitAtSeat(pendingSeat); } }
           const targetRot = Math.atan2(dir.x, dir.z);
           let dr = targetRot - characterGroup.rotation.y;                   // 가장 짧은 쪽으로 돌기
           dr = Math.atan2(Math.sin(dr), Math.cos(dr));
@@ -2198,6 +2285,7 @@
           targetPos.copy(walkPath.shift());               // 다음 꺾이는 지점으로
         } else {
           isMoving = false;
+          if (pendingSeat) sitAtSeat(pendingSeat);         // 누른 의자에 도착 → 앉기
         }
       } 
       // 2. 기도 상태 (양팔 합장 + 고개 숙임 + 은은한 호흡)
@@ -2209,14 +2297,9 @@
         // 경건하게 고개 숙임
         headGroup.rotation.x = THREE.MathUtils.lerp(headGroup.rotation.x, 0.22, 0.1);
 
-        // 양팔을 앞으로 들고 가슴 중앙에서 두 손을 모아 합장(🙏)
-        leftArmGroup.rotation.x = THREE.MathUtils.lerp(leftArmGroup.rotation.x, -0.8, 0.12);
-        leftArmGroup.rotation.z = THREE.MathUtils.lerp(leftArmGroup.rotation.z, 0.8, 0.12);
-        leftArmGroup.rotation.y = THREE.MathUtils.lerp(leftArmGroup.rotation.y, 0, 0.12);
-
-        rightArmGroup.rotation.x = THREE.MathUtils.lerp(rightArmGroup.rotation.x, -0.8, 0.12);
-        rightArmGroup.rotation.z = THREE.MathUtils.lerp(rightArmGroup.rotation.z, -0.8, 0.12);
-        rightArmGroup.rotation.y = THREE.MathUtils.lerp(rightArmGroup.rotation.y, 0, 0.12);
+        // 양팔을 앞으로 모아 가슴 앞(몸통 밖 약 0.21m)에서 두 손을 맞댐(🙏) — 예전엔 손이 몸통 안에 묻혀 안 보였음
+        leftArmGroup.quaternion.slerp(PRAY_Q.left, 0.15);
+        rightArmGroup.quaternion.slerp(PRAY_Q.right, 0.15);
       } 
       // 3. 식사 상태 (앉아서 오른팔로 숟가락질)
       else if (isEating) {
