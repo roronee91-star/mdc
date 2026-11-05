@@ -757,24 +757,66 @@
         });
       }
 
-      // 2) LED 화면: 양 끝이 벽 밖으로 나가지 않게 폭 줄이고 모서리 중앙으로 이동
+      // 2) LED 화면: 무대 모서리를 대각선으로 가로질러 크게 세우기 (참고 사진처럼 큰 스크린)
+      //    모서리 안쪽 끝(-13.03, -17.58)에서 대각선으로 s만큼 떨어진 두 벽 위 점을 잇는 선 위에 놓으면
+      //    폭 = s×√2 까지 벽 안에 들어간다. 폭 5.0m(원래 5.6m 모델의 0.89배) · 높이 3.2m
+      const CORNER = { x: -13.03, z: -17.58 };
+      const LED_W = 5.0, LED_H = 3.2, LED_BOTTOM = -5.0;
+      const ledS = LED_W / Math.SQRT2 + 0.08;                // 벽과 8cm 여유
       const led = byName['B1_FINAL_LED_Screen'];
-      if (led) { led.position.x = -11.915; led.position.z = -16.465; led.scale.x = 0.52; }
+      if (led) {
+        led.position.set(CORNER.x + ledS / 2, LED_BOTTOM + LED_H / 2, CORNER.z + ledS / 2);
+        led.rotation.set(0, Math.PI / 4, 0);
+        led.scale.set(LED_W / 5.6, LED_H / 2.3, 1);
+        // 스크린 화면: 새벽 하늘 · 산 · 말씀 (그림 파일 없이 코드로 그림)
+        const c = document.createElement('canvas'); c.width = 1024; c.height = 656;
+        const x = c.getContext('2d');
+        const sky = x.createLinearGradient(0, 0, 0, 656);
+        sky.addColorStop(0, '#5b7fc7'); sky.addColorStop(0.55, '#b9cdee'); sky.addColorStop(1, '#f3e6cf');
+        x.fillStyle = sky; x.fillRect(0, 0, 1024, 656);
+        [['#8fa6cf', 430, 0.004], ['#6f88b8', 500, 0.006], ['#4d6596', 570, 0.009]].forEach(([col, base, f], i) => {
+          x.fillStyle = col; x.beginPath(); x.moveTo(0, 656);
+          for (let px = 0; px <= 1024; px += 8) x.lineTo(px, base - 70 * Math.abs(Math.sin(px * f + i * 1.7)) - 30 * Math.sin(px * f * 3.1 + i));
+          x.lineTo(1024, 656); x.closePath(); x.fill();
+        });
+        x.fillStyle = '#ffffff'; x.textAlign = 'center'; x.textBaseline = 'middle';
+        x.shadowColor = 'rgba(20,30,60,0.45)'; x.shadowBlur = 12;
+        x.font = 'bold 76px sans-serif'; x.fillText('하나님은 사랑이시라', 512, 230);
+        x.font = '38px sans-serif'; x.fillText('요한일서 4:8', 512, 320);
+        const tex = new THREE.CanvasTexture(c);
+        if ('colorSpace' in tex) tex.colorSpace = THREE.SRGBColorSpace;
+        // 원래 스크린 상자는 검은 테두리로 두고, 회중 쪽 앞면에 그림 판을 붙임
+        led.material = new THREE.MeshStandardMaterial({ color: 0x15171c, roughness: 0.6 });
+        const face = new THREE.Mesh(new THREE.PlaneGeometry(LED_W - 0.12, LED_H - 0.12),
+          new THREE.MeshBasicMaterial({ map: tex, toneMapped: false }));
+        face.position.set(led.position.x + 0.075 * Math.SQRT1_2, led.position.y, led.position.z + 0.075 * Math.SQRT1_2);
+        face.rotation.set(0, Math.PI / 4, 0);
+        g.add(face);
+      }
 
       // 3) 강대상: 바닥에서 9cm 뜬 것 내려놓기
       const pulpit = byName['B1_FINAL_Pulpit'];
-      if (pulpit) pulpit.position.y -= 0.09;
+      if (pulpit) {
+        pulpit.position.y -= 0.09;
+        // 커진 스크린과 겹치지 않게 대각선으로 앞(회중 쪽)으로 옮김 (모서리에서 대각선 3.5m)
+        const d = 3.5 / Math.SQRT2;
+        pulpit.position.x = CORNER.x + d; pulpit.position.z = CORNER.z + d;
+      }
 
-      // 4) 십자가: 허공에 떠 있던 것을 무대 위 받침에 세우기 (LED 화면 앞)
+      // 4) 십자가: 참고 사진처럼 벽에 붙임. 회중이 무대를 볼 때 스크린 왼쪽 = 서쪽 벽.
+      //    스크린 끝(z ≈ -13.9)보다 남쪽, 무대 윗단 끝 근처에 1.3배 크기로 건다.
       const cv = byName['B1_FINAL_Cross_V'], ch = byName['B1_FINAL_Cross_H'];
       if (cv && ch) {
-        const stageTop = -6.16, baseH = 0.35, yaw = Math.PI / 4;
-        const cx = -12.45, cz = -15.35;
-        cv.position.set(cx, stageTop + baseH + 1.5, cz); cv.rotation.set(0, yaw, 0);
-        ch.position.set(cx, stageTop + baseH + 2.1, cz); ch.rotation.set(0, yaw, 0);
-        const base = new THREE.Mesh(new THREE.BoxGeometry(0.7, baseH, 0.5), cv.material);
-        base.position.set(cx, stageTop + baseH / 2, cz);
-        base.rotation.y = yaw; base.castShadow = true; g.add(base);
+        const k = 1.3, wallX = CORNER.x + 0.06 * k + 0.02, cz = -12.85;
+        const bottom = -5.75, vH = 3.0 * k;
+        cv.scale.set(k, k, k); ch.scale.set(k, k, k);
+        cv.rotation.set(0, Math.PI / 2, 0); ch.rotation.set(0, Math.PI / 2, 0);   // 앞면이 동쪽(회중)을 향함
+        cv.position.set(wallX, bottom + vH / 2, cz);
+        ch.position.set(wallX + 0.01, bottom + vH * 0.7, cz);
+        // 십자가 뒤 벽을 은은하게 비추는 조명
+        const glow = new THREE.PointLight(0xffd9a0, 1.6, 4.5, 1.5);
+        glow.position.set(CORNER.x + 0.6, bottom + vH * 0.6, cz);
+        g.add(glow);
       }
 
       // 5) 자모실: 칸막이를 홀 쪽으로 옮겨 방을 넓히고, 유리창 · 문 · 매트 · 아기침대 넣기
@@ -1026,8 +1068,9 @@
       characterGroup.rotation.y = seat.rot; // 무대(왼쪽 위 모서리)를 향해 앉음
       targetPos.copy(characterGroup.position);
 
-      controls.target.set(seat.x, seat.y + 0.8, seat.z);
-      camera.position.set(seat.x - Math.sin(seat.rot) * 2.8, seat.y + 1.6, seat.z - Math.cos(seat.rot) * 2.8); // 뒤에서 비추는 뷰
+      // 뒤에서 비추되 조금 높게: 커진 스크린과 벽 십자가가 함께 보이게
+      controls.target.set(seat.x + Math.sin(seat.rot) * 2.0, seat.y + 1.5, seat.z + Math.cos(seat.rot) * 2.0);
+      camera.position.set(seat.x - Math.sin(seat.rot) * 2.6, seat.y + 1.5, seat.z - Math.cos(seat.rot) * 2.6);
     });
 
     btnActionPray.addEventListener('click', () => {
