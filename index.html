@@ -187,6 +187,30 @@
     @keyframes spin { to { transform: rotate(360deg); } }
     #loading-text { font-size: 15px; font-weight: 600; color: #e2e8f0; margin-bottom: 6px; }
     #loading-sub { font-size: 12px; color: #64748b; }
+
+    /* ---- 화면을 덜 가리는 작은 UI ---- */
+    #ui-overlay { padding: 10px 12px; }
+    .header-bar { padding: 6px 10px; gap: 10px; border-radius: 12px; max-width: 900px; background: rgba(15, 23, 42, 0.72); }
+    .header-title { font-size: 13px; }
+    .header-sub { font-size: 10.5px; }
+    .tour-steps { overflow-x: auto; scrollbar-width: none; }
+    .tour-steps::-webkit-scrollbar { display: none; }
+    .step-btn { padding: 5px 9px; font-size: 11.5px; white-space: nowrap; }
+    .header-right { display: flex; gap: 6px; }
+    .bgm-btn { padding: 5px 8px; font-size: 13px; }
+    .guide-card { position: absolute; top: 64px; right: 12px; max-width: 280px; font-size: 12px; line-height: 1.7; padding: 10px 12px; }
+    .guide-card b { color: #7dd3fc; margin-right: 4px; }
+    .bottom-bar { justify-content: center; }
+    .action-group { gap: 6px; flex-wrap: wrap; justify-content: center; }
+    .action-btn { padding: 6px 11px; font-size: 12px; border-radius: 999px; background: rgba(30, 41, 59, 0.72); }
+    #ui-overlay.ui-hidden, [hidden] { display: none !important; }
+    #uiShow { position: absolute; top: 10px; right: 12px; z-index: 5; background: rgba(15, 23, 42, 0.72); }
+    @media (max-width: 720px) {
+      .header-bar { flex-wrap: wrap; }
+      .header-left { flex: 1 1 auto; }
+      .tour-steps { order: 3; width: 100%; }
+      .header-sub { display: none; }
+    }
   </style>
 
   <script type="importmap">{"imports":{"three":"./vendor/three/three.module.js"}}</script>
@@ -202,41 +226,44 @@
   <div id="canvas-container"></div>
 
   <div id="ui-overlay">
+    <!-- 화면을 덜 가리게: 위쪽은 얇은 한 줄, 아래쪽은 작은 버튼 줄. 조작 안내는 ❔ 를 눌렀을 때만 -->
     <div class="header-bar">
       <div class="header-left">
-        <span class="header-title">물댄동산교회 메타버스 성전 투어</span>
+        <span class="header-title">물댄동산교회</span>
         <span class="header-sub" id="currentAreaText">현재 위치: 외관 횡단보도 (출발점)</span>
       </div>
 
       <div class="tour-steps">
-        <button class="step-btn active" id="step1">1. 횡단보도</button>
-        <button class="step-btn" id="step2">2. 교회 앞 광장</button>
-        <button class="step-btn" id="step3">3. 1층 로비·계단</button>
-        <button class="step-btn" id="step4">4. 지하 본당 입구</button>
-        <button class="step-btn" id="step5">5. 3층 식당·소그룹실</button>
+        <button class="step-btn active" id="step1">1 횡단보도</button>
+        <button class="step-btn" id="step2">2 앞 광장</button>
+        <button class="step-btn" id="step3">3 1층 로비</button>
+        <button class="step-btn" id="step4">4 지하 본당</button>
+        <button class="step-btn" id="step5">5 3층 식당</button>
       </div>
 
       <div class="header-right">
-        <button class="bgm-btn" id="bgmToggle">🎵 잔잔한 찬양</button>
+        <button class="bgm-btn" id="bgmToggle" title="잔잔한 찬양 켜기/끄기">🎵</button>
+        <button class="bgm-btn" id="helpToggle" title="조작 안내">❔</button>
+        <button class="bgm-btn" id="uiToggle" title="버튼 숨기기">🙈</button>
       </div>
+    </div>
+
+    <div class="guide-card" id="guideCard" hidden>
+      <b>바닥 누르기</b> 캐릭터가 그곳으로 걸어가요<br>
+      <b>화면 끌기</b> 돌려 보기 · 두 손가락/휠로 가까이·멀리<br>
+      <b>위쪽 번호</b> 장소로 바로 이동
     </div>
 
     <div class="bottom-bar">
-      <div class="guide-card">
-        <b>[조작 안내]</b><br>
-        • <b>바닥 클릭:</b> 원하는 지점을 찍으면 캐릭터가 팔을 흔들며 걸어갑니다.<br>
-        • <b>화면 드래그:</b> 마우스 좌클릭으로 360도 회전, 우클릭으로 시점 이동<br>
-        • <b>투어 버튼:</b> 횡단보도에서 시작해 본당까지 순서대로 둘러보세요!
-      </div>
-
       <div class="action-group">
-        <button class="action-btn" id="btnActionPew">🪑 장의자 착석</button>
-        <button class="action-btn" id="btnActionPray">🙏 자리에서 기도</button>
-        <button class="action-btn" id="btnActionEat">🍚 식당에서 밥먹기</button>
-        <button class="action-btn" id="btnActionGroup">💬 소그룹실 앉기</button>
+        <button class="action-btn" id="btnActionPew">🪑 의자 착석</button>
+        <button class="action-btn" id="btnActionPray">🙏 기도</button>
+        <button class="action-btn" id="btnActionEat">🍚 밥먹기</button>
+        <button class="action-btn" id="btnActionGroup">💬 소그룹실</button>
       </div>
     </div>
   </div>
+  <button id="uiShow" class="bgm-btn" hidden title="버튼 보이기">👁 버튼 보이기</button>
 
   <script type="module">
     import * as THREE from 'three';
@@ -1112,6 +1139,11 @@
       resetCamPull();
     }
 
+    const guideCard = document.getElementById('guideCard');
+    document.getElementById('helpToggle').addEventListener('click', () => { guideCard.hidden = !guideCard.hidden; });
+    const uiOverlay = document.getElementById('ui-overlay'), uiShow = document.getElementById('uiShow');
+    document.getElementById('uiToggle').addEventListener('click', () => { uiOverlay.classList.add('ui-hidden'); uiShow.hidden = false; });
+    uiShow.addEventListener('click', () => { uiOverlay.classList.remove('ui-hidden'); uiShow.hidden = true; });
     document.getElementById('step1').addEventListener('click', () => goToTourStep('step1'));
     document.getElementById('step2').addEventListener('click', () => goToTourStep('step2'));
     document.getElementById('step3').addEventListener('click', () => goToTourStep('step3'));
@@ -1142,7 +1174,7 @@
       const diffTime = performance.now() - downTime;
       const dist = Math.hypot(e.clientX - downPos.x, e.clientY - downPos.y);
       if (diffTime > 260 || dist > 6) return;
-      if (e.target.closest('#ui-overlay')) return;
+      if (e.target.closest('#ui-overlay') || e.target.closest('#uiShow')) return;
 
       mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
       mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
@@ -1211,10 +1243,10 @@
       isEating = false;
       isPraying = !isPraying;
       if (isPraying) {
-        btnActionPray.innerHTML = '✨ 묵상 중 (일어서기)';
+        btnActionPray.innerHTML = '✨ 일어서기';
         btnActionPray.style.background = '#0284c7';
       } else {
-        btnActionPray.innerHTML = '🙏 자리에서 기도';
+        btnActionPray.innerHTML = '🙏 기도';
         btnActionPray.style.background = 'rgba(30, 41, 59, 0.9)';
       }
     });
@@ -1282,11 +1314,11 @@
       const btn = document.getElementById('bgmToggle');
       if (isBgmPlaying) {
         if (audioCtx.state === 'suspended') audioCtx.resume();
-        btn.innerHTML = '<span>🔊 찬양 반주 중</span>';
+        btn.innerHTML = '🔊';
         btn.style.background = '#2563eb';
         playCalmChord();
       } else {
-        btn.innerHTML = '<span>🎵 잔잔한 찬양</span>';
+        btn.innerHTML = '🎵';
         btn.style.background = 'rgba(255,255,255,0.1)';
         clearTimeout(audioTimer);
       }
