@@ -1772,9 +1772,9 @@
 
     // ---- 베이지 대리석 무늬 (본당 바닥): 1024px 한 장에 타일 4×4, 이어 붙여도 이음새가 안 보이게 가장자리를 감아서 그림 ----
     const MARBLE_SPAN = 1.6;                     // 그림 한 장이 덮는 바닥 너비(m) → 타일 한 장 0.4m
-    function marbleTexture() {
+    function marbleTexture(seed) {
       const N = 1024, c = document.createElement('canvas'); c.width = c.height = N; const x = c.getContext('2d');
-      let sd = 7; const rnd = () => { sd = (sd * 16807) % 2147483647; return sd / 2147483647; };
+      let sd = seed || 7; const rnd = () => { sd = (sd * 16807) % 2147483647; return sd / 2147483647; };
       const wrap = (fn) => { for (const ox of [-N, 0, N]) for (const oy of [-N, 0, N]) fn(ox, oy); };
       x.fillStyle = '#f4e6d0'; x.fillRect(0, 0, N, N);
       for (let i = 0; i < 70; i++) {                                    // 은은한 얼룩 (밝은 크림 / 조금 진한 베이지)
@@ -1804,7 +1804,12 @@
     function planarUV(mesh, span) {
       mesh.updateWorldMatrix(true, false);
       const geo = mesh.geometry.clone(), P = geo.attributes.position, uv = new Float32Array(P.count * 2), v = new THREE.Vector3();
-      for (let i = 0; i < P.count; i++) { v.fromBufferAttribute(P, i).applyMatrix4(mesh.matrixWorld); uv[i * 2] = v.x / span; uv[i * 2 + 1] = v.z / span; }
+      const Nn = geo.attributes.normal, n = new THREE.Vector3(), nm = new THREE.Matrix3().getNormalMatrix(mesh.matrixWorld);
+      for (let i = 0; i < P.count; i++) {
+        v.fromBufferAttribute(P, i).applyMatrix4(mesh.matrixWorld);
+        const side = Nn && Math.abs(n.fromBufferAttribute(Nn, i).applyMatrix3(nm).normalize().y) < 0.5;   // 옆면(계단 앞면)은 가로·높이로 붙여 줄무늬가 안 생기게
+        uv[i * 2] = (side ? (Math.abs(n.x) > Math.abs(n.z) ? v.z : v.x) : v.x) / span; uv[i * 2 + 1] = (side ? v.y : v.z) / span;
+      }
       geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
       return geo;
     }
@@ -2031,6 +2036,15 @@
         m.position.x += (b0.min.x - b1.min.x) / (ps.x || 1); m.position.z += (b0.min.z - b1.min.z) / (ps.z || 1);
         m.updateWorldMatrix(true, false);
       });
+      // 강단 두 단: 바닥 대리석보다 조금 짙은 베이지 대리석 (사용자 요청). 윗단을 아랫단보다 아주 조금 더 짙게
+      {
+        const st = marbleTexture(23);
+        [['B1_FINAL_Stage_Tier_0', 0xeedcc6], ['B1_FINAL_Stage_Tier_1', 0xe8d4bb]].forEach(([n, col]) => {
+          const m = byName[n]; if (!m) return;
+          m.material = new THREE.MeshStandardMaterial({ map: st, color: col, emissiveMap: st, emissive: 0xf2e2cc, emissiveIntensity: 0.2, roughness: 0.25, metalness: 0.0 });
+          m.geometry = planarUV(m, MARBLE_SPAN); m.receiveShadow = true;
+        });
+      }
       // 피아노(강단 왼쪽, 회중에서 볼 때)와 드럼(오른쪽)
       {
         const C = { x: -13.0, z: -17.5 }, top = FLOOR + 0.44;      // 강단 윗단 높이
