@@ -266,8 +266,55 @@
     controls.enableDamping = true;
     controls.dampingFactor = 0.06;
     controls.minDistance = 1.2;
-    window.__dbg = { camera, controls, scene, get furn() { return furn; }, get b1Seats() { return b1Seats; } }; // 화면 확인(자동 검사)용
+    window.__dbg = { camera, controls, scene, get furn() { return furn; }, get b1Seats() { return b1Seats; }, get character() { return characterGroup; } }; // 화면 확인(자동 검사)용
     controls.maxDistance = 55;
+    controls.maxPolarAngle = Math.PI * 0.49; // 바닥 아래로 돌아 들어가 건물 밖/땅 속이 보이지 않게
+
+    // 카메라가 벽 뒤로 돌아가도 캐릭터가 가려지지 않게: 캐릭터(시선 중심) → 카메라 방향으로 광선을 쏴서
+    // 불투명한 벽에 막히면 카메라를 벽 바로 앞으로 당긴다. 원하는 거리(camWantDist)는 따로 기억해서
+    // 벽이 없어지면 다시 원래 거리로 돌아간다.
+    const camRay = new THREE.Raycaster();
+    camRay.camera = camera; // 이름표(스프라이트) 판정에 필요
+    let camWantDist = null, camPulled = false;
+    function resetCamPull() { camPulled = false; camWantDist = null; }
+    function isCamBlocker(o) {
+      if (!o.isMesh || o.userData.noCamBlock) return false;
+      for (let q = o; q; q = q.parent) { if (!q.visible) return false; if (q.userData && q.userData.noCamBlock) return false; }
+      const m = Array.isArray(o.material) ? o.material[0] : o.material;
+      if (!m || (m.transparent && m.opacity < 0.6)) return false;
+      if (/GLASS|Glass|glass|ENV_|TREE|Leaf/.test(o.name)) return false;   // 유리·나무는 비쳐 보이므로 막지 않음
+      return true;
+    }
+    function camBeforeUpdate() {
+      if (camPulled && camWantDist) {
+        const dir = camera.position.clone().sub(controls.target).normalize();
+        camera.position.copy(controls.target).addScaledVector(dir, camWantDist);
+      }
+    }
+    function camAfterUpdate() {
+      const off = camera.position.clone().sub(controls.target);
+      camWantDist = off.length();
+      const dir = off.normalize();
+      camPulled = false;
+      const d = blockDist(dir, camWantDist);
+      if (d === null) return;
+      if (d < 1.6) {
+        // 좁은 방: 너무 붙으면 머리만 보이므로, 카메라를 위쪽으로 비켜 올려 막히지 않는 각도를 찾는다
+        const up = new THREE.Vector3(0, 1, 0);
+        for (let t = 0.15; t <= 0.9; t += 0.15) {
+          const d2 = dir.clone().lerp(up, t).normalize();
+          if (d2.y > Math.cos(controls.minPolarAngle || 0) - 1e-3 && t > 0.9) break;
+          if (blockDist(d2, camWantDist) === null) { camera.position.copy(controls.target).addScaledVector(d2, camWantDist); return; }
+        }
+      }
+      camera.position.copy(controls.target).addScaledVector(dir, Math.max(0.45, d - 0.2));
+      camPulled = true;
+    }
+    function blockDist(dir, far) {
+      camRay.set(controls.target, dir); camRay.far = far; camRay.near = 0.25;
+      for (const h of camRay.intersectObjects(scene.children, true)) if (isCamBlocker(h.object)) return h.distance;
+      return null;
+    }
 
     // 조명
     const hemiLight = new THREE.HemisphereLight(0xfff7ef, 0x475569, 0.95);
@@ -305,106 +352,124 @@
     scene.add(targetRing);
 
     // -------------------------------------------------------------------------
-    // 2. 디테일 1m 캐릭터 모델링 (헤어, 눈, 볼터치, 어깨, 양팔, 기도 손)
+    // 2. 1m 아바타 (참고 이미지의 2등신 캐릭터: 후드티 · 바지 · 운동화 · 풍성한 머리)
+    //    body / headGroup / 양팔 / 양다리는 각각 관절(그룹)로 움직인다.
+    //    서 있을 때 body 중심 y 0.35 · 머리 0.78, 앉을 때 SIT_BODY · SIT_HEAD.
     // -------------------------------------------------------------------------
+    const SIT_BODY = 0.13, SIT_HEAD = 0.56;
     const characterGroup = new THREE.Group();
+    const std = (c, r) => new THREE.MeshStandardMaterial({ color: c, roughness: r === undefined ? 0.7 : r });
+    const hoodieMat = std(0x5b84c4, 0.85), hoodieDark = std(0x4a6fae, 0.85);
+    const pantsMat = std(0x3d4452, 0.8), shoeMat = std(0xf5f5f2, 0.5), soleMat = std(0x9aa0a8, 0.6);
+    const skinMat = std(0xffe0c4, 0.6);
+    skinMat.emissive = new THREE.Color(0x3a2418); // 그늘에서도 얼굴이 어둡게 죽지 않게
+    const hairMat = std(0x3b2516, 0.75);
+    const addTo = (parent, geo, mat, x, y, z) => { const m = new THREE.Mesh(geo, mat); m.position.set(x || 0, y || 0, z || 0); m.castShadow = true; parent.add(m); return m; };
 
-    // 몸통 (단정한 네이비 코트)
-    const bodyGeo = new THREE.CylinderGeometry(0.20, 0.28, 0.52, 16);
-    const bodyMat = new THREE.MeshStandardMaterial({ color: 0x2563eb, roughness: 0.5 });
-    const body = new THREE.Mesh(bodyGeo, bodyMat);
+    // 몸통(후드티) — body 그룹 기준 y -0.10 ~ +0.20
+    const body = new THREE.Group();
     body.position.y = 0.35;
-    body.castShadow = true;
+    addTo(body, new THREE.CylinderGeometry(0.15, 0.19, 0.26, 20), hoodieMat, 0, 0.06, 0);          // 몸통
+    addTo(body, new THREE.SphereGeometry(0.15, 20, 12, 0, Math.PI * 2, 0, Math.PI / 2), hoodieMat, 0, 0.19, 0).scale.set(1, 0.35, 1); // 어깨선
+    addTo(body, new THREE.TorusGeometry(0.11, 0.035, 10, 24), hoodieDark, 0, 0.2, -0.02).rotation.x = Math.PI / 2; // 후드 목둘레
+    addTo(body, new THREE.SphereGeometry(0.13, 16, 10, 0, Math.PI * 2, 0, Math.PI / 2), hoodieDark, 0, 0.17, -0.12).scale.set(1, 0.9, 0.55); // 등 뒤 후드
+    addTo(body, new THREE.BoxGeometry(0.16, 0.07, 0.02), hoodieDark, 0, 0.0, 0.17).rotation.x = -0.12; // 앞주머니
+    const stringGeo = new THREE.CylinderGeometry(0.006, 0.006, 0.08, 6);
+    [-0.03, 0.03].forEach((x) => addTo(body, stringGeo, std(0xffffff, 0.5), x, 0.14, 0.15));    // 후드 끈
+    addTo(body, new THREE.CylinderGeometry(0.19, 0.17, 0.07, 20), pantsMat, 0, -0.085, 0);       // 골반(바지)
     characterGroup.add(body);
 
-    // 머리 그룹 (얼굴 + 헤어 + 이목구비)
+    // 머리 그룹 (얼굴 + 귀 + 머리카락 + 이목구비)
     const headGroup = new THREE.Group();
     headGroup.position.y = 0.78;
-
-    const skinMat = new THREE.MeshStandardMaterial({ color: 0xffe0bd, roughness: 0.6 });
-    const hairMat = new THREE.MeshStandardMaterial({ color: 0x3b2314, roughness: 0.8 }); // 짙은 갈색 헤어
-
-    // 얼굴 구체
-    const faceMesh = new THREE.Mesh(new THREE.SphereGeometry(0.26, 20, 20), skinMat);
-    faceMesh.castShadow = true;
-    headGroup.add(faceMesh);
-
-    // 단정한 숏컷 헤어 캡
-    const hairCap = new THREE.Mesh(new THREE.SphereGeometry(0.27, 20, 20, 0, Math.PI * 2, 0, Math.PI * 0.55), hairMat);
-    hairCap.position.y = 0.02;
-    headGroup.add(hairCap);
-
-    // 앞머리 볼륨
-    const hairBangs = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.09, 0.12), hairMat);
-    hairBangs.position.set(0, 0.14, 0.20);
-    hairBangs.rotation.x = -0.2;
-    headGroup.add(hairBangs);
-
-    // 귀여운 눈 (좌/우)
-    const eyeGeo = new THREE.SphereGeometry(0.035, 12, 12);
-    const eyeMat = new THREE.MeshBasicMaterial({ color: 0x1e1e24 });
-    const leftEye = new THREE.Mesh(eyeGeo, eyeMat);
-    leftEye.position.set(-0.09, 0.02, 0.24);
-    leftEye.scale.set(1.0, 1.25, 0.3);
-    headGroup.add(leftEye);
-
-    const rightEye = new THREE.Mesh(eyeGeo, eyeMat);
-    rightEye.position.set(0.09, 0.02, 0.24);
-    rightEye.scale.set(1.0, 1.25, 0.3);
-    headGroup.add(rightEye);
-
-    // 눈동자 하이라이트 (초롱초롱한 반사광)
-    const shineGeo = new THREE.SphereGeometry(0.012, 8, 8);
+    const faceMesh = addTo(headGroup, new THREE.SphereGeometry(0.25, 28, 24), skinMat);
+    faceMesh.scale.set(1.04, 0.96, 1);
+    [-1, 1].forEach((sx) => addTo(headGroup, new THREE.SphereGeometry(0.05, 12, 10), skinMat, sx * 0.255, -0.02, 0).scale.set(0.5, 1, 0.8)); // 귀
+    // 머리카락: 뒤통수 덮개 + 옆머리 + 앞머리 세 갈래 + 정수리 삐침
+    // 반구를 뒤로 기울여 앞(이마)은 눈썹 위에서 끝나고 뒤통수는 목덜미까지 덮게
+    addTo(headGroup, new THREE.SphereGeometry(0.272, 28, 20, 0, Math.PI * 2, 0, Math.PI * 0.5), hairMat, 0, 0.0, -0.01).rotation.x = -0.42;
+    [-1, 1].forEach((sx) => { const side = addTo(headGroup, new THREE.SphereGeometry(0.09, 12, 10), hairMat, sx * 0.21, 0.04, 0.05); side.scale.set(0.55, 1.15, 0.9); });
+    [[-0.11, 0.12, -0.35], [0.0, 0.135, 0.0], [0.11, 0.12, 0.35]].forEach(([x, y, rz]) => {
+      const bang = addTo(headGroup, new THREE.SphereGeometry(0.1, 14, 10), hairMat, x, y, 0.19);
+      bang.scale.set(1.0, 0.6, 0.55); bang.rotation.z = rz;
+    });
+    const tuft = addTo(headGroup, new THREE.ConeGeometry(0.022, 0.08, 8), hairMat, 0.03, 0.275, 0.02);
+    tuft.rotation.set(-0.5, 0, -0.4);
+    // 눈: 흰자 없이 큰 검은 눈 + 반짝임 두 개, 눈썹, 웃는 입, 볼터치
+    const eyeMat = new THREE.MeshBasicMaterial({ color: 0x241a16 });
     const shineMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
-    const leftShine = new THREE.Mesh(shineGeo, shineMat);
-    leftShine.position.set(-0.08, 0.035, 0.252);
-    headGroup.add(leftShine);
-
-    const rightShine = new THREE.Mesh(shineGeo, shineMat);
-    rightShine.position.set(0.10, 0.035, 0.252);
-    headGroup.add(rightShine);
-
-    // 볼터치 (핑크)
-    const blushGeo = new THREE.PlaneGeometry(0.055, 0.03);
-    const blushMat = new THREE.MeshBasicMaterial({ color: 0xf472b6, transparent: true, opacity: 0.65 });
-    const leftBlush = new THREE.Mesh(blushGeo, blushMat);
-    leftBlush.position.set(-0.13, -0.05, 0.23);
-    leftBlush.rotation.y = -0.45;
-    headGroup.add(leftBlush);
-
-    const rightBlush = new THREE.Mesh(blushGeo, blushMat);
-    rightBlush.position.set(0.13, -0.05, 0.23);
-    rightBlush.rotation.y = 0.45;
-    headGroup.add(rightBlush);
-
+    [-1, 1].forEach((sx) => {
+      const eye = addTo(headGroup, new THREE.SphereGeometry(0.04, 16, 12), eyeMat, sx * 0.09, 0.0, 0.225);
+      eye.scale.set(0.85, 1.2, 0.35);
+      addTo(headGroup, new THREE.SphereGeometry(0.013, 8, 8), shineMat, sx * 0.09 + 0.012, 0.02, 0.238);
+      addTo(headGroup, new THREE.SphereGeometry(0.006, 6, 6), shineMat, sx * 0.09 - 0.012, -0.015, 0.238);
+      const brow = addTo(headGroup, new THREE.BoxGeometry(0.06, 0.012, 0.01), hairMat, sx * 0.09, 0.075, 0.232);
+      brow.rotation.z = -sx * 0.12;
+      const blush = addTo(headGroup, new THREE.CircleGeometry(0.03, 16), new THREE.MeshBasicMaterial({ color: 0xf59ab0, transparent: true, opacity: 0.55 }), sx * 0.15, -0.06, 0.205);
+      blush.rotation.y = sx * 0.55; blush.castShadow = false;
+    });
+    const mouth = addTo(headGroup, new THREE.TorusGeometry(0.022, 0.006, 6, 16, Math.PI), new THREE.MeshBasicMaterial({ color: 0x8a3b3b }), 0, -0.075, 0.236);
+    mouth.rotation.z = Math.PI; // 아래로 둥근 미소
     characterGroup.add(headGroup);
 
-    // 움직이는 양팔 (어깨 관절 기준 회전)
-    // 몸보다 살짝 밝은 파란색을 적용하여 팔이 몸에 파묻히지 않게 구분
-    const armMat = new THREE.MeshStandardMaterial({ color: 0x3b82f6, roughness: 0.5 });
-    const armGeo = new THREE.CylinderGeometry(0.05, 0.045, 0.40, 12);
-    armGeo.translate(0, -0.20, 0); // 어깨 중심으로 피벗 세팅
+    // 팔: 어깨 관절(그룹) 기준. 소매(후드티) + 손. 어깨 높이는 body를 따라간다.
+    const armGeo = new THREE.CylinderGeometry(0.045, 0.05, 0.22, 12);
+    armGeo.translate(0, -0.11, 0);
+    function makeArm(sx) {
+      const g = new THREE.Group();
+      g.position.set(sx * 0.18, 0.52, 0);
+      addTo(g, new THREE.SphereGeometry(0.05, 12, 10), hoodieMat, 0, 0, 0);          // 어깨 둥글게
+      addTo(g, armGeo, hoodieMat, 0, 0, 0);
+      addTo(g, new THREE.CylinderGeometry(0.048, 0.048, 0.03, 12), hoodieDark, 0, -0.22, 0); // 소맷부리
+      addTo(g, new THREE.SphereGeometry(0.048, 12, 10), skinMat, 0, -0.26, 0);       // 손
+      characterGroup.add(g);
+      return g;
+    }
+    const leftArmGroup = makeArm(-1), rightArmGroup = makeArm(1);
 
-    // 왼팔 그룹
-    const leftArmGroup = new THREE.Group();
-    // 몸(radius 0.2) 밖으로 명확하게 돌출되도록 어깨 위치 -0.22 설정
-    leftArmGroup.position.set(-0.22, 0.55, 0.0);
-    const leftArmMesh = new THREE.Mesh(armGeo, armMat);
-    leftArmGroup.add(leftArmMesh);
-    const leftHand = new THREE.Mesh(new THREE.SphereGeometry(0.06, 12, 12), skinMat);
-    leftHand.position.set(0, -0.38, 0);
-    leftArmGroup.add(leftHand);
-    characterGroup.add(leftArmGroup);
+    // 다리: 엉덩이 관절(허벅지) → 무릎 관절(정강이 + 운동화). 엉덩이 높이는 body를 따라간다.
+    const thighGeo = new THREE.CylinderGeometry(0.065, 0.06, 0.13, 12); thighGeo.translate(0, -0.065, 0);
+    const shinGeo = new THREE.CylinderGeometry(0.058, 0.055, 0.1, 12); shinGeo.translate(0, -0.05, 0);
+    function makeLeg(sx) {
+      const hip = new THREE.Group();
+      hip.position.set(sx * 0.085, 0.25, 0);
+      addTo(hip, thighGeo, pantsMat);
+      const knee = new THREE.Group();
+      knee.position.y = -0.13;
+      hip.add(knee);
+      addTo(knee, shinGeo, pantsMat);
+      const shoe = addTo(knee, new THREE.SphereGeometry(0.07, 14, 10), shoeMat, 0, -0.105, 0.03);
+      shoe.scale.set(0.9, 0.55, 1.35);
+      const sole = addTo(knee, new THREE.CylinderGeometry(0.065, 0.065, 0.018, 14), soleMat, 0, -0.13, 0.03);
+      sole.scale.set(0.95, 1, 1.4);
+      hip.userData.knee = knee;
+      characterGroup.add(hip);
+      return hip;
+    }
+    const leftLeg = makeLeg(-1), rightLeg = makeLeg(1);
 
-    // 오른팔 그룹
-    const rightArmGroup = new THREE.Group();
-    rightArmGroup.position.set(0.22, 0.55, 0.0);
-    const rightArmMesh = new THREE.Mesh(armGeo, armMat);
-    rightArmGroup.add(rightArmMesh);
-    const rightHand = new THREE.Mesh(new THREE.SphereGeometry(0.06, 12, 12), skinMat);
-    rightHand.position.set(0, -0.38, 0);
-    rightArmGroup.add(rightHand);
-    characterGroup.add(rightArmGroup);
+    // 몸통 높이에 팔·다리 관절을 맞추고, 상태에 따라 다리 자세를 정한다 (매 프레임 호출)
+    function poseLimbs(walkPhase) {
+      const by = body.position.y;
+      leftArmGroup.position.y = rightArmGroup.position.y = by + 0.17;
+      leftLeg.position.y = rightLeg.position.y = by - 0.1;
+      let lt = 0, rt = 0, lk = 0, rk = 0;
+      if (isSitting) { lt = rt = -Math.PI / 2; lk = rk = Math.PI / 2; }            // 앉기: 허벅지 앞으로, 정강이 아래로
+      else if (walkPhase !== null) {
+        const sw = Math.sin(walkPhase) * 0.55;
+        lt = -sw; rt = sw;
+        lk = Math.max(0, Math.sin(walkPhase + 1.2)) * 0.6; rk = Math.max(0, -Math.sin(walkPhase + 1.2)) * 0.6;
+      }
+      leftLeg.rotation.x = THREE.MathUtils.lerp(leftLeg.rotation.x, lt, 0.35);
+      rightLeg.rotation.x = THREE.MathUtils.lerp(rightLeg.rotation.x, rt, 0.35);
+      leftLeg.userData.knee.rotation.x = THREE.MathUtils.lerp(leftLeg.userData.knee.rotation.x, lk, 0.35);
+      rightLeg.userData.knee.rotation.x = THREE.MathUtils.lerp(rightLeg.userData.knee.rotation.x, rk, 0.35);
+    }
+
+    // 크기: 의자(앉는 면 0.22~0.24m)에 비해 너무 커 보여서 0.8배로 줄임 → 키 약 0.8m
+    const CHAR_SCALE = 0.8;
+    characterGroup.scale.setScalar(CHAR_SCALE);
+    characterGroup.userData.noCamBlock = true;
 
     // 초기 시작 위치 (외관 횡단보도 위)
     characterGroup.position.set(-1.5, 0.0, 7.5);
@@ -1044,6 +1109,7 @@
 
       controls.target.copy(wp.camLook);
       camera.position.copy(wp.camPos);
+      resetCamPull();
     }
 
     document.getElementById('step1').addEventListener('click', () => goToTourStep('step1'));
@@ -1137,6 +1203,7 @@
       // 뒤에서 비추되 조금 높게: 커진 스크린과 벽 십자가가 함께 보이게
       controls.target.set(seat.x + Math.sin(seat.rot) * 2.0, seat.y + 1.5, seat.z + Math.cos(seat.rot) * 2.0);
       camera.position.set(seat.x - Math.sin(seat.rot) * 2.6, seat.y + 1.5, seat.z - Math.cos(seat.rot) * 2.6);
+      resetCamPull();
     });
 
     btnActionPray.addEventListener('click', () => {
@@ -1170,6 +1237,7 @@
       sitAt(-5.85, DINING_ROWS[1], Math.PI / 2);   // 가운데 열 · 가운데 줄 서쪽 의자, 동쪽을 보고 앉음
       isEating = true;
       camera.position.set(-3.6, F3_Y + 1.7, DINING_ROWS[1] + 2.0);
+      resetCamPull();
     });
 
     document.getElementById('btnActionGroup').addEventListener('click', () => {
@@ -1178,6 +1246,7 @@
       sitAt(-1.55, gz, Math.PI / 2); // 소그룹실 1 서쪽 의자
       // 방 안쪽(동쪽 창가) 위에서 내려다봐 칸막이 벽이 캐릭터를 가리지 않게
       camera.position.set(-0.25, F3_Y + 2.3, gz + 1.3);
+      resetCamPull();
     });
 
     // 찬양 BGM
@@ -1274,8 +1343,8 @@
       // 2. 기도 상태 (양팔 합장 + 고개 숙임 + 은은한 호흡)
       else if (isPraying) {
         const breathe = Math.sin(time * 2.2) * 0.015;
-        body.position.y = (isSitting ? 0.22 : 0.35) + breathe;
-        headGroup.position.y = (isSitting ? 0.65 : 0.78) + breathe * 0.5;
+        body.position.y = (isSitting ? SIT_BODY : 0.35) + breathe;
+        headGroup.position.y = (isSitting ? SIT_HEAD : 0.78) + breathe * 0.5;
 
         // 경건하게 고개 숙임
         headGroup.rotation.x = THREE.MathUtils.lerp(headGroup.rotation.x, 0.22, 0.1);
@@ -1292,23 +1361,27 @@
       // 3. 식사 상태 (앉아서 오른팔로 숟가락질)
       else if (isEating) {
         const lift = (Math.sin(time * 2.6) + 1) / 2;
-        body.position.y = 0.22;
-        headGroup.position.y = 0.65;
+        body.position.y = SIT_BODY;
+        headGroup.position.y = SIT_HEAD;
         headGroup.rotation.x = 0.12 + lift * 0.1;
         leftArmGroup.rotation.set(-0.5, 0, 0.15);
         rightArmGroup.rotation.set(-0.5 - lift * 0.9, 0, -0.15);
       }
       // 4. 평상시 기본 차렷 자세
       else {
-        body.position.y = (isSitting ? 0.22 : 0.35);
-        headGroup.position.y = (isSitting ? 0.65 : 0.78);
+        body.position.y = (isSitting ? SIT_BODY : 0.35);
+        headGroup.position.y = (isSitting ? SIT_HEAD : 0.78);
         headGroup.rotation.x = 0;
 
         leftArmGroup.rotation.set(0, 0, 0.15);
         rightArmGroup.rotation.set(0, 0, -0.15);
       }
 
+      poseLimbs(isMoving ? time * 13 : null);
+      camBeforeUpdate();
       controls.update();
+      camAfterUpdate();
+      levelLabels.forEach(l => { if (l.visible) l.material.opacity = THREE.MathUtils.clamp((l.position.distanceTo(camera.position) - 2.0) / 2.0, 0, 1); }); // 너무 가까운 이름표는 흐리게
       ceilingRig.visible = camera.position.y < -1.0; // 천장 위에서 내려다보면 조명 줄이 객석을 가리므로 숨김
       renderer.render(scene, camera);
     }
