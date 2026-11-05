@@ -206,6 +206,10 @@
     .action-group { gap: 6px; flex-wrap: wrap; justify-content: center; }
     .action-btn { padding: 6px 11px; font-size: 12px; border-radius: 999px; background: rgba(30, 41, 59, 0.72); }
     #ui-overlay.ui-hidden, [hidden] { display: none !important; }
+    /* 행동 버튼은 늘 한 줄 (사용자 요청). 넘치면 옆으로 밀어서 봄 */
+    .bottom-bar .action-group { flex-wrap: nowrap; justify-content: flex-start; justify-content: safe center; overflow-x: auto; max-width: calc(100vw - 24px); scrollbar-width: none; -webkit-overflow-scrolling: touch; padding: 2px 0; }
+    .bottom-bar .action-group::-webkit-scrollbar { display: none; }
+    .bottom-bar .action-btn { flex: 0 0 auto; white-space: nowrap; padding: 6px 10px; gap: 4px; }
     #uiShow { position: absolute; top: 10px; right: 12px; z-index: 5; background: rgba(15, 23, 42, 0.72); }
     @media (max-width: 720px) {
       .header-bar { flex-wrap: wrap; }
@@ -378,9 +382,10 @@
 
     <div class="bottom-bar">
       <div class="action-group">
-        <button class="action-btn" id="btnElevator" hidden>🛗 엘리베이터 타기</button>
+        <button class="action-btn" id="btnElevator" hidden>🛗 엘리베이터</button>
         <button class="action-btn" id="btnPrayerWrite" hidden>📝 기도제목 쓰기</button>
         <button class="action-btn" id="btnLight" hidden>💡 불 켜기</button>
+        <button class="action-btn" id="btnWave" hidden>👋 인사하기</button>
         <button class="action-btn" id="btnActionPew">🪑 의자 착석</button>
         <button class="action-btn" id="btnActionPray">🙏 기도</button>
         <button class="action-btn" id="btnActionEat">🍚 밥먹기</button>
@@ -781,7 +786,7 @@
       x.fillStyle = gr; x.fillRect(0, 0, 4, 128);
       const tex = new THREE.CanvasTexture(c); if ('colorSpace' in tex) tex.colorSpace = THREE.SRGBColorSpace;
       const beamMat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending });
-      const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.3, 1.7, 28, 1, true), beamMat); beam.position.y = 0.85;   // 크기 줄임(예전 높이 2.6m·폭 1m) g.add(beam);
+      const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.3, 1.7, 28, 1, true), beamMat); beam.position.y = 0.85; g.add(beam);   // 크기 줄임(예전 높이 2.6m·폭 1m)
       const inner = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.15, 1.7, 20, 1, true), beamMat.clone()); inner.position.y = 0.85; g.add(inner);
       const dc = document.createElement('canvas'); dc.width = dc.height = 64; const dx = dc.getContext('2d');
       const rg = dx.createRadialGradient(32, 32, 0, 32, 32, 32); rg.addColorStop(0, 'rgba(255,236,190,0.9)'); rg.addColorStop(1, 'rgba(255,236,190,0)');
@@ -999,6 +1004,74 @@
       // 눌러서 앉는 자리: 식당(소그룹실 칸막이 서쪽)은 밥먹기, 소그룹실은 그냥 앉기
       g.userData.seat = { x, y: F3_Y + 0.20, z, rot: rotY, kind: x < -2.3 ? 'dine' : 'chair' };
     }
+    // ---- 소그룹실 전용: 따뜻한 원목 의자·흰 상판 식탁 (사용자가 보여 준 분위기만 참고, 특정 제품 모양은 따르지 않음) ----
+    const mOak = new THREE.MeshStandardMaterial({ color: 0xd9a76c, roughness: 0.55 }), mWhiteTop = new THREE.MeshStandardMaterial({ color: 0xf7f4ee, roughness: 0.35 });
+    const mCord = (() => {                                       // 엮은 끈 느낌의 좌판 (그림을 코드로 그림)
+      const c = document.createElement('canvas'); c.width = c.height = 64; const x = c.getContext('2d');
+      x.fillStyle = '#e9d8b8'; x.fillRect(0, 0, 64, 64);
+      for (let i = 0; i < 64; i += 4) { x.fillStyle = i % 8 ? 'rgba(170,135,90,0.35)' : 'rgba(255,248,232,0.5)'; x.fillRect(i, 0, 2, 64); x.fillStyle = 'rgba(150,115,75,0.25)'; x.fillRect(0, i + 1, 64, 1); }
+      const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(2, 2); if ('colorSpace' in t) t.colorSpace = THREE.SRGBColorSpace;
+      return new THREE.MeshStandardMaterial({ map: t, roughness: 0.9 });
+    })();
+    function groupChair(x, z, dir) {                             // 앉는 높이·자리 크기는 다른 의자와 같음 (윗면 0.20m, 0.30m)
+      const rotY = dir > 0 ? Math.PI / 2 : -Math.PI / 2;
+      const g = new THREE.Group(); g.position.set(x, F3_Y, z); g.rotation.y = rotY; furn.add(g);
+      const add = (geo, m, px, py, pz, rx, rz) => { const b = new THREE.Mesh(geo, m); b.position.set(px, py, pz); if (rx) b.rotation.x = rx; if (rz) b.rotation.z = rz; b.castShadow = true; b.receiveShadow = true; g.add(b); return b; };
+      const leg = (h) => new THREE.CylinderGeometry(0.011, 0.014, h, 10);
+      add(new THREE.BoxGeometry(0.30, 0.02, 0.28), mOak, 0, 0.175, 0.0);                  // 좌판 틀
+      add(new THREE.BoxGeometry(0.27, 0.012, 0.25), mCord, 0, 0.19, 0.0);                 // 엮은 좌판
+      [[-1, 1], [1, 1]].forEach(([sx, sz]) => add(leg(0.18), mOak, sx * 0.13, 0.09, sz * 0.12, sz * 0.05, -sx * 0.05));   // 앞다리 (살짝 벌어짐)
+      [[-1, -1], [1, -1]].forEach(([sx]) => add(leg(0.34), mOak, sx * 0.13, 0.17, -0.125, 0.1, -sx * 0.04));           // 뒷다리 → 등받이 기둥
+      [-1, 1].forEach((sx) => add(new THREE.CylinderGeometry(0.006, 0.006, 0.22, 6), mOak, sx * 0.135, 0.07, 0, Math.PI / 2));   // 옆 가로대
+      // 등받이 겸 팔걸이: 뒤에서 양옆으로 둥글게 감싸는 막대 (뒤 0.37m → 팔 끝 0.31m)
+      const pts = []; for (let i = 0; i <= 24; i++) { const a = Math.PI * 0.9 + (Math.PI * 1.2 * i) / 24, back = -Math.sin(a);
+        pts.push(new THREE.Vector3(0.15 * Math.cos(a), 0.31 + 0.06 * Math.max(0, back), 0.13 * Math.sin(a) * (Math.sin(a) < 0 ? 1.05 : 0.9) - 0.01)); }
+      add(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 40, 0.012, 8, false), mOak, 0, 0, 0);
+      [-1, 1].forEach((sx) => add(new THREE.CylinderGeometry(0.008, 0.009, 0.12, 8), mOak, sx * 0.14, 0.25, 0.05));     // 팔걸이 받침
+      [-0.035, 0.035].forEach((sx) => add(new THREE.BoxGeometry(0.022, 0.17, 0.008), mOak, sx, 0.28, -0.14, -0.08));   // 가는 등받이 살 두 개
+      g.userData.seat = { x, y: F3_Y + 0.20, z, rot: rotY, kind: 'chair' };
+    }
+    function groupTable(x, z, len, wid) {                        // 흰 상판(모서리 둥글게) + 원목 테두리·다리
+      const r = 0.06, w = wid / 2, l = len / 2, sh = new THREE.Shape();
+      sh.moveTo(-w + r, -l); sh.lineTo(w - r, -l); sh.quadraticCurveTo(w, -l, w, -l + r); sh.lineTo(w, l - r); sh.quadraticCurveTo(w, l, w - r, l);
+      sh.lineTo(-w + r, l); sh.quadraticCurveTo(-w, l, -w, l - r); sh.lineTo(-w, -l + r); sh.quadraticCurveTo(-w, -l, -w + r, -l);
+      const top = new THREE.ExtrudeGeometry(sh, { depth: 0.022, bevelEnabled: true, bevelThickness: 0.004, bevelSize: 0.004, bevelSegments: 2, curveSegments: 6 }); top.rotateX(-Math.PI / 2);
+      const tm = new THREE.Mesh(top, mWhiteTop); tm.position.set(x, F3_Y + 0.355, z); tm.castShadow = tm.receiveShadow = true; furn.add(tm);
+      const edge = new THREE.ExtrudeGeometry(sh, { depth: 0.008, bevelEnabled: false, curveSegments: 6 }); edge.rotateX(-Math.PI / 2);
+      const em = new THREE.Mesh(edge, mOak); em.position.set(x, F3_Y + 0.347, z); furn.add(em);
+      [[-1, -1], [-1, 1], [1, -1], [1, 1]].forEach(([sx, sz]) => {
+        const lg = new THREE.Mesh(new THREE.CylinderGeometry(0.016, 0.011, 0.35, 10), mOak);
+        lg.position.set(x + sx * (w - 0.07), F3_Y + 0.175, z + sz * (l - 0.1)); lg.rotation.z = -sx * 0.06; lg.rotation.x = sz * 0.04; lg.castShadow = true; furn.add(lg);
+      });
+    }
+    // 소그룹실 꾸미기: 황마 느낌 러그, 작은 꽃병, 찻잔 둘, 벽 액자
+    function groupDecor(x, z, wallZ) {
+      const rugC = document.createElement('canvas'); rugC.width = rugC.height = 128; const rx = rugC.getContext('2d');
+      rx.fillStyle = '#cdb38c'; rx.fillRect(0, 0, 128, 128);
+      for (let i = 0; i < 128; i += 3) { rx.fillStyle = `rgba(${i % 2 ? '150,120,80' : '235,215,180'},0.35)`; rx.fillRect(0, i, 128, 1); rx.fillRect(i, 0, 1, 128); }
+      rx.strokeStyle = 'rgba(140,105,70,0.6)'; rx.lineWidth = 4; rx.strokeRect(6, 6, 116, 116);
+      const rt = new THREE.CanvasTexture(rugC); if ('colorSpace' in rt) rt.colorSpace = THREE.SRGBColorSpace;
+      const rug = new THREE.Mesh(new THREE.BoxGeometry(1.15, 0.006, 1.25), new THREE.MeshStandardMaterial({ map: rt, roughness: 0.95 }));
+      rug.position.set(x, F3_Y + 0.014, z); rug.receiveShadow = true; furn.add(rug);   // 바닥 면보다 살짝 위 (묻혀서 안 보이던 것)
+      const T = 0.38, glass = new THREE.MeshStandardMaterial({ color: 0xe3f1f4, roughness: 0.05, transparent: true, opacity: 0.45 });
+      cyl(0.022, 0.07, x, T, z, glass);                                              // 꽃병 + 줄기 + 작은 흰 꽃
+      for (let i = 0; i < 5; i++) { const a = i * 1.26, h = 0.1 + (i % 3) * 0.02, st = new THREE.Mesh(new THREE.CylinderGeometry(0.002, 0.002, h, 4), mat(0x6f8f4e));
+        st.position.set(x + Math.cos(a) * 0.012, F3_Y + T + 0.04 + h / 2, z + Math.sin(a) * 0.012); st.rotation.z = Math.cos(a) * 0.25; st.rotation.x = -Math.sin(a) * 0.25; furn.add(st);
+        for (let j = 0; j < 3; j++) { const f = new THREE.Mesh(new THREE.SphereGeometry(0.009, 6, 4), mat(j ? 0xfdfbf5 : 0xf3e7c8));
+          f.position.set(x + Math.cos(a) * (0.012 + h * 0.25) + (j - 1) * 0.008, F3_Y + T + 0.04 + h, z + Math.sin(a) * (0.012 + h * 0.25) + ((j * 7) % 3 - 1) * 0.008); furn.add(f); } }
+      [[-0.13, -0.25], [0.13, 0.22]].forEach(([dx, dz]) => {                         // 받침 + 찻잔
+        cyl(0.035, 0.004, x + dx, T, z + dz, mat(0xffffff)); cyl(0.02, 0.03, x + dx, T + 0.004, z + dz, mat(0xfbfaf6));
+        cyl(0.018, 0.002, x + dx, T + 0.031, z + dz, mat(0xb07a4a));
+      });
+      box(0.36, 0.46, 0.025, x, 1.0, wallZ + 0.0125, mOak);                        // 벽 액자: 원목 틀 + 크림색 그림
+      const pc = document.createElement('canvas'); pc.width = 96; pc.height = 128; const px = pc.getContext('2d');
+      const gr = px.createLinearGradient(0, 0, 0, 128); gr.addColorStop(0, '#f6efe2'); gr.addColorStop(1, '#eadbc0'); px.fillStyle = gr; px.fillRect(0, 0, 96, 128);
+      px.strokeStyle = '#a88a62'; px.lineWidth = 2; px.beginPath(); px.moveTo(48, 100); px.quadraticCurveTo(44, 70, 52, 40); px.stroke();
+      px.fillStyle = '#c9a77a'; [[52, 40], [44, 58], [56, 64], [46, 78]].forEach(([u, v]) => { px.beginPath(); px.ellipse(u, v, 7, 3.5, 0.6, 0, Math.PI * 2); px.fill(); });
+      const ptex = new THREE.CanvasTexture(pc); if ('colorSpace' in ptex) ptex.colorSpace = THREE.SRGBColorSpace;
+      const pic = new THREE.Mesh(new THREE.PlaneGeometry(0.3, 0.4), new THREE.MeshStandardMaterial({ map: ptex, roughness: 0.9 }));
+      pic.position.set(x, F3_Y + 1.23, wallZ + 0.026); furn.add(pic);
+    }
     function table(x, z, len, wid) {
       box(wid, 0.04, len, x, 0.34, z, mWood);             // 윗면 높이 0.38
       [[-1, -1], [-1, 1], [1, -1], [1, 1]].forEach(([sx, sz]) => {
@@ -1167,11 +1240,12 @@
       const cz = (roomZ[i] + zb) / 2;
       const GX = -1.11; // 식탁 중심 x: 서쪽 벽·동쪽 창과 각각 0.7m 이상 띄움
       // 식탁 길이 0.9m: 식탁 양 끝에 0.65m 이상 남겨 문 반대편(동쪽) 의자까지 돌아 들어갈 수 있게
-      table(GX, cz, 0.9, 0.5);
+      groupTable(GX, cz, 0.9, 0.5);
       [-0.23, 0.23].forEach((k) => {
-        chair(GX - 0.29, cz + k, +1);
-        chair(GX + 0.29, cz + k, -1);
+        groupChair(GX - 0.30, cz + k, +1);
+        groupChair(GX + 0.30, cz + k, -1);
       });
+      groupDecor(GX, cz, za + 0.04);
       box(0.08, 0.3, 1.0, roomW, 1.9, zb - 0.5, mWall);                           // 문 위 인방
       makeSign(furn, '소그룹실 ' + (i + 1), roomW - 0.05, F3_Y + 2.05, zb - 0.5, -Math.PI / 2);
     }
@@ -2684,7 +2758,7 @@
     function myState() {
       const p = characterGroup.position;
       return { id: PrayerStore.device(), n: loadName() || '성도', g: loadGender() || 'm', lv: curLevel(), x: +p.x.toFixed(2), y: +p.y.toFixed(2), z: +p.z.toFixed(2),
-        r: +characterGroup.rotation.y.toFixed(2), s: isSitting ? 1 : 0, p: isPraying ? 1 : 0, e: isEating ? 1 : 0, m: isMoving ? 1 : 0 };
+        r: +characterGroup.rotation.y.toFixed(2), s: isSitting ? 1 : 0, p: isPraying ? 1 : 0, e: isEating ? 1 : 0, m: isMoving ? 1 : 0, w: isWaving() ? 1 : 0 };
     }
     const Net = {
       mode: qs.get('net') === 'local' ? 'local' : 'supabase', ready: false, ch: null, peers: new Map(), lastSent: 0, lastKey: '',
@@ -2810,6 +2884,8 @@
       else if (t.e) { const lift = (Math.sin(time * 2.6) + 1) / 2; P.la.rotation.set(-0.5, 0, 0.15); P.ra.rotation.set(-0.5 - lift * 0.9, 0, -0.15); }
       else if (t.m) { P.la.rotation.set(Math.sin(time * 13) * 0.65, 0, 0.15); P.ra.rotation.set(-Math.sin(time * 13) * 0.65, 0, -0.15); }
       else { P.la.rotation.set(0, 0, 0.15); P.ra.rotation.set(0, 0, -0.15); }
+      if (t.w) P.ra.rotation.set(WAVE.x, 0, WAVE_Z(time));                                // 손 흔들어 인사
+      if (t.w && !r.wasW) showBubble(r.group, '👋 안녕하세요!', r); r.wasW = !!t.w;
       let lt = 0, rt = 0, lk = 0, rk = 0;
       if (t.s) { lt = rt = -Math.PI / 2; lk = rk = Math.PI / 2; }
       else if (t.m) { const sw = Math.sin(time * 13) * 0.55; lt = -sw; rt = sw; lk = Math.max(0, Math.sin(time * 13 + 1.2)) * 0.6; rk = Math.max(0, -Math.sin(time * 13 + 1.2)) * 0.6; }
@@ -3067,6 +3143,24 @@
         (o.userData.seat ? [o.userData.seat] : o.userData.seats).forEach((st) => { if (!test(st)) return; const d = Math.hypot(st.x - p.x, st.z - p.z); if (d < bd) { bd = d; best = st; } }); });
       return best;
     }
+    // ---- 인사하기: 가까이(3m)에 다른 사람이 있으면 버튼이 나타나고, 누르면 약 2.6초 손을 흔듦 (다른 사람 화면에도 보임) ----
+    let waveUntil = 0;
+    function isWaving() { return performance.now() < waveUntil; }
+    const WAVE = { x: -0.3, z: 2.5, amp: 0.35 };   // 오른팔(+x 쪽)을 바깥으로 들어 올려 머리 옆에서 좌우로 흔듦 (z가 +여야 바깥쪽)
+    function WAVE_Z(t) { return WAVE.z + Math.sin(t * 9) * WAVE.amp; }
+    window.__dbg.wave = (ms) => { waveUntil = performance.now() + (ms || 2600); }; window.__dbg.WAVE = WAVE;
+    function personNear() {
+      const p = characterGroup.position; let near = false;
+      remotes.forEach((r) => { if (r.group.visible && Math.hypot(r.group.position.x - p.x, r.group.position.z - p.z) < 3 && Math.abs(r.group.position.y - p.y) < 1.5) near = true; });
+      return near;
+    }
+    document.getElementById('btnWave').addEventListener('click', () => {
+      if (isPraying) { isPraying = false; setPrayBtn(); }
+      if (isEating) isEating = false;
+      waveUntil = performance.now() + 2600;
+      showBubble(characterGroup, '👋 안녕하세요!');
+      Net.lastKey = '';
+    });
     function setPrayBtn() {
       btnActionPray.innerHTML = isPraying ? '✨ 기도 마치기' : '🙏 기도';
       btnActionPray.style.background = isPraying ? '#0284c7' : '';
@@ -3538,6 +3632,7 @@
         rightArmGroup.rotation.set(0, 0, -0.15);
       }
 
+      if (isWaving()) rightArmGroup.rotation.set(WAVE.x, 0, WAVE_Z(time));   // 손 흔들어 인사: 오른팔을 머리 옆으로 들고 좌우로
       poseLimbs(isMoving ? time * 13 : null);
       {   // 눈: 기도 중엔 감고, 평소엔 3.5초마다 한 번 깜빡임
         const blink = (time % 3.5) < 0.12;
@@ -3548,6 +3643,7 @@
       }
       const nearPulpit = curLevel() === 'B1' && Math.hypot(characterGroup.position.x - PULPIT_AT.x, characterGroup.position.z - PULPIT_AT.z) < 1.9;
       showEl(document.getElementById('btnPrayerWrite'), nearPulpit);
+      showEl(document.getElementById('btnWave'), personNear() || isWaving());
       const lr = currentRoom(); showEl(document.getElementById('btnLight'), !!lr);
       if (lr && lr !== shownRoom) { shownRoom = lr; updateLightBtn(); } if (!lr) shownRoom = null;
       const nearEl = nearElevator();
