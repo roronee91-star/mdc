@@ -343,13 +343,11 @@
     controls.enablePan = false;
     controls.zoomSpeed = 1.1;
     controls.touches = { ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_ROTATE };
-    window.__dbg = { camera, controls, scene, get furn() { return furn; }, get b1Seats() { return b1Seats; }, get character() { return characterGroup; }, findPath: (a, b) => findPath(a, b), goTo: (k) => goToTourStep(k), get camWant() { return [camWantDist, camCurDist, camLift]; }, setCam: (c, t) => { controls.target.set(...t); camera.position.set(...c); resetCamPull(); }, get eyesClosed() { return eyeParts.lids[0].visible; } }; // 화면 확인(자동 검사)용
+    window.__dbg = { camera, controls, scene, get furn() { return furn; }, get b1Seats() { return b1Seats; }, get character() { return characterGroup; }, findPath: (a, b) => findPath(a, b), goTo: (k) => goToTourStep(k), get camWant() { return [camWantDist, camCurDist, camLift]; }, setCam: (c, t) => { controls.target.set(...t); camera.position.set(...c); resetCamPull(); }, get eyesClosed() { return eyeParts.lids[0].visible; }, rayHits: (a, b) => { const A = new THREE.Vector3(...a), B = new THREE.Vector3(...b), d = B.clone().sub(A), L = d.length(); const rc = new THREE.Raycaster(A, d.normalize(), 0, L); rc.camera = camera; return rc.intersectObjects(scene.children, true).map((h) => { const m = h.object; if (m.geometry && !m.geometry.boundingBox) m.geometry.computeBoundingBox(); const bb = m.geometry && m.geometry.boundingBox ? m.geometry.boundingBox.clone().applyMatrix4(m.matrixWorld) : null; return [m.type, m.name || (m.parent && m.parent.name), +h.distance.toFixed(2), !!(m.material && m.material.transparent), m.material ? +(m.material.opacity || 0).toFixed(2) : null, bb && bb.min.toArray().map((v) => +v.toFixed(2)), bb && bb.max.toArray().map((v) => +v.toFixed(2))]; }); }, get faded() { return [...fadedMeshes.keys()].map(m => { m.geometry.computeBoundingBox(); const b = m.geometry.boundingBox.clone().applyMatrix4(m.matrixWorld); return [m.name || m.parent.name, +m.material.opacity.toFixed(2), b.min.toArray().map(v => +v.toFixed(2)), b.max.toArray().map(v => +v.toFixed(2))]; }); } }; // 화면 확인(자동 검사)용
     controls.maxDistance = 55;
     controls.maxPolarAngle = Math.PI * 0.49; // 바닥 아래로 돌아 들어가 건물 밖/땅 속이 보이지 않게
 
-    // 카메라가 벽 뒤로 돌아가도 캐릭터가 가려지지 않게: 캐릭터(시선 중심) → 카메라 방향으로 광선을 쏴서
-    // 불투명한 벽에 막히면 카메라를 벽 바로 앞으로 당긴다. 원하는 거리(camWantDist)는 따로 기억해서
-    // 벽이 없어지면 다시 원래 거리로 돌아간다.
+    // 벽·천장 판정용 광선 (천장 높이 확인, 장소 도착 시 트인 방향 찾기)
     const camRay = new THREE.Raycaster();
     camRay.camera = camera; // 이름표(스프라이트) 판정에 필요
     let camWantDist = null, camPulled = false;
@@ -362,71 +360,52 @@
       if (/ENV_|TREE|Leaf/.test(o.name)) return false;   // 바깥 나무는 막지 않음 (유리는 막아서 카메라가 건물 밖으로 안 나감)
       return true;
     }
-    // 카메라 = '사용자가 원하는 방향(camWantDir)·거리(camWantDist)'와 '실제 위치'를 따로 둔다.
-    // 매 프레임 실제 위치를 원하는 위치로 되돌려 놓고(OrbitControls가 원래 시점으로 계산하도록) 다시 벽을 검사한다.
-    let camWantDir = null;
-    // OrbitControls는 휠·두 손가락 확대를 이벤트 안에서 바로 적용하므로, 우리가 마지막에 둔 거리와 달라졌으면
-    // 그 비율만큼 '원하는 거리'를 늘이거나 줄여 확대·축소가 사라지지 않게 한다.
-    let lastSetDist = null;
-    function camBeforeUpdate() {
-      if (camWantDir && camWantDist) {
-        const cur = camera.position.distanceTo(controls.target);
-        if (lastSetDist && Math.abs(cur - lastSetDist) > 1e-3) {
-          camWantDist = THREE.MathUtils.clamp(camWantDist * cur / lastSetDist, controls.minDistance, controls.maxDistance);
-          userZoom = camWantDist;
-        }
-        camera.position.copy(controls.target).addScaledVector(camWantDir, camWantDist);
-      }
-    }
-    // 카메라 몸통 크기만큼(가운데 + 상하좌우 4줄) 광선을 쏴서 가장 가까운 벽보다 25cm 앞까지만 간다
-    function probeFree(dir, want) {
-      let side = new THREE.Vector3().crossVectors(dir, UP_V);
-      if (side.lengthSq() < 1e-6) side.set(1, 0, 0);
-      side.normalize();
-      const up2 = new THREE.Vector3().crossVectors(side, dir).normalize();
-      let dmin = want;
-      [[0, 0], [0.2, 0], [-0.2, 0], [0, 0.16], [0, -0.16]].forEach(([a, b]) => {
-        const o = controls.target.clone().addScaledVector(side, a).addScaledVector(up2, b);
-        const d = blockDistFrom(o, dir, want + 0.3);
-        if (d !== null) dmin = Math.min(dmin, d - 0.25);
-      });
-      return dmin;
-    }
-    // 뒤가 막혀 카메라가 캐릭터에 붙게 되면, 캐릭터를 투명하게 하는 대신 카메라를 위로 올려 내려다본다
-    let camCurDist = null, camLift = 0, camLiftTarget = 0, frameDt = 1 / 60;
+    // 카메라는 사용자가 둔 자리 그대로. 캐릭터를 가리는 벽·가구만 부드럽게 투명하게(가리지 않으면 다시 불투명),
+    // 천장에 닿을 때만 카메라 높이를 천장 아래로 낮춘다. (예전처럼 카메라를 당기거나 올리지 않아 시선이 튀지 않음)
+    let camWantDir = null, camCurDist = null, camLift = 0, camLiftTarget = 0, frameDt = 1 / 60, lastSetDist = null;
     const UP_V = new THREE.Vector3(0, 1, 0);
-    const CAM_MIN_VIEW = 1.5;                       // 캐릭터와 최소 이만큼은 떨어져서 보이게
+    const occRay = new THREE.Raycaster();
+    const fadedMeshes = new Map();
+    function isOccluder(o) {
+      if (!o.isMesh || o.userData.noCamBlock || o.userData.pickOnly) return false;
+      for (let q = o; q; q = q.parent) { if (!q.visible || q === characterGroup) return false; if (q.userData && q.userData.noCamBlock) return false; }
+      const m = o.material; if (!m || Array.isArray(m)) return false;
+      if (fadedMeshes.has(o)) return true;
+      if (m.transparent && m.opacity < 0.15) return false;
+      if (/ENV_|TREE|Leaf/.test(o.name)) return false;
+      if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
+      const bb = o.geometry.boundingBox.clone().applyMatrix4(o.matrixWorld);
+      if (bb.max.y - bb.min.y < 0.35 && (bb.max.x - bb.min.x) * (bb.max.z - bb.min.z) > 6) return false;   // 바닥·천장 판은 제외
+      return true;
+    }
+    function camBeforeUpdate() {}
     function camAfterUpdate() {
-      const off = camera.position.clone().sub(controls.target);
-      camWantDist = off.length();
-      const wdir = off.normalize();
-      camWantDir = wdir.clone();
-      const need = Math.min(camWantDist, CAM_MIN_VIEW);
-      const free0 = probeFree(wdir, camWantDist);
-      let liftT = camLiftTarget;
-      if (free0 >= need * 1.15) liftT = 0;                       // 충분히 트이면 내려옴 (경계에서 떨리지 않게 여유)
-      else if (free0 < need * 0.9) {
-        let bestT = 0, bestF = -1;
-        for (let t = 0.15; t <= 0.9; t += 0.15) {
-          const d = wdir.clone().lerp(UP_V, t).normalize();
-          const f = probeFree(d, camWantDist);
-          if (f > bestF + 0.05) { bestF = f; bestT = t; }
-          if (f >= need) { bestT = t; break; }
+      const t = controls.target, cp = camera.position;
+      // 천장 아래로: 캐릭터 머리 위로 광선을 쏴서 천장이 있으면 카메라 높이를 그 아래 25cm까지만
+      const up = blockDistFrom(t, UP_V, 6);
+      if (up !== null) { const maxY = t.y + up - 0.25; if (cp.y > maxY) cp.y = Math.max(t.y - 0.2, maxY); }
+      // 가리는 것 찾기: 카메라 → 캐릭터 머리·몸·발 세 줄
+      const want = new Set();
+      const right = new THREE.Vector3().subVectors(t, cp).cross(UP_V).normalize();
+      [[0, 0], [-0.35, 0], [-0.6, 0], [-0.25, 0.2], [-0.25, -0.2]].forEach(([dy, dx]) => {   // 머리·몸·발 + 몸 양옆
+        const pt = t.clone().addScaledVector(right, dx); pt.y += dy;
+        const d = pt.clone().sub(cp), len = d.length(); if (len < 0.3) return;
+        occRay.set(cp, d.divideScalar(len)); occRay.near = 0.02; occRay.far = len - 0.25; occRay.camera = camera;
+        occRay.intersectObjects(scene.children, true).forEach((h) => { if (isOccluder(h.object)) want.add(h.object); });
+      });
+      const k = 1 - Math.exp(-9 * frameDt);
+      want.forEach((m) => {
+        if (!fadedMeshes.has(m)) {
+          const orig = m.material, mat = orig.clone();
+          mat.transparent = true; mat.depthWrite = false;
+          m.material = mat; fadedMeshes.set(m, { orig, mat, base: orig.transparent ? orig.opacity : 1 });
         }
-        liftT = bestT;
-      }
-      camLiftTarget = liftT;
-      const kUp = 1 - Math.exp(-6 * frameDt), kDown = 1 - Math.exp(-1.5 * frameDt);   // 초당 속도로 부드럽게
-      camLift += (liftT - camLift) * (liftT > camLift ? kUp : kDown);
-      const dir = wdir.clone().lerp(UP_V, camLift).normalize();
-      const dist = Math.max(0.45, probeFree(dir, camWantDist));
-      if (camCurDist === null) camCurDist = dist;
-      else if (dist < camCurDist) camCurDist += (dist - camCurDist) * (1 - Math.exp(-14 * frameDt));   // 벽이 다가오면 빠르지만 부드럽게
-      else camCurDist += (dist - camCurDist) * (1 - Math.exp(-2.5 * frameDt));                         // 멀어질 땐 천천히
-      camCurDist = Math.min(camCurDist, dist + 0.05);                 // 벽 속으로는 절대 들어가지 않게
-      camPulled = camCurDist < camWantDist - 1e-3 || camLift > 0.01;
-      camera.position.copy(controls.target).addScaledVector(dir, camCurDist);
-      lastSetDist = camCurDist;
+      });
+      fadedMeshes.forEach((f, m) => {
+        const goal = want.has(m) ? Math.min(0.2, f.base) : f.base;
+        f.mat.opacity += (goal - f.mat.opacity) * k;
+        if (!want.has(m) && Math.abs(f.mat.opacity - f.base) < 0.02) { m.material = f.orig; f.mat.dispose(); fadedMeshes.delete(m); }
+      });
     }
     function blockDistFrom(origin, dir, far) {
       camRay.set(origin, dir); camRay.far = far; camRay.near = 0.05;
@@ -1163,8 +1142,16 @@
       [-14.9, -13.2, -11.5].forEach((z) => { const m = new THREE.Mesh(new THREE.BoxGeometry(0.12, 13.9 - F4_Y, 0.1), mul); m.position.set(0.12, (F4_Y + 13.9) / 2, z); scene.add(m); });
       // 3) 서쪽 외벽(2~4층 한 장): 4층 정원 구간은 난간 높이(바닥+0.6m)까지만
       if (edge) {
-        const top = F4_Y + 0.6, bot = 3.4, h0 = 14.1 - 3.4;
-        edge.scale.y = (top - bot) / h0; edge.position.y = (top + bot) / 2;
+        const top = F4_Y + 0.6;
+        edge.updateWorldMatrix(true, false);
+        edge.geometry.computeBoundingBox();
+        const wb = () => edge.geometry.boundingBox.clone().applyMatrix4(edge.matrixWorld);
+        const b0 = wb(), bot = b0.min.y;                       // 원래 아래끝(3.4)은 그대로 두고 위끝만 낮춤
+        edge.scale.y *= (top - bot) / (b0.max.y - b0.min.y);
+        edge.updateWorldMatrix(true, false);
+        const b1 = wb(), ps = new THREE.Vector3(); edge.parent.getWorldScale(ps);
+        edge.position.y += (bot - b1.min.y) / (ps.y || 1);     // 월드 아래끝이 3.4에 오도록 부모 기준으로 옮김
+        edge.updateWorldMatrix(true, false);
         // 실내·계단실 구간은 천장까지 벽을 다시 세움
         [[-17.4, F4_IN_S], [F4_CORE_N, 0.0]].forEach(([z0, z1]) => { const m = new THREE.Mesh(new THREE.BoxGeometry(0.19, 14.1 - top, z1 - z0), wallMat); m.position.set(-12.355, (top + 14.1) / 2, (z0 + z1) / 2); m.castShadow = true; scene.add(m); });
       }
@@ -1603,7 +1590,8 @@
     let CAM_BACK = CAM_PRESETS.wide.back, CAM_UP = CAM_PRESETS.wide.up;
     let userDragging = false;
     controls.addEventListener('start', () => { userDragging = true; });
-    controls.addEventListener('end', () => { userDragging = false; if (camWantDist) userZoom = THREE.MathUtils.clamp(camWantDist, 1.0, 18); });
+    controls.addEventListener('end', () => { userDragging = false; userZoom = THREE.MathUtils.clamp(camera.position.distanceTo(controls.target), 1.0, 18); });
+    renderer.domElement.addEventListener('wheel', () => { setTimeout(() => { userZoom = THREE.MathUtils.clamp(camera.position.distanceTo(controls.target), 1.0, 18); }, 60); }, { passive: true });
     const lastCharPos = new THREE.Vector3();
     let userZoom = null;                                        // 사용자가 손가락·휠로 맞춘 거리 (장소를 옮겨도 유지)
     function eyeCam(back) {
@@ -1758,6 +1746,7 @@
     // 장소 버튼: 엘리베이터까지 걸어간 뒤 타고 이동 (같은 층이면 그 층 엘리베이터 앞으로 걸어감)
     function goByElevator(lv) {
       elevPanel.hidden = true;
+      standUp();
       if (lv === curLevel()) return;
       if (nearElevator()) { ride(lv); return; }
       const p = characterGroup.position;
@@ -1890,6 +1879,7 @@
           hit.y = currentFloorY;
         }
 
+        standUp();
         const path = findPath(characterGroup.position, new THREE.Vector3(hit.x, currentFloorY, hit.z));
         if (!path || !path.length) return;                 // 갈 수 없는 곳(벽 속 등)은 무시
         walkPath = path; pendingSeat = null;
@@ -1943,6 +1933,7 @@
       } else {
         btnActionPray.innerHTML = '🙏 기도';
         btnActionPray.style.background = 'rgba(30, 41, 59, 0.9)';
+        if (isSitting) standUp();                           // 일어서기: 의자 옆 통로로 나와서 섬
       }
     });
 
@@ -2044,7 +2035,21 @@
       const bp = document.getElementById('btnActionPray');
       bp.innerHTML = isPraying ? '✨ 일어서기' : '🙏 기도'; bp.style.background = isPraying ? '#0284c7' : '';
     }
+    // 앉아 있다가 일어날 때: 의자 속에서 서지 않게, 가장 가까운 빈 통로 칸으로 한 걸음 나와서 바닥에 섬
+    function standUp() {
+      if (!isSitting) return;
+      const p = characterGroup.position;
+      let x = p.x, z = p.z;
+      if (nav) {
+        const c = nearestFree(...cellOf(p.x, p.z), 12);
+        if (c) { x = nav.x0 + c[0] * nav.S; z = nav.z0 + c[1] * nav.S; }
+      }
+      p.set(x, currentFloorY, z); targetPos.copy(p);
+      isSitting = false; isEating = false; isPraying = false;
+      const bp = document.getElementById('btnActionPray'); bp.innerHTML = '🙏 기도'; bp.style.background = '';
+    }
     function goSit(st) {
+      standUp();
       const path = findPath(characterGroup.position, new THREE.Vector3(st.x, currentFloorY, st.z));
       isSitting = false; isPraying = false; isEating = false;
       if (!path || !path.length) { sitAtSeat(st); return; }
@@ -2246,6 +2251,7 @@
       // 0. 키보드·조이스틱 입력
       const inp = moveInput();
       if (inp) {
+        if (isSitting) standUp();
         keyDriving = true; walkPath = []; pendingSeat = null;
         targetPos.copy(characterGroup.position).addScaledVector(inp.d, 0.6);
         isMoving = true; isPraying = false; isSitting = false; isEating = false;
