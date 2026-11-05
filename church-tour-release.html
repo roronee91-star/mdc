@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>우리교회 가상 성전 투어 (Click-to-Move & B1 Support)</title>
+  <title>우리교회 가상 성전 투어 (지하 본당 내부 완벽 진입 모드)</title>
   <style>
     * {
       box-sizing: border-box;
@@ -16,7 +16,7 @@
       height: 100%;
       overflow: hidden;
       font-family: -apple-system, BlinkMacSystemFont, "Pretendard", "Segoe UI", Roboto, sans-serif;
-      background-color: #1a1e24;
+      background-color: #111827;
       color: #fff;
     }
     #canvas-container {
@@ -36,36 +36,28 @@
       display: flex;
       flex-direction: column;
       justify-content: space-between;
-      padding: 20px;
+      padding: 18px 22px;
     }
     .header-box {
       pointer-events: auto;
-      background: rgba(15, 23, 42, 0.82);
+      background: rgba(15, 23, 42, 0.88);
       backdrop-filter: blur(14px);
-      padding: 14px 22px;
+      padding: 12px 20px;
       border-radius: 14px;
       border: 1px solid rgba(255, 255, 255, 0.15);
       display: inline-flex;
       align-items: center;
       gap: 16px;
       max-width: fit-content;
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
     }
     .header-title {
-      font-size: 16px;
+      font-size: 15px;
       font-weight: 700;
-      letter-spacing: -0.3px;
     }
     .header-desc {
       font-size: 12px;
       color: #94a3b8;
-    }
-    .status-badge {
-      font-size: 11px;
-      background: #0284c7;
-      padding: 3px 8px;
-      border-radius: 20px;
-      font-weight: 600;
     }
     .floor-controls {
       display: flex;
@@ -73,17 +65,17 @@
     }
     .nav-btn {
       pointer-events: auto;
-      background: rgba(255, 255, 255, 0.1);
+      background: rgba(255, 255, 255, 0.12);
       border: 1px solid rgba(255, 255, 255, 0.2);
       color: #fff;
-      padding: 6px 12px;
+      padding: 7px 14px;
       border-radius: 8px;
       font-size: 12px;
       font-weight: 600;
       cursor: pointer;
       display: inline-flex;
       align-items: center;
-      gap: 5px;
+      gap: 6px;
       transition: all 0.2s;
     }
     .nav-btn:hover {
@@ -92,6 +84,7 @@
     .nav-btn.active {
       background: #2563eb;
       border-color: #60a5fa;
+      box-shadow: 0 0 14px rgba(37, 99, 235, 0.6);
     }
     .bottom-panel {
       display: flex;
@@ -101,16 +94,16 @@
     }
     .guide-box {
       pointer-events: auto;
-      background: rgba(15, 23, 42, 0.82);
+      background: rgba(15, 23, 42, 0.88);
       backdrop-filter: blur(14px);
-      padding: 14px 18px;
+      padding: 12px 18px;
       border-radius: 12px;
       border: 1px solid rgba(255, 255, 255, 0.12);
       font-size: 12px;
       line-height: 1.6;
       color: #cbd5e1;
-      max-width: 440px;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+      max-width: 480px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
     }
     .guide-box b {
       color: #38bdf8;
@@ -118,10 +111,12 @@
     .action-panel {
       pointer-events: auto;
       display: flex;
+      flex-wrap: wrap;
       gap: 10px;
+      justify-content: flex-end;
     }
     .action-btn {
-      background: rgba(30, 41, 59, 0.85);
+      background: rgba(30, 41, 59, 0.9);
       border: 1px solid rgba(255, 255, 255, 0.2);
       color: #fff;
       padding: 10px 16px;
@@ -176,7 +171,6 @@
       font-size: 12px;
       color: #64748b;
     }
-    /* 클릭 타겟 링 표시 */
     #click-marker {
       position: absolute;
       width: 24px;
@@ -197,7 +191,7 @@
   <div id="loading-screen">
     <div class="spinner"></div>
     <div id="loading-text">가상 성전 공간을 불러오는 중입니다...</div>
-    <div id="loading-sub">모델 및 지하 공간 로드 중</div>
+    <div id="loading-sub">본당 내부 및 시야 확보 처리 중</div>
   </div>
 
   <div id="canvas-container"></div>
@@ -208,13 +202,12 @@
       <div>
         <div style="display: flex; align-items: center; gap: 8px;">
           <span class="header-title">우리교회 메타버스 성전 투어</span>
-          <span class="status-badge">클릭 이동 & 지하 본당 모드</span>
         </div>
-        <div class="header-desc">원하는 바닥을 클릭하여 이동하고 지하 본당을 둘러보세요.</div>
+        <div class="header-desc">지하 1층 대본당 내부가 시원하게 열려 있습니다.</div>
       </div>
       <div class="floor-controls">
         <button class="nav-btn" id="btnGoGround">🏢 1층 광장/외관</button>
-        <button class="nav-btn active" id="btnGoBasement">⛪ 지하 1층 대본당</button>
+        <button class="nav-btn active" id="btnGoBasement">⛪ 지하 1층 본당 내부</button>
       </div>
       <button class="nav-btn" id="bgmToggle">
         <span>🎵 잔잔한 찬양</span>
@@ -223,16 +216,16 @@
 
     <div class="bottom-panel">
       <div class="guide-box">
-        <b>[조작 방식 안내]</b><br>
-        • <b>바닥 클릭/터치:</b> 캐릭터가 찍은 지점으로 부드럽게 걸어갑니다.<br>
-        • <b>화면 드래그:</b> 시선 및 카메라 각도 회전 (우클릭 드래그로 시점 이동)<br>
-        • <b>마우스 휠:</b> 줌 인 / 줌 아웃<br>
-        • <b>상단 버튼:</b> 1층 외관과 지하 1층 대본당 간 빠른 순간이동 지원
+        <b>[조작 안내]</b><br>
+        • <b>바닥 클릭:</b> 본당 안 통로나 원하는 자리를 찍으면 걸어갑니다.<br>
+        • <b>화면 드래그:</b> 마우스 좌클릭 드래그로 시선 360도 회전, 우클릭 드래그로 이동<br>
+        • <b>천장 뚫기(단면 뷰):</b> 지하에 있을 때 지상 건물과 천장이 투명해져 실내가 훤히 보입니다.
       </div>
 
       <div class="action-panel">
-        <button class="action-btn" id="btnPray">🙏 자리에서 묵상/기도</button>
-        <button class="action-btn" id="btnPewSit">🪑 가까운 장의자 착석</button>
+        <button class="action-btn" id="btnInsideAisle">🚶 본당 중앙 통로로</button>
+        <button class="action-btn" id="btnPewSit">🪑 장의자 착석</button>
+        <button class="action-btn" id="btnPray">🙏 자리에서 기도</button>
       </div>
     </div>
   </div>
@@ -242,9 +235,6 @@
     import {GLTFLoader} from './vendor/three/loaders/GLTFLoader.js';
     import {OrbitControls} from './vendor/three/controls/OrbitControls.js';
 
-    // -------------------------------------------------------------
-    // 1. 씬, 카메라, 렌더러 초기화
-    // -------------------------------------------------------------
     const container = document.getElementById('canvas-container');
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0xdce7f3);
@@ -264,7 +254,7 @@
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.06;
-    controls.minDistance = 1.2;
+    controls.minDistance = 1.0;
     controls.maxDistance = 65;
     controls.mouseButtons = {
       LEFT: THREE.MOUSE.ROTATE,
@@ -272,31 +262,29 @@
       RIGHT: THREE.MOUSE.PAN
     };
 
-    // -------------------------------------------------------------
-    // 2. 조명 세팅 (야외 태양광 + 지하 앰비언트광)
-    // -------------------------------------------------------------
-    const hemiLight = new THREE.HemisphereLight(0xfff5e6, 0x475569, 0.9);
+    // 조명
+    const hemiLight = new THREE.HemisphereLight(0xfff6ec, 0x475569, 0.95);
     hemiLight.position.set(0, 50, 0);
     scene.add(hemiLight);
 
-    const sunLight = new THREE.DirectionalLight(0xfff1dc, 1.3);
+    const sunLight = new THREE.DirectionalLight(0xfff3e0, 1.3);
     sunLight.position.set(20, 35, 25);
     sunLight.castShadow = true;
     sunLight.shadow.mapSize.width = 2048;
     sunLight.shadow.mapSize.height = 2048;
-    sunLight.shadow.camera.near = 0.5;
-    sunLight.shadow.camera.far = 120;
     sunLight.shadow.bias = -0.0004;
     scene.add(sunLight);
 
-    // 지하 본당용 따뜻한 실내 간접 앰비언트 라이트
-    const basementLight = new THREE.PointLight(0xffe8c8, 1.8, 40, 0.8);
-    basementLight.position.set(-6, -3, 8);
-    scene.add(basementLight);
+    // 본당 내부용 따뜻한 실내 조명
+    const b1WarmLight1 = new THREE.PointLight(0xffe2b8, 2.2, 35, 0.7);
+    b1WarmLight1.position.set(-6, -4.5, 6);
+    scene.add(b1WarmLight1);
 
-    // -------------------------------------------------------------
-    // 3. 지면 및 타겟 마커
-    // -------------------------------------------------------------
+    const b1WarmLight2 = new THREE.PointLight(0xffecd0, 2.0, 35, 0.7);
+    b1WarmLight2.position.set(-10, -4.5, 12);
+    scene.add(b1WarmLight2);
+
+    // 지면
     const terrain = new THREE.Mesh(
       new THREE.PlaneGeometry(300, 300),
       new THREE.MeshStandardMaterial({ color: 0xc3ccc0, roughness: 1.0 })
@@ -306,7 +294,7 @@
     terrain.receiveShadow = true;
     scene.add(terrain);
 
-    // 3D 클릭 타겟 링 메쉬 (바닥에 펄스 효과)
+    // 클릭 링 마커
     const markerGeo = new THREE.RingGeometry(0.15, 0.45, 32);
     const markerMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8, side: THREE.DoubleSide, transparent: true, opacity: 0 });
     const targetRing = new THREE.Mesh(markerGeo, markerMat);
@@ -314,12 +302,8 @@
     targetRing.position.y = -6.58;
     scene.add(targetRing);
 
-    // -------------------------------------------------------------
-    // 4. 캐릭터 (1m 2등신 아바타) 모델링
-    // -------------------------------------------------------------
+    // 캐릭터 (1m 2등신 아바타)
     const characterGroup = new THREE.Group();
-
-    // 몸체 (점퍼/코트 스타일)
     const bodyGeo = new THREE.CylinderGeometry(0.24, 0.32, 0.55, 16);
     const bodyMat = new THREE.MeshStandardMaterial({ color: 0x3b82f6, roughness: 0.5 });
     const body = new THREE.Mesh(bodyGeo, bodyMat);
@@ -327,7 +311,6 @@
     body.castShadow = true;
     characterGroup.add(body);
 
-    // 머리 (2등신 비율: 큼직하고 귀여운 구체)
     const headGeo = new THREE.SphereGeometry(0.30, 20, 20);
     const headMat = new THREE.MeshStandardMaterial({ color: 0xffedd5, roughness: 0.7 });
     const head = new THREE.Mesh(headGeo, headMat);
@@ -335,7 +318,6 @@
     head.castShadow = true;
     characterGroup.add(head);
 
-    // 기도 손/아이템용 그룹
     const handsGeo = new THREE.SphereGeometry(0.10, 12, 12);
     const handMat = new THREE.MeshStandardMaterial({ color: 0xffedd5 });
     const hands = new THREE.Mesh(handsGeo, handMat);
@@ -344,26 +326,23 @@
     hands.visible = false;
     characterGroup.add(hands);
 
-    // 기본 시작 위치: 지하 본당 중앙 통로 (Z_FLOOR = -6.6)
     const B1_FLOOR_Y = -6.6;
     const G_FLOOR_Y = 0.0;
-    let currentFloor = 'B1'; // 'B1' 또는 'G'
+    let currentFloor = 'B1';
 
-    characterGroup.position.set(-2.5, B1_FLOOR_Y, 4.0);
+    // 본당 내부 중앙 통로 좌표로 스폰 (벽 바깥이 아닌 내부!)
+    // Blender 좌표 (-6.0, 8.0) 부근이 회중석 한가운데입니다.
+    characterGroup.position.set(-6.0, B1_FLOOR_Y, 7.5);
     scene.add(characterGroup);
 
-    // 카메라 초기 위치: 캐릭터 눈높이 맞춤
-    camera.position.set(-2.5 + 4, B1_FLOOR_Y + 3.0, 4.0 + 4);
-    controls.target.set(characterGroup.position.x, characterGroup.position.y + 0.85, characterGroup.position.z);
+    let loadedModel = null;
+    const clickableObjects = [terrain];
+    const upperRoofsAndCeilings = [];
+    const obstructingWalls = [];
 
-    // -------------------------------------------------------------
-    // 5. GLTF 모델 로드 & 투명창/지하 컬렉션 정리
-    // -------------------------------------------------------------
     const loader = new GLTFLoader();
     const loadingScreen = document.getElementById('loading-screen');
     const loadingSub = document.getElementById('loading-sub');
-    let loadedModel = null;
-    const clickableObjects = [terrain];
 
     loader.load(
       'church-model-release-20261104.glb',
@@ -384,9 +363,19 @@
               child.material.depthWrite = false;
             }
 
-            // 부채꼴 장의자 태그 등록
-            if (child.name.includes('Pew') || child.name.includes('PEW')) {
-              child.userData.isPew = true;
+            // 천장 및 지상 바닥 슬래브 감지 (지하 내부를 볼 때 시야를 막는 요소들)
+            if (
+              child.name.includes('Ceiling') || 
+              child.name.includes('ROOF') || 
+              child.name.includes('F1_PARKING') ||
+              child.name.includes('SLAB')
+            ) {
+              upperRoofsAndCeilings.push(child);
+            }
+
+            // 본당 남측/동측 외벽 (카메라 시야 가림 방지)
+            if (child.name.includes('Wall_South') || child.name.includes('Wall_East')) {
+              obstructingWalls.push(child);
             }
           }
         });
@@ -394,25 +383,69 @@
         loadedModel.position.set(0, 0, 0);
         scene.add(loadedModel);
 
+        // 로드 완료 시 즉시 지하 본당 내부 최적화 뷰 적용
+        applyFloorMode('B1');
+
         loadingScreen.style.opacity = '0';
-        setTimeout(() => loadingScreen.style.display = 'none', 450);
+        setTimeout(() => loadingScreen.style.display = 'none', 400);
       },
       (xhr) => {
         if (xhr.lengthComputable) {
           const percent = Math.round((xhr.loaded / xhr.total) * 100);
-          loadingSub.innerText = `성전 모델 및 본당 로딩 중... (${percent}%)`;
+          loadingSub.innerText = `모델 데이터 로딩 중... (${percent}%)`;
         }
       },
-      (error) => {
-        console.warn('GLB 모델 파일 로드 대기 중 (기본 씬으로 동작합니다).');
+      (err) => {
+        console.warn('GLB 대기 중 (기본 씬 유지):', err);
         loadingScreen.style.opacity = '0';
         setTimeout(() => loadingScreen.style.display = 'none', 300);
+        applyFloorMode('B1');
       }
     );
 
     // -------------------------------------------------------------
-    // 6. 클릭-투-무브 (Click to Move) 네비게이션 시스템
+    // 지하 1층 내부 가림막(천장/남측벽) 투명/오픈 처리 로직
     // -------------------------------------------------------------
+    function applyFloorMode(floor) {
+      currentFloor = floor;
+      if (floor === 'B1') {
+        // 지하 모드: 천장과 위쪽 덮개를 숨겨 본당 안이 시원하게 보이게 함
+        upperRoofsAndCeilings.forEach(mesh => {
+          mesh.visible = false;
+        });
+        obstructingWalls.forEach(mesh => {
+          mesh.material.transparent = true;
+          mesh.material.opacity = 0.25;
+        });
+        terrain.visible = false;
+
+        // 캐릭터를 본당 중앙 통로 안으로 정확히 안착
+        characterGroup.position.set(-6.0, B1_FLOOR_Y, 7.5);
+        // 강단 모서리를 올려다보도록 시선 회전 (-45도)
+        characterGroup.rotation.y = Math.PI * 0.75;
+
+        // 카메라도 본당 안으로 진입
+        camera.position.set(-2.5, B1_FLOOR_Y + 2.5, 3.5);
+        controls.target.set(-6.0, B1_FLOOR_Y + 0.85, 7.5);
+      } else {
+        // 지상 외관 모드: 천장과 지면 다시 표시
+        upperRoofsAndCeilings.forEach(mesh => {
+          mesh.visible = true;
+        });
+        obstructingWalls.forEach(mesh => {
+          mesh.material.transparent = false;
+          mesh.material.opacity = 1.0;
+        });
+        terrain.visible = true;
+
+        characterGroup.position.set(0, G_FLOOR_Y, 9.0);
+        characterGroup.rotation.y = 0;
+        camera.position.set(16, 10, 20);
+        controls.target.set(0, 0.85, 9.0);
+      }
+    }
+
+    // 클릭 투 무브
     const raycaster = new THREE.Raycaster();
     const mouse = new THREE.Vector2();
     let isMoving = false;
@@ -420,7 +453,6 @@
     let targetMarkerTimer = 0;
     let isSitting = false;
     let isPraying = false;
-
     let downTime = 0;
     let downPos = { x: 0, y: 0 };
 
@@ -431,12 +463,9 @@
     });
 
     window.addEventListener('pointerup', (e) => {
-      // 단순 클릭(드래그 회전과 구분: 250ms 이내, 이동거리 5px 미만)
       const diffTime = performance.now() - downTime;
       const dist = Math.hypot(e.clientX - downPos.x, e.clientY - downPos.y);
       if (diffTime > 260 || dist > 6) return;
-
-      // UI 요소 클릭은 무시
       if (e.target.closest('#ui-overlay')) return;
 
       mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
@@ -446,27 +475,28 @@
       const intersects = raycaster.intersectObjects(clickableObjects, true);
 
       if (intersects.length > 0) {
-        // 현재 층에 적합한 바닥 지점 탐색
         let hit = null;
         for (let i = 0; i < intersects.length; i++) {
           const p = intersects[i].point;
-          // 지하 1층 모드일 때는 Y가 음수인 지점 우선, 지상 모드일 때는 Y >= -0.5 지점
+          // 벽이나 높은 천장이 아닌 실제 바닥 근처 높이 필터링
           if (currentFloor === 'B1') {
-            if (p.y <= -2.0) { hit = p; break; }
+            if (p.y <= -5.0 && p.y >= -7.0) { hit = p; break; }
           } else {
-            if (p.y >= -1.0) { hit = p; break; }
+            if (p.y >= -0.5 && p.y <= 1.0) { hit = p; break; }
           }
         }
-        if (!hit) hit = intersects[0].point;
+        if (!hit) {
+          // 바닥 필터 실패 시 Y값 강제 보정
+          hit = intersects[0].point.clone();
+          hit.y = (currentFloor === 'B1' ? B1_FLOOR_Y : G_FLOOR_Y);
+        }
 
-        // 이동 지점 확정
         targetPos.set(hit.x, (currentFloor === 'B1' ? B1_FLOOR_Y : G_FLOOR_Y), hit.z);
         isMoving = true;
         isSitting = false;
         isPraying = false;
         hands.visible = false;
 
-        // 클릭 링 마커 표시
         targetRing.position.set(hit.x, targetPos.y + 0.03, hit.z);
         targetRing.scale.set(0.1, 0.1, 0.1);
         targetRing.material.opacity = 0.9;
@@ -474,113 +504,87 @@
       }
     });
 
-    // -------------------------------------------------------------
-    // 7. 층간 빠른 이동 (1층 외관 <-> 지하 1층 대본당)
-    // -------------------------------------------------------------
+    // 층 전환 버튼
     const btnGoGround = document.getElementById('btnGoGround');
     const btnGoBasement = document.getElementById('btnGoBasement');
 
-    function switchFloor(floor) {
-      currentFloor = floor;
-      isMoving = false;
-      isSitting = false;
-      isPraying = false;
-      hands.visible = false;
-
-      if (floor === 'B1') {
-        btnGoBasement.classList.add('active');
-        btnGoGround.classList.remove('active');
-        
-        // 지하 1층 본당 뒤편 통로 스폰
-        characterGroup.position.set(-2.5, B1_FLOOR_Y, 4.0);
-        targetPos.copy(characterGroup.position);
-        
-        // 강단 모서리 쪽을 올려다보는 카메라
-        camera.position.set(-2.5 + 4.5, B1_FLOOR_Y + 2.8, 4.0 + 4.5);
-        controls.target.set(-2.5, B1_FLOOR_Y + 0.85, 4.0);
-      } else {
-        btnGoGround.classList.add('active');
-        btnGoBasement.classList.remove('active');
-
-        // 지상 1층 교회 앞 보도 스폰
-        characterGroup.position.set(0, G_FLOOR_Y, 9.0);
-        targetPos.copy(characterGroup.position);
-
-        camera.position.set(16, 10, 20);
-        controls.target.set(0, 0.85, 9.0);
-      }
-    }
-
-    btnGoGround.addEventListener('click', () => switchFloor('G'));
-    btnGoBasement.addEventListener('click', () => switchFloor('B1'));
-
-    // -------------------------------------------------------------
-    // 8. 인터랙션 (기도하기 & 장의자 착석)
-    // -------------------------------------------------------------
-    const btnPray = document.getElementById('btnPray');
-    const btnPewSit = document.getElementById('btnPewSit');
-
-    btnPray.addEventListener('click', () => {
-      isMoving = false;
-      isPraying = !isPraying;
-      hands.visible = isPraying;
-      if (isPraying) {
-        btnPray.innerHTML = '✨ 기도 묵상 중 (일어서기)';
-        btnPray.style.background = '#0284c7';
-      } else {
-        btnPray.innerHTML = '🙏 자리에서 묵상/기도';
-        btnPray.style.background = 'rgba(30, 41, 59, 0.85)';
-      }
+    btnGoGround.addEventListener('click', () => {
+      btnGoGround.classList.add('active');
+      btnGoBasement.classList.remove('active');
+      applyFloorMode('G');
     });
 
-    btnPewSit.addEventListener('click', () => {
-      // 지하 본당일 때 가장 가까운 부채꼴 장의자 위치로 자동 이동 후 착석
+    btnGoBasement.addEventListener('click', () => {
+      btnGoBasement.classList.add('active');
+      btnGoGround.classList.remove('active');
+      applyFloorMode('B1');
+    });
+
+    // 인터랙션 버튼
+    document.getElementById('btnInsideAisle').addEventListener('click', () => {
       if (currentFloor !== 'B1') {
-        switchFloor('B1');
+        btnGoBasement.classList.add('active');
+        btnGoGround.classList.remove('active');
+        applyFloorMode('B1');
+      }
+      characterGroup.position.set(-6.0, B1_FLOOR_Y, 7.5);
+      targetPos.copy(characterGroup.position);
+      controls.target.set(-6.0, B1_FLOOR_Y + 0.85, 7.5);
+      camera.position.set(-2.5, B1_FLOOR_Y + 2.5, 3.5);
+    });
+
+    document.getElementById('btnPewSit').addEventListener('click', () => {
+      if (currentFloor !== 'B1') {
+        btnGoBasement.classList.add('active');
+        btnGoGround.classList.remove('active');
+        applyFloorMode('B1');
       }
       isMoving = false;
       isSitting = true;
       isPraying = true;
       hands.visible = true;
-      // 본당 의자 열 중앙 부근 좌석으로 안착
-      characterGroup.position.set(-4.8, B1_FLOOR_Y - 0.15, 6.2);
-      characterGroup.rotation.y = Math.PI / 4; // 강단 꼭짓점 응시
+      // 중앙 회중석 안으로 쏙 앉히기
+      characterGroup.position.set(-5.5, B1_FLOOR_Y - 0.15, 9.2);
+      characterGroup.rotation.y = Math.PI * 0.75;
       targetPos.copy(characterGroup.position);
       controls.target.copy(characterGroup.position).add(new THREE.Vector3(0, 0.85, 0));
     });
 
-    // -------------------------------------------------------------
-    // 9. 잔잔한 오르간/피아노 배경 찬양 (Web Audio API)
-    // -------------------------------------------------------------
+    const btnPray = document.getElementById('btnPray');
+    btnPray.addEventListener('click', () => {
+      isMoving = false;
+      isPraying = !isPraying;
+      hands.visible = isPraying;
+      if (isPraying) {
+        btnPray.innerHTML = '✨ 묵상 중 (일어서기)';
+        btnPray.style.background = '#0284c7';
+      } else {
+        btnPray.innerHTML = '🙏 자리에서 기도';
+        btnPray.style.background = 'rgba(30, 41, 59, 0.9)';
+      }
+    });
+
+    // BGM
     let audioCtx = null;
     let isBgmPlaying = false;
     let audioTimer = null;
-    const chords = [
-      [261.63, 329.63, 392.00], // C
-      [220.00, 261.63, 329.63], // Am
-      [174.61, 220.00, 261.63], // F
-      [196.00, 246.94, 293.66]  // G
-    ];
+    const chords = [[261.63, 329.63, 392.00], [220.00, 261.63, 329.63], [174.61, 220.00, 261.63], [196.00, 246.94, 293.66]];
     let chordIdx = 0;
 
     function playCalmChord() {
       if (!isBgmPlaying || !audioCtx) return;
       const currentChord = chords[chordIdx % chords.length];
       chordIdx++;
-
       currentChord.forEach(freq => {
         const osc = audioCtx.createOscillator();
         const gain = audioCtx.createGain();
         osc.type = 'sine';
         osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-
         gain.gain.setValueAtTime(0, audioCtx.currentTime);
         gain.gain.linearRampToValueAtTime(0.035, audioCtx.currentTime + 1.6);
         gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 5.5);
-
         osc.connect(gain);
         gain.connect(audioCtx.destination);
-
         osc.start();
         osc.stop(audioCtx.currentTime + 5.6);
       });
@@ -603,17 +607,14 @@
       }
     });
 
-    // -------------------------------------------------------------
-    // 10. 메인 루프 (보행 보간 애니메이션 & 카메라 팔로우)
-    // -------------------------------------------------------------
-    const walkSpeed = 3.6; // m/s
+    // 메인 루프
+    const walkSpeed = 3.6;
     const clock = new THREE.Clock();
 
     function animate() {
       requestAnimationFrame(animate);
       const delta = clock.getDelta();
 
-      // 클릭 마커 애니메이션 (펄스 페이드아웃)
       if (targetMarkerTimer > 0) {
         targetMarkerTimer -= delta * 1.8;
         const scaleVal = 1.0 + (1.0 - targetMarkerTimer) * 0.8;
@@ -621,47 +622,35 @@
         targetRing.material.opacity = Math.max(0, targetMarkerTimer);
       }
 
-      // 캐릭터 이동 처리 (Click to Move)
       if (isMoving) {
         const currentPos = characterGroup.position;
         const dir = new THREE.Vector3().subVectors(targetPos, currentPos);
-        dir.y = 0; // 수평 이동만
+        dir.y = 0;
         const dist = dir.length();
 
         if (dist > 0.12) {
           dir.normalize();
-          const moveStep = walkSpeed * delta;
-          currentPos.addScaledVector(dir, Math.min(dist, moveStep));
-
-          // 걷는 방향으로 회전
+          currentPos.addScaledVector(dir, Math.min(dist, walkSpeed * delta));
           const targetRot = Math.atan2(dir.x, dir.z);
-          // 부드러운 회전 보간
           characterGroup.rotation.y = THREE.MathUtils.lerp(characterGroup.rotation.y, targetRot, 0.18);
 
-          // 귀여운 2등신 걷기 바운스 모션
           const t = clock.getElapsedTime() * 14;
           body.position.y = 0.38 + Math.abs(Math.sin(t)) * 0.05;
           head.position.y = 0.85 + Math.abs(Math.sin(t)) * 0.05;
           characterGroup.rotation.z = Math.sin(t) * 0.05;
 
-          // 카메라도 캐릭터를 자연스럽게 팔로우
-          controls.target.lerp(
-            new THREE.Vector3(currentPos.x, currentPos.y + 0.85, currentPos.z),
-            0.08
-          );
+          controls.target.lerp(new THREE.Vector3(currentPos.x, currentPos.y + 0.85, currentPos.z), 0.08);
         } else {
-          // 목적지 도착
           isMoving = false;
           body.position.y = 0.38;
           head.position.y = 0.85;
           characterGroup.rotation.z = 0;
         }
       } else if (isPraying) {
-        // 기도/묵상 시 은은한 호흡 모션
         const breathe = Math.sin(clock.getElapsedTime() * 2.0) * 0.02;
         body.position.y = (isSitting ? 0.22 : 0.38) + breathe;
         head.position.y = (isSitting ? 0.65 : 0.85) + breathe * 0.5;
-        head.rotation.x = 0.25; // 살짝 고개 숙임
+        head.rotation.x = 0.25;
       } else {
         body.position.y = 0.38;
         head.position.y = 0.85;
