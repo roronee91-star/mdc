@@ -285,6 +285,10 @@
     .guide-card:not([hidden]), #uiShow:not([hidden]) { animation: uiIn 0.28s ease-out both; }
     .guide-card.leaving { animation: uiOut 0.2s ease-in both; }
     @media (prefers-reduced-motion: reduce) { .action-btn, #elevPanel, #prayerPanel, #nameModal, .pp-card, .name-card, .guide-card { animation: none !important; } }
+    #toast { position: absolute; left: 50%; top: 74px; transform: translateX(-50%); z-index: 9; background: rgba(15, 23, 42, 0.82); color: #fff;
+      padding: 7px 14px; border-radius: 999px; font-size: 13px; font-weight: 700; opacity: 0; pointer-events: none; white-space: nowrap; }
+    #toast.show { animation: toastIn 3.2s ease both; }
+    @keyframes toastIn { 0% { opacity: 0; transform: translate(-50%, -6px); } 10%, 80% { opacity: 1; transform: translate(-50%, 0); } 100% { opacity: 0; transform: translate(-50%, -4px); } }
   </style>
 
   <script type="importmap">{"imports":{"three":"./vendor/three/three.module.js"}}</script>
@@ -318,7 +322,7 @@
       <div class="header-right">
         <button class="bgm-btn" id="prayerBtn" title="기도제목">📝 기도제목</button>
         <button class="bgm-btn" id="nameBtn" title="이름 바꾸기">👤 이름</button>
-        <button class="bgm-btn" id="bgmToggle" title="잔잔한 찬양 켜기/끄기">🎵</button>
+        <button class="bgm-btn" id="bgmToggle" title="찬송가 피아노 반주 켜기/끄기">🎵</button>
         <button class="bgm-btn" id="helpToggle" title="조작 안내">❔</button>
         <button class="bgm-btn" id="uiToggle" title="버튼 숨기기">🙈</button>
       </div>
@@ -425,7 +429,7 @@
     controls.enablePan = false;
     controls.zoomSpeed = 1.1;
     controls.touches = { ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_ROTATE };
-    window.__dbg = { camera, controls, scene, get furn() { return furn; }, get b1Seats() { return b1Seats; }, get character() { return characterGroup; }, findPath: (a, b) => findPath(a, b), goTo: (k) => goToTourStep(k), get camWant() { return [camWantDist, camCurDist, camLift]; }, setCam: (c, t) => { controls.target.set(...t); camera.position.set(...c); resetCamPull(); }, get eyesClosed() { return eyeParts.lids[0].visible; }, get moving() { return isMoving; }, get eating() { return isEating; }, seatsHere: () => { const r = []; const seen = new Set(); seatPick.forEach((m) => { const o = m.userData.seatOwner; if (!o || seen.has(o)) return; seen.add(o); (o.userData.seat ? [o.userData.seat] : o.userData.seats).forEach((st) => r.push(st)); }); return r; }, sit: (st) => goSit(st), get ringOpacity() { return +targetRing.material.opacity.toFixed(2); }, rayHits: (a, b) => { const A = new THREE.Vector3(...a), B = new THREE.Vector3(...b), d = B.clone().sub(A), L = d.length(); const rc = new THREE.Raycaster(A, d.normalize(), 0, L); rc.camera = camera; return rc.intersectObjects(scene.children, true).map((h) => { const m = h.object; if (m.geometry && !m.geometry.boundingBox) m.geometry.computeBoundingBox(); const bb = m.geometry && m.geometry.boundingBox ? m.geometry.boundingBox.clone().applyMatrix4(m.matrixWorld) : null; return [m.type, m.name || (m.parent && m.parent.name), +h.distance.toFixed(2), !!(m.material && m.material.transparent), m.material ? +(m.material.opacity || 0).toFixed(2) : null, bb && bb.min.toArray().map((v) => +v.toFixed(2)), bb && bb.max.toArray().map((v) => +v.toFixed(2))]; }); }, get faded() { return [...fadedMeshes.keys()].map(m => { m.geometry.computeBoundingBox(); const b = m.geometry.boundingBox.clone().applyMatrix4(m.matrixWorld); return [m.name || m.parent.name, +m.material.opacity.toFixed(2), b.min.toArray().map(v => +v.toFixed(2)), b.max.toArray().map(v => +v.toFixed(2))]; }); } }; // 화면 확인(자동 검사)용
+    window.__dbg = { get hymns() { return HYMNS; }, chordFor: (k, m) => chordFor(k, m), midiOf: (n) => midiOf(n), camera, controls, scene, get furn() { return furn; }, get b1Seats() { return b1Seats; }, get character() { return characterGroup; }, findPath: (a, b) => findPath(a, b), goTo: (k) => goToTourStep(k), get camWant() { return [camWantDist, camCurDist, camLift]; }, setCam: (c, t) => { controls.target.set(...t); camera.position.set(...c); resetCamPull(); }, get eyesClosed() { return eyeParts.lids[0].visible; }, get moving() { return isMoving; }, get eating() { return isEating; }, seatsHere: () => { const r = []; const seen = new Set(); seatPick.forEach((m) => { const o = m.userData.seatOwner; if (!o || seen.has(o)) return; seen.add(o); (o.userData.seat ? [o.userData.seat] : o.userData.seats).forEach((st) => r.push(st)); }); return r; }, sit: (st) => goSit(st), get ringOpacity() { return +targetRing.material.opacity.toFixed(2); }, rayHits: (a, b) => { const A = new THREE.Vector3(...a), B = new THREE.Vector3(...b), d = B.clone().sub(A), L = d.length(); const rc = new THREE.Raycaster(A, d.normalize(), 0, L); rc.camera = camera; return rc.intersectObjects(scene.children, true).map((h) => { const m = h.object; if (m.geometry && !m.geometry.boundingBox) m.geometry.computeBoundingBox(); const bb = m.geometry && m.geometry.boundingBox ? m.geometry.boundingBox.clone().applyMatrix4(m.matrixWorld) : null; return [m.type, m.name || (m.parent && m.parent.name), +h.distance.toFixed(2), !!(m.material && m.material.transparent), m.material ? +(m.material.opacity || 0).toFixed(2) : null, bb && bb.min.toArray().map((v) => +v.toFixed(2)), bb && bb.max.toArray().map((v) => +v.toFixed(2))]; }); }, get faded() { return [...fadedMeshes.keys()].map(m => { m.geometry.computeBoundingBox(); const b = m.geometry.boundingBox.clone().applyMatrix4(m.matrixWorld); return [m.name || m.parent.name, +m.material.opacity.toFixed(2), b.min.toArray().map(v => +v.toFixed(2)), b.max.toArray().map(v => +v.toFixed(2))]; }); } }; // 화면 확인(자동 검사)용
     controls.maxDistance = 55;
     controls.maxPolarAngle = Math.PI * 0.49; // 바닥 아래로 돌아 들어가 건물 밖/땅 속이 보이지 않게
 
@@ -2292,46 +2296,107 @@
       const st = nearestSeat((x) => x.kind === 'chair' && x.x > -2.4); if (st) goSit(st);
     });
 
-    // 찬양 BGM
-    let audioCtx = null;
-    let isBgmPlaying = false;
-    let audioTimer = null;
-    const chords = [[261.63, 329.63, 392.00], [220.00, 261.63, 329.63], [174.61, 220.00, 261.63], [196.00, 246.94, 293.66]];
-    let chordIdx = 0;
-
-    function playCalmChord() {
-      if (!isBgmPlaying || !audioCtx) return;
-      const currentChord = chords[chordIdx % chords.length];
-      chordIdx++;
-      currentChord.forEach(freq => {
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-        gain.gain.setValueAtTime(0, audioCtx.currentTime);
-        gain.gain.linearRampToValueAtTime(0.035, audioCtx.currentTime + 1.6);
-        gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 5.5);
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
-        osc.start();
-        osc.stop(audioCtx.currentTime + 5.6);
-      });
-      audioTimer = setTimeout(playCalmChord, 4600);
+    // ---- 찬송가 피아노 반주 ----
+    // 저작권 보호 기간이 끝난 오래된 찬송가의 '멜로디만' 음 하나하나 코드로 적어 직접 연주한다 (음원 파일·가사 없음).
+    // 음 표기: [음이름, 길이(박)]. 'R' = 쉼표. 반주 화음은 마디 첫 음에 맞춰 I·IV·V·vi 중 자동 선택.
+    const HYMNS = [
+      { title: '만복의 근원 하나님', era: 'Old 100th · 1551', key: 'G', bpm: 76, bar: 4, notes: [
+        ['G4',2],['G4',1],['F#4',1],['E4',1],['D4',1],['G4',1],['A4',1],['B4',2],['R',2],
+        ['B4',2],['B4',1],['B4',1],['A4',1],['G4',1],['C5',1],['B4',1],['A4',2],['R',2],
+        ['G4',2],['A4',1],['B4',1],['A4',1],['G4',1],['E4',1],['F#4',1],['G4',2],['R',2],
+        ['D5',2],['B4',1],['G4',1],['A4',1],['C5',1],['B4',1],['A4',1],['G4',4] ] },
+      { title: '예수 사랑하심은', era: 'Bradbury · 1862', key: 'C', bpm: 92, bar: 4, notes: [
+        ['G4',1],['E4',1],['E4',1],['D4',1],['E4',1],['G4',1],['G4',2],
+        ['A4',1],['A4',1],['C5',1],['A4',1],['A4',1],['G4',1],['G4',2],
+        ['G4',1],['E4',1],['E4',1],['D4',1],['E4',1],['G4',1],['G4',2],
+        ['A4',1],['A4',1],['G4',1],['C4',1],['E4',1],['D4',1],['C4',2] ] },
+      { title: '고요한 밤 거룩한 밤', era: 'Gruber · 1818', key: 'C', bpm: 150, bar: 6, notes: [   // 6/8, 1박 = 8분음표
+        ['G4',1.5],['A4',.5],['G4',1],['E4',3], ['G4',1.5],['A4',.5],['G4',1],['E4',3],
+        ['D5',2],['D5',1],['B4',3], ['C5',2],['C5',1],['G4',3],
+        ['A4',2],['A4',1],['C5',1.5],['B4',.5],['A4',1], ['G4',1.5],['A4',.5],['G4',1],['E4',3],
+        ['A4',2],['A4',1],['C5',1.5],['B4',.5],['A4',1], ['G4',1.5],['A4',.5],['G4',1],['E4',3],
+        ['D5',2],['D5',1],['F5',1.5],['D5',.5],['B4',1], ['C5',3],['E5',3],
+        ['C5',1.5],['G4',.5],['E4',1],['G4',1.5],['F4',.5],['D4',1], ['C4',6] ] },
+    ];
+    const NOTE_IDX = { C: 0, 'C#': 1, D: 2, 'D#': 3, E: 4, F: 5, 'F#': 6, G: 7, 'G#': 8, A: 9, 'A#': 10, B: 11 };
+    const midiOf = (n) => { const m = n.match(/^([A-G]#?)(\d)$/); return 12 * (+m[2] + 1) + NOTE_IDX[m[1]]; };
+    const freqOf = (midi) => 440 * Math.pow(2, (midi - 69) / 12);
+    // 조성의 I · IV · V · vi 화음 (근음 기준 반음 간격)
+    function chordFor(keyName, midi) {
+      const k = NOTE_IDX[keyName], pc = ((midi % 12) - k + 12) % 12;
+      const C = [{ root: 0, t: [0, 4, 7] }, { root: 5, t: [5, 9, 0] }, { root: 7, t: [7, 11, 2] }, { root: 9, t: [9, 0, 4] }];
+      return (C.find((c) => c.t.includes(pc)) || C[0]);
     }
-
+    let audioCtx = null, isBgmPlaying = false, audioTimer = null, hymnIdx = 0, bgmBus = null;
+    function audioSetup() {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      bgmBus = audioCtx.createGain(); bgmBus.gain.value = 0.55;
+      const lp = audioCtx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 3200;
+      // 작은 예배당 같은 잔향 (소음으로 만든 짧은 울림)
+      const verb = audioCtx.createConvolver(), len = audioCtx.sampleRate * 2.2, ir = audioCtx.createBuffer(2, len, audioCtx.sampleRate);
+      for (let ch = 0; ch < 2; ch++) { const d = ir.getChannelData(ch); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3); }
+      verb.buffer = ir;
+      const wet = audioCtx.createGain(); wet.gain.value = 0.28;
+      bgmBus.connect(lp); lp.connect(audioCtx.destination); lp.connect(verb); verb.connect(wet); wet.connect(audioCtx.destination);
+    }
+    // 피아노 비슷한 소리: 기본음 + 배음 몇 개, 처음에 '땅' 하고 점점 줄어듦
+    function pianoNote(midi, t, dur, vel) {
+      const f = freqOf(midi), out = audioCtx.createGain();
+      const decay = Math.min(3.5, 0.6 + 260 / f);                 // 낮은 음일수록 길게 울림
+      out.gain.setValueAtTime(0, t);
+      out.gain.linearRampToValueAtTime(vel, t + 0.008);
+      out.gain.exponentialRampToValueAtTime(vel * 0.35, t + 0.25);
+      out.gain.exponentialRampToValueAtTime(0.0008, t + Math.max(dur + 0.35, Math.min(decay, dur + 1.2)));
+      out.connect(bgmBus);
+      [[1, 1, 'sine'], [2, 0.32, 'sine'], [3, 0.12, 'triangle'], [4, 0.05, 'sine']].forEach(([h, a, type]) => {
+        const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+        o.type = type; o.frequency.value = f * h * (1 + (h - 1) * 0.0007);   // 피아노 줄처럼 배음이 아주 살짝 높음
+        g.gain.value = a; o.connect(g); g.connect(out);
+        o.start(t); o.stop(t + dur + 1.6);
+      });
+    }
+    function playHymn() {
+      if (!isBgmPlaying) return;
+      const h = HYMNS[hymnIdx % HYMNS.length]; hymnIdx++;
+      const beat = 60 / h.bpm; let t = audioCtx.currentTime + 0.15, pos = 0;
+      showToast(`🎹 ${h.title}`);
+      h.notes.forEach(([n, d]) => {
+        if (n !== 'R') {
+          const m = midiOf(n);
+          pianoNote(m, t, d * beat, 0.16);                                          // 멜로디
+          if (pos % h.bar === 0 || (h.bar === 4 && pos % 2 === 0 && d >= 2)) {      // 마디 첫 박: 왼손 화음
+            const c = chordFor(h.key, m), k = NOTE_IDX[h.key];
+            const barLen = Math.min(h.bar, d >= h.bar ? d : h.bar) * beat;
+            pianoNote(36 + ((k + c.root) % 12), t, barLen, 0.09);                      // 베이스 (C2~B2)
+            c.t.forEach((iv) => pianoNote(48 + ((k + iv) % 12), t + 0.02, barLen, 0.045));   // 화음 (C3~B3, 멜로디보다 낮게)
+          }
+        }
+        t += d * beat; pos += d;
+      });
+      audioTimer = setTimeout(playHymn, (t - audioCtx.currentTime + 2.5) * 1000);     // 곡 사이 2.5초 쉼
+    }
+    function showToast(text) {
+      let el = document.getElementById('toast');
+      if (!el) { el = document.createElement('div'); el.id = 'toast'; document.body.appendChild(el); }
+      el.textContent = text; el.classList.remove('show'); void el.offsetWidth; el.classList.add('show');
+    }
     document.getElementById('bgmToggle').addEventListener('click', () => {
-      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (!audioCtx) audioSetup();
       isBgmPlaying = !isBgmPlaying;
       const btn = document.getElementById('bgmToggle');
       if (isBgmPlaying) {
         if (audioCtx.state === 'suspended') audioCtx.resume();
-        btn.innerHTML = '🔊';
-        btn.style.background = '#2563eb';
-        playCalmChord();
+        bgmBus.gain.cancelScheduledValues(audioCtx.currentTime); bgmBus.gain.setValueAtTime(0.55, audioCtx.currentTime);
+        btn.innerHTML = '🔊'; btn.style.background = '#2563eb';
+        playHymn();
       } else {
-        btn.innerHTML = '🎵';
-        btn.style.background = 'rgba(255,255,255,0.1)';
+        btn.innerHTML = '🎵'; btn.style.background = '';
         clearTimeout(audioTimer);
+        // 남은 음은 0.6초 동안 부드럽게 줄이고 새 소리 길로 바꿈 (이미 예약된 음이 다시 켰을 때 겹치지 않게)
+        const old = bgmBus; old.gain.setTargetAtTime(0, audioCtx.currentTime, 0.2);
+        setTimeout(() => { try { old.disconnect(); } catch (e) {} }, 1500);
+        const lp = audioCtx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 3200;
+        bgmBus = audioCtx.createGain(); bgmBus.gain.value = 0.55; bgmBus.connect(lp); lp.connect(audioCtx.destination);
       }
     });
 
