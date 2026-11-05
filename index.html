@@ -234,6 +234,12 @@
     .name-sub { font-size: 13px; color: #7a6a58; }
     #nameInput { font-size: 17px; width: 100%; padding: 11px 12px; border-radius: 10px; border: 1.5px solid #d8c7ab; outline: none; user-select: text; }
     #nameInput:focus { border-color: #b08a5a; }
+    .gender-row { display: flex; gap: 10px; }
+    .gender-btn { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 10px 0 8px; font-size: 30px; border-radius: 14px;
+      border: 2px solid #e3d5bd; background: #fff; cursor: pointer; transition: transform 0.15s, border-color 0.15s, background 0.15s; }
+    .gender-btn span { font-size: 14px; font-weight: 800; color: #6b4f33; }
+    .gender-btn.on { border-color: #8a6a42; background: #f6ead6; transform: scale(1.04); }
+    .name-warn { font-size: 12px; color: #c0504d; min-height: 14px; }
     #nameOk { font-size: 15px; font-weight: 700; padding: 11px; border-radius: 10px; border: none; background: #8a6a42; color: #fff; cursor: pointer; }
     #prayerPanel { position: absolute; inset: 0; z-index: 8; background: rgba(15, 23, 42, 0.45); display: flex; align-items: center; justify-content: center; }
     .pp-card { width: min(420px, 94vw); max-height: 86vh; background: #fffaf2; color: #3b2f22; border-radius: 18px; display: flex; flex-direction: column; box-shadow: 0 12px 40px rgba(0,0,0,0.35); overflow: hidden; }
@@ -431,8 +437,13 @@
   <div id="nameModal" hidden>
     <div class="name-card">
       <div class="name-title">물댄동산교회에 오신 것을 환영해요 🙌</div>
-      <div class="name-sub">캐릭터 머리 위에 보일 이름을 적어 주세요</div>
+      <div class="name-sub">캐릭터를 고르고, 머리 위에 보일 이름을 적어 주세요</div>
+      <div class="gender-row">
+        <button class="gender-btn" data-g="m">👦<span>남자</span></button>
+        <button class="gender-btn" data-g="f">👧<span>여자</span></button>
+      </div>
       <input id="nameInput" maxlength="12" placeholder="예: 혜연" autocomplete="nickname">
+      <div class="name-warn" id="nameWarn"></div>
       <button id="nameOk">들어가기</button>
     </div>
   </div>
@@ -606,6 +617,8 @@
     const stringGeo = new THREE.CylinderGeometry(0.006, 0.006, 0.08, 6);
     [-0.03, 0.03].forEach((x) => addTo(body, stringGeo, std(0xffffff, 0.5), x, 0.14, 0.15));    // 후드 끈
     addTo(body, new THREE.CylinderGeometry(0.19, 0.17, 0.07, 20), pantsMat, 0, -0.085, 0);       // 골반(바지)
+    const skirt = addTo(body, new THREE.CylinderGeometry(0.18, 0.25, 0.15, 24), new THREE.MeshStandardMaterial({ color: 0xc9707f, roughness: 0.8 }), 0, -0.13, 0);   // 여자: 치마
+    skirt.name = 'skirt'; skirt.visible = false;
     characterGroup.add(body);
 
     // 머리 그룹 (얼굴 + 귀 + 머리카락 + 이목구비)
@@ -618,12 +631,22 @@
     // 반구를 뒤로 기울여 앞(이마)은 눈썹 위에서 끝나고 뒤통수는 목덜미까지 덮게
     addTo(headGroup, new THREE.SphereGeometry(0.272, 28, 20, 0, Math.PI * 2, 0, Math.PI * 0.5), hairMat, 0, 0.0, -0.01).rotation.x = -0.42;
     [-1, 1].forEach((sx) => { const side = addTo(headGroup, new THREE.SphereGeometry(0.09, 12, 10), hairMat, sx * 0.21, 0.04, 0.05); side.scale.set(0.55, 1.15, 0.9); });
-    [[-0.11, 0.12, -0.35], [0.0, 0.135, 0.0], [0.11, 0.12, 0.35]].forEach(([x, y, rz]) => {
+    [[-0.11, 0.142, -0.35], [0.0, 0.157, 0.0], [0.11, 0.142, 0.35]].forEach(([x, y, rz]) => {   // 앞머리 (눈썹이 보이게 조금 올림)
       const bang = addTo(headGroup, new THREE.SphereGeometry(0.1, 14, 10), hairMat, x, y, 0.19);
       bang.scale.set(1.0, 0.6, 0.55); bang.rotation.z = rz;
     });
     const tuft = addTo(headGroup, new THREE.ConeGeometry(0.022, 0.08, 8), hairMat, 0.03, 0.275, 0.02);
-    tuft.rotation.set(-0.5, 0, -0.4);
+    tuft.rotation.set(-0.5, 0, -0.4); tuft.name = 'tuftM';
+    // 여자 캐릭터: 어깨까지 오는 긴 뒷머리 + 옆머리 + 분홍 리본 (남자일 땐 숨김)
+    {
+      const hf = new THREE.Group(); hf.name = 'hairF'; hf.visible = false; headGroup.add(hf);
+      const back = addTo(hf, new THREE.SphereGeometry(0.27, 24, 18), hairMat, 0, -0.1, -0.08); back.scale.set(1.02, 1.32, 0.82);
+      [-1, 1].forEach((sx) => { const lock = addTo(hf, new THREE.SphereGeometry(0.085, 12, 12), hairMat, sx * 0.215, -0.13, 0.03); lock.scale.set(0.55, 1.9, 0.75);
+        const tip = addTo(hf, new THREE.SphereGeometry(0.07, 12, 10), hairMat, sx * 0.2, -0.3, 0.0); tip.scale.set(0.7, 0.8, 0.8); });
+      const ribbonM = new THREE.MeshStandardMaterial({ color: 0xf28bb0, roughness: 0.5 });
+      [-1, 1].forEach((sx) => { const w = addTo(hf, new THREE.ConeGeometry(0.05, 0.09, 4), ribbonM, 0.16 + sx * 0.045, 0.2, 0.06); w.rotation.z = sx * Math.PI / 2; });
+      addTo(hf, new THREE.SphereGeometry(0.022, 10, 8), ribbonM, 0.16, 0.2, 0.065);
+    }
     // 눈: 흰자 없이 큰 검은 눈 + 반짝임 두 개, 눈썹, 웃는 입, 볼터치
     const eyeMat = new THREE.MeshBasicMaterial({ color: 0x241a16 });
     const shineMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
@@ -634,8 +657,10 @@
       eyeParts.shines.push(addTo(headGroup, new THREE.SphereGeometry(0.006, 6, 6), shineMat, sx * 0.09 - 0.012, -0.015, 0.238));
       // 감은 눈: 아래로 둥근 눈썹 모양 선 (기도할 때만 보임)
       const lid = addTo(headGroup, new THREE.TorusGeometry(0.03, 0.007, 6, 14, Math.PI), eyeMat, sx * 0.09, -0.005, 0.232); lid.rotation.z = Math.PI; lid.visible = false; eyeParts.lids.push(lid);
-      const brow = addTo(headGroup, new THREE.BoxGeometry(0.06, 0.012, 0.01), hairMat, sx * 0.09, 0.075, 0.232);
-      brow.rotation.z = -sx * 0.12;
+      // 눈썹: 가늘고 작은 아치 (예전 두꺼운 막대 → 반지름 2cm, 굵기 3mm 곡선)
+      const browArc = Math.PI * 0.62;
+      const brow = addTo(headGroup, new THREE.TorusGeometry(0.02, 0.0032, 4, 12, browArc), hairMat, sx * 0.09, 0.058, 0.233);
+      brow.rotation.z = (Math.PI - browArc) / 2 - sx * 0.1; brow.scale.set(1.15, 0.7, 1); brow.castShadow = false;
       const blush = addTo(headGroup, new THREE.CircleGeometry(0.03, 16), new THREE.MeshBasicMaterial({ color: 0xf59ab0, transparent: true, opacity: 0.55 }), sx * 0.15, -0.06, 0.205);
       blush.rotation.y = sx * 0.55; blush.castShadow = false;
     });
@@ -1462,10 +1487,11 @@
         k.wallDoor(xa, ELEV.doorZ, xb, ELEV.doorZ, cx, 0.8, 2.8, wallM);
         k.wall(xa, ELEV.doorZ, xa, 0.0, 2.8, wallM); k.wall(xb, ELEV.doorZ, xb, 0.0, 2.8, wallM); k.wall(xa, 0.0, xb, 0.0, 2.8, wallM);
       }
-      [-1, 1].forEach((sd) => k.box(0.39, 2.0, 0.04, cx + sd * 0.2, 0, ELEV.doorZ - 0.03, steel));   // 닫힌 문 두 짝
-      k.box(0.9, 0.08, 0.06, cx, 2.0, ELEV.doorZ - 0.04, frameM);
-      k.box(0.08, 0.14, 0.03, cx + 0.55, 0.95, ELEV.doorZ - 0.04, k.M(0x222831));                    // 호출 버튼
-      k.sign('엘리베이터', cx, ELEV.doorZ - 0.08, Math.PI, 2.3);
+      if (!shaft) k.box(1.4, 2.5, 0.14, cx, 0, ELEV.doorZ + 0.05, wallM);   // 문 뒤 벽 마감판: 탑 벽면이 살짝 비스듬해 문이 떠 보이던 틈을 메움 (z -2.47~-2.33)
+      [-1, 1].forEach((sd) => k.box(0.39, 2.0, 0.04, cx + sd * 0.2, 0, ELEV.doorZ - 0.04, steel));   // 닫힌 문 두 짝
+      k.box(0.98, 0.08, 0.06, cx, 2.0, ELEV.doorZ - 0.05, frameM); [-1, 1].forEach((sd) => k.box(0.05, 2.04, 0.06, cx + sd * 0.465, 0, ELEV.doorZ - 0.05, frameM));   // 문틀
+      k.box(0.08, 0.14, 0.03, cx + 0.6, 0.95, ELEV.doorZ - 0.04, k.M(0x222831));                    // 호출 버튼
+      k.sign('엘리베이터', cx, ELEV.doorZ - 0.09, Math.PI, 2.3);
     }
     {
       const b1g = new THREE.Group(); b1g.name = 'B1_ELEVATOR'; scene.add(b1g); addElevator(-6.6, b1g, 'B1', true, B1_ELEV_X);
@@ -2234,6 +2260,16 @@
       });
     }
     // ---- 이름: 이 기기(브라우저)에 기억해 두고, 캐릭터 머리 위에 작게 띄움 ----
+    const GENDER_KEY = 'mdc_gender';
+    let genderCache = null;
+    const loadGender = () => { if (genderCache !== null) return genderCache; try { genderCache = localStorage.getItem(GENDER_KEY) || ''; } catch (e) { genderCache = ''; } return genderCache; };
+    const saveGender = (g) => { genderCache = g; try { localStorage.setItem(GENDER_KEY, g); } catch (e) {} };
+    function applyGender(root, g) {
+      const f = g === 'f';
+      const hf = root.getObjectByName('hairF'), sk = root.getObjectByName('skirt'), tm = root.getObjectByName('tuftM');
+      if (hf) hf.visible = f; if (sk) sk.visible = f; if (tm) tm.visible = !f;
+      root.userData.gender = f ? 'f' : 'm';
+    }
     const NAME_KEY = 'mdc_name';
     let nameCache = null;   // 이 창에서 처음 한 번만 읽어 기억 (다른 창에서 바꿔도 이 창 이름은 그대로)
     const loadName = () => { if (nameCache !== null) return nameCache; try { nameCache = localStorage.getItem(NAME_KEY) || ''; } catch (e) { nameCache = ''; } return nameCache; };
@@ -2262,17 +2298,28 @@
       return sp;
     }
     const nameModal = document.getElementById('nameModal'), nameInput = document.getElementById('nameInput');
-    function askName() { nameInput.value = loadName(); showEl(nameModal, true); setTimeout(() => nameInput.focus(), 50); }
+    function askName() {
+      nameInput.value = loadName(); pickedGender = loadGender(); document.getElementById('nameWarn').textContent = '';
+      document.querySelectorAll('.gender-btn').forEach((x) => x.classList.toggle('on', x.dataset.g === pickedGender));
+      showEl(nameModal, true);
+    }
+    let pickedGender = '';
+    document.querySelectorAll('.gender-btn').forEach((b) => b.addEventListener('click', () => {
+      pickedGender = b.dataset.g; document.querySelectorAll('.gender-btn').forEach((x) => x.classList.toggle('on', x === b));
+      applyGender(characterGroup, pickedGender); document.getElementById('nameWarn').textContent = '';
+    }));
     function confirmName() {
-      const v = nameInput.value.trim().slice(0, 12);
-      if (!v) { nameInput.focus(); return; }
+      const v = nameInput.value.trim().slice(0, 12), warn = document.getElementById('nameWarn');
+      if (!pickedGender) { warn.textContent = '남자 또는 여자를 골라 주세요'; return; }
+      if (!v) { warn.textContent = '이름을 적어 주세요'; nameInput.focus(); return; }
+      saveGender(pickedGender); applyGender(characterGroup, pickedGender);
       saveName(v); setNameTag(v); showEl(nameModal, false);
     }
     document.getElementById('nameOk').addEventListener('click', confirmName);
     nameInput.addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Enter') confirmName(); });
     nameInput.addEventListener('keyup', (e) => e.stopPropagation());
     document.getElementById('nameBtn').addEventListener('click', askName);
-    { const saved = loadName(); if (saved) setNameTag(saved); else askName(); }
+    { const saved = loadName(), g = loadGender(); if (g) applyGender(characterGroup, g); if (saved) setNameTag(saved); if (!saved || !g) askName(); }   // 처음(또는 성별을 아직 안 고른 분)만 창을 띄움
     document.getElementById('btnPrayerWrite').addEventListener('click', () => openPrayers('write'));
     makePrayerBoard(0.6, -6.6 + 1.45, -6.0, -Math.PI / 2);     // 지하 본당 동쪽 벽 (뒤쪽 통로 옆)
     makePrayerBoard(-6.93, F2_Y + 1.35, -12.0, Math.PI / 2);   // 2층 홀: 소예배실 벽(복도 쪽)에 걸림
@@ -2290,7 +2337,7 @@
     const onlineEl = document.getElementById('onlineCount');
     function myState() {
       const p = characterGroup.position;
-      return { id: PrayerStore.device(), n: loadName() || '성도', lv: curLevel(), x: +p.x.toFixed(2), y: +p.y.toFixed(2), z: +p.z.toFixed(2),
+      return { id: PrayerStore.device(), n: loadName() || '성도', g: loadGender() || 'm', lv: curLevel(), x: +p.x.toFixed(2), y: +p.y.toFixed(2), z: +p.z.toFixed(2),
         r: +characterGroup.rotation.y.toFixed(2), s: isSitting ? 1 : 0, p: isPraying ? 1 : 0, e: isEating ? 1 : 0, m: isMoving ? 1 : 0 };
     }
     const Net = {
@@ -2360,7 +2407,7 @@
         const gap = now - this.lastSent;
         if ((key !== this.lastKey && gap > 160) || gap > 2000) { this.send('pos', st); this.lastSent = now; this.lastKey = key; }   // 층은 위치 신호에 들어 있음 (접속 정보 다시 등록 안 함)
       },
-      onPos(p) { if (!p || !p.id || typeof p.id !== 'string' || p.id === PrayerStore.device()) return; const r = getRemote(p.id, p.n); r.target = p; if (r.name !== p.n) setRemoteName(r, p.n); },
+      onPos(p) { if (!p || !p.id || typeof p.id !== 'string' || p.id === PrayerStore.device()) return; const r = getRemote(p.id, p.n); r.target = p; if (r.name !== p.n) setRemoteName(r, p.n); if (r.group.userData.gender !== (p.g || 'm')) applyGender(r.group, p.g || 'm'); },
       onChat(c) { if (!c || !c.text) return; const r = remotes.get(c.id); chatLine(c.n, c.text); if (r) showBubble(r.group, c.text, r); },
       syncPeers() {
         const ids = new Set(this.peers.keys());
@@ -2376,7 +2423,7 @@
     const HOODIE_COLORS = [0x5b84c4, 0xc46b6b, 0x6bab7a, 0xb48ac9, 0xd9a54a, 0x5aa6a6, 0xc98a5a];
     function getRemote(id, name) {
       let r = remotes.get(id); if (r) return r;
-      const ix = charIdx(), g = characterGroup.clone(true);
+      const ix = charIdx(), g = characterGroup.clone(true); g.userData = { noCamBlock: true };
       g.children.filter((c) => c.isSprite).forEach((c) => g.remove(c));
       // 옷 색만 사람마다 다르게 (재질을 복사해서 내 캐릭터에 번지지 않게)
       const hue = HOODIE_COLORS[[...id].reduce((a, ch) => a + ch.charCodeAt(0), 0) % HOODIE_COLORS.length];
