@@ -403,7 +403,7 @@
     controls.enablePan = false;
     controls.zoomSpeed = 1.1;
     controls.touches = { ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_ROTATE };
-    window.__dbg = { camera, controls, scene, get furn() { return furn; }, get b1Seats() { return b1Seats; }, get character() { return characterGroup; }, findPath: (a, b) => findPath(a, b), goTo: (k) => goToTourStep(k), get camWant() { return [camWantDist, camCurDist, camLift]; }, setCam: (c, t) => { controls.target.set(...t); camera.position.set(...c); resetCamPull(); }, get eyesClosed() { return eyeParts.lids[0].visible; }, rayHits: (a, b) => { const A = new THREE.Vector3(...a), B = new THREE.Vector3(...b), d = B.clone().sub(A), L = d.length(); const rc = new THREE.Raycaster(A, d.normalize(), 0, L); rc.camera = camera; return rc.intersectObjects(scene.children, true).map((h) => { const m = h.object; if (m.geometry && !m.geometry.boundingBox) m.geometry.computeBoundingBox(); const bb = m.geometry && m.geometry.boundingBox ? m.geometry.boundingBox.clone().applyMatrix4(m.matrixWorld) : null; return [m.type, m.name || (m.parent && m.parent.name), +h.distance.toFixed(2), !!(m.material && m.material.transparent), m.material ? +(m.material.opacity || 0).toFixed(2) : null, bb && bb.min.toArray().map((v) => +v.toFixed(2)), bb && bb.max.toArray().map((v) => +v.toFixed(2))]; }); }, get faded() { return [...fadedMeshes.keys()].map(m => { m.geometry.computeBoundingBox(); const b = m.geometry.boundingBox.clone().applyMatrix4(m.matrixWorld); return [m.name || m.parent.name, +m.material.opacity.toFixed(2), b.min.toArray().map(v => +v.toFixed(2)), b.max.toArray().map(v => +v.toFixed(2))]; }); } }; // 화면 확인(자동 검사)용
+    window.__dbg = { camera, controls, scene, get furn() { return furn; }, get b1Seats() { return b1Seats; }, get character() { return characterGroup; }, findPath: (a, b) => findPath(a, b), goTo: (k) => goToTourStep(k), get camWant() { return [camWantDist, camCurDist, camLift]; }, setCam: (c, t) => { controls.target.set(...t); camera.position.set(...c); resetCamPull(); }, get eyesClosed() { return eyeParts.lids[0].visible; }, get moving() { return isMoving; }, get eating() { return isEating; }, seatsHere: () => { const r = []; const seen = new Set(); seatPick.forEach((m) => { const o = m.userData.seatOwner; if (!o || seen.has(o)) return; seen.add(o); (o.userData.seat ? [o.userData.seat] : o.userData.seats).forEach((st) => r.push(st)); }); return r; }, sit: (st) => goSit(st), get ringOpacity() { return +targetRing.material.opacity.toFixed(2); }, rayHits: (a, b) => { const A = new THREE.Vector3(...a), B = new THREE.Vector3(...b), d = B.clone().sub(A), L = d.length(); const rc = new THREE.Raycaster(A, d.normalize(), 0, L); rc.camera = camera; return rc.intersectObjects(scene.children, true).map((h) => { const m = h.object; if (m.geometry && !m.geometry.boundingBox) m.geometry.computeBoundingBox(); const bb = m.geometry && m.geometry.boundingBox ? m.geometry.boundingBox.clone().applyMatrix4(m.matrixWorld) : null; return [m.type, m.name || (m.parent && m.parent.name), +h.distance.toFixed(2), !!(m.material && m.material.transparent), m.material ? +(m.material.opacity || 0).toFixed(2) : null, bb && bb.min.toArray().map((v) => +v.toFixed(2)), bb && bb.max.toArray().map((v) => +v.toFixed(2))]; }); }, get faded() { return [...fadedMeshes.keys()].map(m => { m.geometry.computeBoundingBox(); const b = m.geometry.boundingBox.clone().applyMatrix4(m.matrixWorld); return [m.name || m.parent.name, +m.material.opacity.toFixed(2), b.min.toArray().map(v => +v.toFixed(2)), b.max.toArray().map(v => +v.toFixed(2))]; }); } }; // 화면 확인(자동 검사)용
     controls.maxDistance = 55;
     controls.maxPolarAngle = Math.PI * 0.49; // 바닥 아래로 돌아 들어가 건물 밖/땅 속이 보이지 않게
 
@@ -427,7 +427,7 @@
     const occRay = new THREE.Raycaster();
     const fadedMeshes = new Map();
     function isOccluder(o) {
-      if (!o.isMesh || o.userData.noCamBlock || o.userData.pickOnly) return false;
+      if (!o.isMesh || o.userData.noCamBlock || o.userData.pickOnly || o.isSprite) return false;
       for (let q = o; q; q = q.parent) { if (!q.visible || q === characterGroup) return false; if (q.userData && q.userData.noCamBlock) return false; }
       const m = o.material; if (!m || Array.isArray(m)) return false;
       if (fadedMeshes.has(o)) return true;
@@ -874,7 +874,8 @@
     const roomZ = [F3_PIER_S, 0, 0, planZ(9.8)];
     roomZ[1] = roomZ[0] + (roomZ[3] - roomZ[0]) / 3;
     roomZ[2] = roomZ[0] + (roomZ[3] - roomZ[0]) * 2 / 3;
-    wallSeg(roomW, -17.4, roomW, F3_PIER_S, 2.2);                 // 창고 서쪽 벽
+    wallSeg(roomW, -17.4, roomW, -16.75, 2.2); wallSeg(roomW, -15.95, roomW, F3_PIER_S, 2.2);   // 창고 서쪽 벽 (문 z -16.75~-15.95)
+    box(0.08, 0.3, 0.8, roomW, 1.9, -16.35, mWall);
     wallSeg(roomW, F3_PIER_S, -1.04, F3_PIER_S, 2.2);             // 창고 | 소그룹실 1
     for (let i = 0; i < 3; i++) {
       const za = roomZ[i], zb = roomZ[i + 1];
@@ -892,12 +893,41 @@
       makeSign(furn, '소그룹실 ' + (i + 1), roomW - 0.05, F3_Y + 2.05, zb - 0.5, -Math.PI / 2);
     }
 
-    makeSign(furn, '창고', roomW - 0.05, F3_Y + 1.6, -16.25, -Math.PI / 2);
+    makeSign(furn, '창고', roomW - 0.05, F3_Y + 2.05, -16.35, -Math.PI / 2);
     makeSign(furn, '식당 · 배식대', kitchenE + 0.05, F3_Y + 1.6, -14.85, Math.PI / 2);
     box(0.08, 0.3, 1.0, kitchenE, 1.9, -12.4, mWall); makeSign(furn, '주방', kitchenE + 0.05, F3_Y + 2.05, -12.4, Math.PI / 2);
     box(0.8, 0.3, 0.08, -11.5, 1.9, wcS, mWall); makeSign(furn, '화장실', -11.5, F3_Y + 2.05, wcS + 0.05, 0);
     box(0.75, 0.3, 0.08, -9.33, 1.9, wcS, mWall); makeSign(furn, '창고', -9.33, F3_Y + 2.05, wcS + 0.05, 0);
 
+    // ---- 창고 선반·상자, 화장실 변기·칸막이·세면대 (3층) ----
+    {
+      const shelfM = mat(0x7d7f84), boxM = [mat(0xc49a6c), mat(0xb5895c), mat(0xd4b083)], white = mat(0xf7f7f5), tile = mat(0xdfe6ea);
+      const rack = (x0, x1, z0, z1) => {                       // 철제 선반 (3단) + 상자
+        const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2, w = x1 - x0, d = z1 - z0;
+        [[x0, z0], [x0, z1], [x1, z0], [x1, z1]].forEach(([px, pz]) => box(0.03, 1.3, 0.03, px, 0, pz, shelfM));
+        [0.08, 0.5, 0.92, 1.28].forEach((y) => box(w, 0.02, d, cx, y, cz, shelfM));
+        [0.1, 0.52, 0.94].forEach((y, r) => { const n = Math.max(1, Math.floor(Math.max(w, d) / 0.32));
+          for (let i = 0; i < n; i++) { const t = (i + 0.5) / n; const bxp = w > d ? x0 + w * t : cx, bzp = w > d ? cz : z0 + d * t;
+            if ((i + r) % 3 !== 2) box(0.24, 0.2 + ((i + r) % 2) * 0.08, 0.24 > Math.min(w, d) ? Math.min(w, d) - 0.04 : 0.24, bxp, y + 0.02, bzp, boxM[(i + r) % 3]); } });
+      };
+      rack(roomW + 0.1, -1.1, -17.3, -16.95);                    // 북쪽 창고: 북쪽 벽 선반
+      box(0.3, 0.3, 0.3, -1.4, 0, -15.5, boxM[0]); box(0.3, 0.22, 0.3, -1.45, 0.3, -15.5, boxM[2]);
+      rack(kitchenE - 0.38, kitchenE - 0.05, -11.2, -9.3);       // 화장실 옆 창고: 동쪽 벽 선반
+      box(0.3, 0.3, 0.3, -9.65, 0, -11.0, boxM[1]);
+      // 화장실: 북쪽 벽에 칸 3개(변기) + 서쪽 벽 세면대 2
+      box(-9.91 + 12.4 - 0.1, 0.005, -8.25 + 11.33, (-12.4 - 9.91) / 2, 0.002, (-11.33 - 8.25) / 2, tile);
+      const toilet = (x, z) => {
+        const bowl = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.09, 0.2, 18), white); bowl.position.set(x, F3_Y + 0.1, z); bowl.scale.z = 1.25; furn.add(bowl);
+        const seat = new THREE.Mesh(new THREE.TorusGeometry(0.1, 0.025, 8, 20), white); seat.rotation.x = Math.PI / 2; seat.scale.y = 1.25; seat.position.set(x, F3_Y + 0.21, z); furn.add(seat);
+        box(0.26, 0.26, 0.1, x, 0.12, z - 0.17, white);           // 물탱크
+      };
+      [-11.95, -11.15, -10.35].forEach((x, i) => {
+        toilet(x, -10.95);
+        if (i < 2) box(0.03, 1.2, 0.9, x + 0.4, 0.08, -10.88, mat(0xb9c6cf));   // 칸막이
+      });
+      box(0.03, 1.2, 0.9, -12.35, 0.08, -10.88, mat(0xb9c6cf));
+      [-9.6, -9.0].forEach((z) => { box(0.3, 0.06, 0.36, -12.2, 0.42, z, white); box(0.04, 0.42, 0.04, -12.25, 0, z, white); box(0.02, 0.3, 0.3, -12.37, 0.7, z, mat(0xcfe3ea)); });   // 세면대·거울
+    }
     // 3층 실내 조명
     const f3Light = new THREE.PointLight(0xfff0d8, 2.4, 24, 0.8);
     f3Light.position.set(-6, F3_Y + 2.8, -9);
@@ -951,6 +981,13 @@
           const g = new THREE.Group(); g.position.set(x, Y, z); g.rotation.y = rotY; group.add(g);
           const add = (w, h, d, px, py, pz) => { const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat); b.position.set(px, py + h / 2, pz); b.castShadow = true; g.add(b); };
           add(len, 0.2, 0.42, 0, 0.02, 0); add(len, 0.26, 0.1, 0, 0.2, -0.17); add(0.1, 0.14, 0.42, -len / 2 + 0.05, 0.2, 0); add(0.1, 0.14, 0.42, len / 2 - 0.05, 0.2, 0);
+          // 앉을 자리: 길이 0.5m마다 한 자리 (눌러서 앉기)
+          const n = Math.max(1, Math.round((len - 0.2) / 0.5)), c = Math.cos(rotY), sn = Math.sin(rotY);
+          g.userData.seats = [];
+          for (let i = 0; i < n; i++) {
+            const t = (i - (n - 1) / 2) * ((len - 0.2) / n);
+            g.userData.seats.push({ x: x + c * t + sn * 0.14, z: z - sn * t + c * 0.14, y: Y + 0.22, rot: rotY, kind: 'chair' });   // 무릎이 앞 모서리 밖으로 나오게
+          }
         },
         plant(x, z, s) {
           s = s || 1; k.cyl(0.11 * s, 0.22 * s, x, 0, z, k.mPot);
@@ -1062,7 +1099,7 @@
       {
         const cz = -5.1, dk = k.M(0xcfc6b8), scr = k.M(0x22303f, 0.3);
         [-10.9, -8.6].forEach((x) => { k.table(x, cz - 0.6, 1.1, 0.55, dk); k.box(0.42, 0.26, 0.03, x, 0.42, cz - 0.78, scr); k.chair(x, cz - 0.05, Math.PI, k.M(0x4a5563)); });
-        k.shelf(-11.9, cz + 1.2, 1.4, Math.PI / 2); k.box(0.4, 0.3, 0.35, -7.5, 0, cz + 1.6, k.M(0xe5e7eb)); k.plant(-7.4, cz - 1.9);
+        k.shelf(-11.9, cz + 1.2, 1.4, Math.PI / 2); k.plant(-7.4, cz - 1.9);   // (문 앞을 막던 프린터 상자는 뺌)
         k.sign('사무실', CW + 0.05, -3.4, Math.PI / 2, 2.2); k.light(-9.6, cz, 1.3);
       }
       // 창가 휴게 홀(동쪽 남쪽): 소파 + 낮은 탁자 + 화분
@@ -1099,7 +1136,19 @@
         x = b;
       });
       // 실내 칸막이 (북쪽 벽 ~ 남쪽 유리벽)
-      [-9.0, -8.1, -3.3, -2.4].forEach((px) => k.wall(px, -17.36, px, F4_IN_S, H));
+      k.wall(-9.0, -17.36, -9.0, F4_IN_S, H); k.wall(-2.4, -17.36, -2.4, F4_IN_S, H);
+      k.wallDoor(-8.1, -17.36, -8.1, -13.0, -14.0, 0.8, H); k.wall(-8.1, -13.0, -8.1, F4_IN_S, H);   // 화장실 문은 교육관 쪽
+      k.wallDoor(-3.3, -17.36, -3.3, -13.0, -14.0, 0.8, H); k.wall(-3.3, -13.0, -3.3, F4_IN_S, H);
+      {
+        const white = k.M(0xf7f7f5);
+        const toilet4 = (x, z) => {
+          const bowl = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.09, 0.2, 18), white); bowl.position.set(x, F4_Y + 0.1, z); bowl.scale.z = 1.25; f4.add(bowl);
+          const seat = new THREE.Mesh(new THREE.TorusGeometry(0.1, 0.025, 8, 20), white); seat.rotation.x = Math.PI / 2; seat.scale.y = 1.25; seat.position.set(x, F4_Y + 0.21, z); f4.add(seat);
+          k.box(0.26, 0.26, 0.1, x, 0.12, z - 0.17, white);
+        };
+        [-8.55, -2.85].forEach((x) => { toilet4(x, -16.95); toilet4(x, -16.05); k.box(0.86, 1.1, 0.03, x, 0.05, -16.5, k.M(0xb9c6cf));
+          k.box(0.3, 0.06, 0.3, x, 0.42, -13.25, white); k.box(0.04, 0.42, 0.04, x, 0, -13.2, white); });     // 세면대
+      }
       k.wall(-9.0, -13.0, -8.1, -13.0, H); k.wall(-3.3, -13.0, -2.4, -13.0, H);         // 화장실 앞 칸
       k.wall(-12.26, -17.36, -12.26, F4_IN_S, H);                                          // 실내 서쪽 벽(아래 서쪽 외벽을 정원 난간 높이로 낮춘 대신)
       // 목양실 401: x -12.26 ~ -9.0
@@ -1118,7 +1167,7 @@
         k.sign('목양실', -10.0, F4_IN_S + 0.06, 0, 2.4); k.light(-10.6, -14.0, 1.4);
       }
       // 화장실 두 곳
-      k.sign('화장실', -8.55, F4_IN_S + 0.06, 0, 1.7); k.sign('화장실', -2.85, F4_IN_S + 0.06, 0, 1.7);
+      k.sign('화장실', -8.05, -14.0, Math.PI / 2, 2.2); k.sign('화장실', -3.35, -14.0, -Math.PI / 2, 2.2);
       // 교육관-1 402 (쉼터 겸): x -8.1 ~ -3.3
       {
         const fab = k.M(0xd8c4a8, 0.95);
@@ -1559,6 +1608,12 @@
       const pulpit = byName['B1_FINAL_Pulpit'];
       if (pulpit) {
         pulpit.position.y -= 0.09;
+        // 높이 0.95m → 0.6m: 캐릭터(0.8m)가 강대상 뒤에 서면 가슴 위가 보이게. 아래끝은 강단 윗면에 그대로
+        pulpit.updateWorldMatrix(true, false); pulpit.geometry.computeBoundingBox();
+        const pb0 = pulpit.geometry.boundingBox.clone().applyMatrix4(pulpit.matrixWorld);
+        pulpit.scale.y *= 0.6 / (pb0.max.y - pb0.min.y); pulpit.updateWorldMatrix(true, false);
+        const pb1 = pulpit.geometry.boundingBox.clone().applyMatrix4(pulpit.matrixWorld), pps = new THREE.Vector3(); pulpit.parent.getWorldScale(pps);
+        pulpit.position.y += (pb0.min.y - pb1.min.y) / (pps.y || 1);
         // 넓어진 윗단 앞쪽에: 모서리에서 대각선 4.6m (스크린 벽과의 사이 약 1.2m — 강대상 뒤에 설 수 있음)
         const d = 4.6 / Math.SQRT2;
         pulpit.position.x = CORNER.x + d; pulpit.position.z = CORNER.z + d;
@@ -1839,6 +1894,7 @@
       }
 
       rebuildWalk(); buildNav(); rebuildSeats(); walkPath = []; pendingSeat = null; updateActions();
+      walkedSinceRide = false; wasNearEl = true;   // 장소에 막 도착했을 땐 층 선택 창을 띄우지 않음 (걸어서 다가올 때만)
       if (eye) { eyeCam(); return; }
       controls.target.copy(wp.camLook);
       camera.position.copy(wp.camPos);
@@ -1864,7 +1920,7 @@
     // ---- 엘리베이터로만 층 이동, 행동 버튼은 그 층에 도착했을 때만 ----
     const btnElevator = document.getElementById('btnElevator'), elevPanel = document.getElementById('elevPanel');
     const elevFade = document.getElementById('elevFade'), elevFadeText = document.getElementById('elevFadeText');
-    let pendingRide = null, riding = false;
+    let pendingRide = null, riding = false, wasNearEl = false, walkedSinceRide = false;
     const curLevel = () => TOUR_WAYPOINTS[currentStepKey].level;
     function callPoints(lv) { return CALL_POINTS[lv] || [[ELEV.x, -2.85]]; }
     function nearElevator() {
@@ -1887,7 +1943,7 @@
     }
     function ride(lv) {
       if (riding) return;
-      riding = true; elevPanel.hidden = true; pendingRide = null;
+      riding = true; elevPanel.hidden = true; pendingRide = null; walkedSinceRide = false;
       elevFadeText.textContent = `🛗 ${LEVEL_NAME[lv]}(으)로 이동 중…`;
       elevFade.classList.add('on');
       setTimeout(() => {
@@ -2091,7 +2147,8 @@
     });
 
     const seatHover = new THREE.Mesh(new THREE.RingGeometry(0.13, 0.18, 28), new THREE.MeshBasicMaterial({ color: 0xffd27a, transparent: true, opacity: 0.9, depthTest: false, side: THREE.DoubleSide }));
-    seatHover.rotation.x = -Math.PI / 2; seatHover.renderOrder = 11; seatHover.visible = false; scene.add(seatHover);
+    seatHover.rotation.x = -Math.PI / 2; seatHover.renderOrder = 11; seatHover.visible = false; seatHover.userData.noCamBlock = true; scene.add(seatHover);
+    targetRing.userData.noCamBlock = true;   // 바닥 표시 링은 '가리는 물체'가 아님 (투명 처리되면 링이 안 사라지던 문제)
     let hoverT = 0;
     window.addEventListener('pointermove', (e) => {
       if (e.pointerType !== 'mouse' || performance.now() - hoverT < 70) return;
@@ -2168,73 +2225,38 @@
     const btnActionPew = document.getElementById('btnActionPew');
     const btnActionPray = document.getElementById('btnActionPray');
 
+    // 지금 층에서 조건에 맞는 가장 가까운 자리
+    function nearestSeat(test) {
+      const p = characterGroup.position; let best = null, bd = Infinity; const seen = new Set();
+      seatPick.forEach((m) => { const o = m.userData.seatOwner; if (!o || seen.has(o)) return; seen.add(o);
+        (o.userData.seat ? [o.userData.seat] : o.userData.seats).forEach((st) => { if (!test(st)) return; const d = Math.hypot(st.x - p.x, st.z - p.z); if (d < bd) { bd = d; best = st; } }); });
+      return best;
+    }
+    function setPrayBtn() {
+      btnActionPray.innerHTML = isPraying ? '✨ 기도 마치기' : '🙏 기도';
+      btnActionPray.style.background = isPraying ? '#0284c7' : '';
+    }
+    // 의자 착석: 앉아 있으면 그 자리에서 기도, 서 있으면 가장 가까운 장의자로 걸어가서 앉음
     btnActionPew.addEventListener('click', () => {
-      isEating = false;
-      isMoving = false;
-      isSitting = true;
-      isPraying = true; // 착석 시 자동으로 기도 포즈
-
-      // 의자 등받이 속이 아니라, 방석 쿠션 상단(높이 -6.38m) 무릎 공간에 정확히 안착
-      const seat = pickB1Seat(-6.0, -8.6);
-      characterGroup.position.set(seat.x, seat.y, seat.z);
-      characterGroup.rotation.y = seat.rot; // 무대(왼쪽 위 모서리)를 향해 앉음
-      targetPos.copy(characterGroup.position);
-
-      // 뒤에서 비추되 조금 높게: 커진 스크린과 벽 십자가가 함께 보이게
-      if (viewMode === 'eye') { eyeCam(1.5); controls.target.y = seat.y + EYE_H + 0.35; return; } // 앉은 눈높이에서 강단·스크린을 봄
-      controls.target.set(seat.x + Math.sin(seat.rot) * 2.0, seat.y + 1.5, seat.z + Math.cos(seat.rot) * 2.0);
-      camera.position.set(seat.x - Math.sin(seat.rot) * 2.6, seat.y + 1.5, seat.z - Math.cos(seat.rot) * 2.6);
-      resetCamPull();
+      if (isSitting) { isEating = false; isPraying = true; setPrayBtn(); return; }
+      const st = nearestSeat((x) => x.kind === 'pew'); if (st) goSit(st);
     });
-
+    // 기도: 지금 그 자리(앉았으면 앉은 채, 서 있으면 선 채)에서 기도 시작·마치기. 자리를 옮기지 않음
     btnActionPray.addEventListener('click', () => {
-      isMoving = false;
+      isMoving = false; walkPath = []; pendingSeat = null;
       isEating = false;
       isPraying = !isPraying;
-      if (isPraying) {
-        btnActionPray.innerHTML = '✨ 일어서기';
-        btnActionPray.style.background = '#0284c7';
-      } else {
-        btnActionPray.innerHTML = '🙏 기도';
-        btnActionPray.style.background = 'rgba(30, 41, 59, 0.9)';
-        if (isSitting) standUp();                           // 일어서기: 의자 옆 통로로 나와서 섬
-      }
+      setPrayBtn();
     });
-
-    // -------------------------------------------------------------------------
-    // 3층 버튼: 식당에서 밥먹기 / 소그룹실 앉기
-    // -------------------------------------------------------------------------
-    function sitAt(x, z, rotY) {
-      isMoving = false;
-      isPraying = false;
-      isSitting = true;
-      characterGroup.position.set(x, F3_Y + 0.20, z);   // 앉는 면(0.20m) 위에 바로
-      characterGroup.rotation.y = rotY;
-      targetPos.copy(characterGroup.position);
-      controls.target.set(x, F3_Y + 0.85, z);
-    }
-
+    // 밥먹기: 가장 가까운 식당 의자로 / 소그룹실: 가장 가까운 소그룹실 의자로 (앉기만, 밥먹기 동작은 이어지지 않음)
     document.getElementById('btnActionEat').addEventListener('click', () => {
-      sitAt(-5.70, DINING_ROWS[1], Math.PI / 2);   // 가운데 열 · 가운데 줄 서쪽 의자 한가운데, 동쪽을 보고 앉음
-      isEating = true;
-      if (viewMode === 'eye') { eyeCam(1.4); return; }
-      camera.position.set(-3.6, F3_Y + 1.7, DINING_ROWS[1] + 2.0);
-      resetCamPull();
+      const cur = characterGroup.position;
+      if (isSitting && nearestSeat((x) => x.kind === 'dine' && Math.hypot(x.x - cur.x, x.z - cur.z) < 0.05)) { isPraying = false; isEating = true; setPrayBtn(); return; }
+      const st = nearestSeat((x) => x.kind === 'dine'); if (st) goSit(st);
     });
-
     document.getElementById('btnActionGroup').addEventListener('click', () => {
-      const gz = (roomZ[0] + roomZ[1]) / 2 - 0.23;
-      sitAt(-1.40, gz, Math.PI / 2); // 소그룹실 1 서쪽 의자 한가운데
-      // 방 안쪽(동쪽 창가) 위에서 내려다봐 칸막이 벽이 캐릭터를 가리지 않게
-      if (viewMode === 'eye') {
-        // 방이 좁아 뒤쪽은 벽이라, 맞은편 창가 쪽 눈높이에서 비스듬히 바라봄 (앉은 얼굴과 식탁이 보이게)
-        const c = characterGroup.position;
-        controls.target.set(c.x + 0.25, c.y + EYE_H * 0.8, c.z);
-        camera.position.set(-0.3, c.y + EYE_H + 0.3, gz + 0.85);
-        lastCharPos.copy(c); resetCamPull(); return;
-      }
-      camera.position.set(-0.25, F3_Y + 2.3, gz + 1.3);
-      resetCamPull();
+      isEating = false; isPraying = false; setPrayBtn();
+      const st = nearestSeat((x) => x.kind === 'chair' && x.x > -2.4); if (st) goSit(st);
     });
 
     // 찬양 BGM
@@ -2296,8 +2318,9 @@
       targetPos.copy(characterGroup.position);
       isSitting = true; isPraying = st.kind === 'pew'; isEating = st.kind === 'dine';
       seatHover.visible = false;   // 앉은 자리 표시는 지움
+      targetRing.material.opacity = 0; targetMarkerTimer = 0;   // 앉으면 바닥 링도 바로 지움
       const bp = document.getElementById('btnActionPray');
-      bp.innerHTML = isPraying ? '✨ 일어서기' : '🙏 기도'; bp.style.background = isPraying ? '#0284c7' : '';
+      bp.innerHTML = isPraying ? '✨ 기도 마치기' : '🙏 기도'; bp.style.background = isPraying ? '#0284c7' : '';
     }
     // 앉아 있다가 일어날 때: 의자 속에서 서지 않게, 가장 가까운 빈 통로 칸으로 한 걸음 나와서 바닥에 섬
     function standUp() {
@@ -2602,6 +2625,10 @@
       const bpw = document.getElementById('btnPrayerWrite'); if (bpw.hidden === nearPulpit) bpw.hidden = !nearPulpit;
       const nearEl = nearElevator();
       if (btnElevator.hidden === nearEl) btnElevator.hidden = !nearEl;
+      if (nearEl && !wasNearEl && walkedSinceRide && !pendingRide && !riding) openElevPanel();   // 걸어서 다가오면 층 선택 창
+      if (!nearEl && wasNearEl) elevPanel.hidden = true;                                            // 멀어지면 닫음
+      if (isMoving) walkedSinceRide = true;
+      wasNearEl = nearEl;
       if (pendingRide && !isMoving) { if (nearEl) ride(pendingRide); else pendingRide = null; }
       if (viewMode === 'eye') followEye();
       camBeforeUpdate();
