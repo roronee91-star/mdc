@@ -258,8 +258,10 @@
     #ppText { width: 100%; font-size: 15px; padding: 10px; border-radius: 10px; border: 1.5px solid #d8c7ab; resize: vertical; user-select: text; font-family: inherit; }
     .pp-count { text-align: right; font-size: 12px; color: #9a8a76; margin: 3px 0 8px; }
     .pp-check { display: flex; gap: 6px; align-items: center; font-size: 14px; margin-bottom: 10px; }
-    #ppSubmit { width: 100%; padding: 12px; border: none; border-radius: 10px; background: #8a6a42; color: #fff; font-size: 15px; font-weight: 800; cursor: pointer; }
-    #ppSubmit:disabled { opacity: 0.5; }
+    .pp-submits { display: flex; gap: 8px; }
+    .pp-sub { flex: 1; padding: 12px 8px; border: none; border-radius: 10px; background: #8a6a42; color: #fff; font-size: 14px; font-weight: 800; cursor: pointer; }
+    .pp-sub.anon { background: #fff; color: #6b4f33; border: 1.5px solid #c9a97a; }
+    .pp-sub:disabled { opacity: 0.45; }
     .pp-note { font-size: 12px; color: #9a8a76; padding: 8px 14px 12px; border-top: 1px solid #f0e4d2; }
   </style>
 
@@ -313,6 +315,7 @@
     <div class="bottom-bar">
       <div class="action-group">
         <button class="action-btn" id="btnElevator" hidden>🛗 엘리베이터 타기</button>
+        <button class="action-btn" id="btnPrayerWrite" hidden>📝 기도제목 쓰기</button>
         <button class="action-btn" id="btnActionPew">🪑 의자 착석</button>
         <button class="action-btn" id="btnActionPray">🙏 기도</button>
         <button class="action-btn" id="btnActionEat">🍚 밥먹기</button>
@@ -351,8 +354,10 @@
         <div class="pp-cats" id="ppCats"></div>
         <textarea id="ppText" maxlength="300" rows="5" placeholder="함께 기도해 주셨으면 하는 내용을 적어 주세요 (300자까지)"></textarea>
         <div class="pp-count"><span id="ppLen">0</span> / 300</div>
-        <label class="pp-check"><input type="checkbox" id="ppAnon"> 이름 없이 올리기 (익명)</label>
-        <button id="ppSubmit">기도제목 올리기</button>
+        <div class="pp-submits">
+          <button id="ppSubmit" class="pp-sub">👤 <span id="ppMyName">내</span> 이름으로 올리기</button>
+          <button id="ppSubmitAnon" class="pp-sub anon">🕊 익명으로 올리기</button>
+        </div>
       </div>
       <div class="pp-note" id="ppNote">지금은 이 기기에만 저장돼요. 교회 연결(Supabase)을 마치면 모든 성도님과 함께 보여요.</div>
     </div>
@@ -1321,6 +1326,7 @@
     //  ※ GLB 파일은 그대로 두고, 화면이 열릴 때 코드로 고칩니다.
     // -------------------------------------------------------------------------
     let b1Seats = [];
+    const PULPIT_AT = new THREE.Vector3(-9.78, -6.16, -14.33);   // 강대상 자리 (본당 보정 때 다시 정함)
     const ceilingRig = new THREE.Group(); // 본당 천장 조명 (위에서 내려다볼 때는 숨김)
     function pickB1Seat(x, z) {
       let best = null, bd = 1e9;
@@ -1500,13 +1506,15 @@
       }
 
       // 3) 강대상: 바닥에서 9cm 뜬 것 내려놓기
-      // 강단 넓히기: 무대 모서리(서북쪽 끝)는 그대로 두고 가로·세로 1.25배 (월드 좌표로 맞춤)
+      // 강단 2단: 아랫단(계단 한 단) 반지름 약 7.0m, 윗단 약 6.0m. 무대 모서리(서북쪽 끝)는 그대로 두고 키움.
+      //   윗단을 넓혀 강대상 뒤(스크린 벽 앞)에 1m 넘는 공간을 둠 (예전엔 20cm라 강대상 뒤로 못 들어감)
+      const STAGE_SCALE = { B1_FINAL_Stage_Tier_0: 1.25, B1_FINAL_Stage_Tier_1: 1.43 };
       ['B1_FINAL_Stage_Tier_0', 'B1_FINAL_Stage_Tier_1'].forEach((n) => {
-        const m = byName[n]; if (!m) return;
+        const m = byName[n]; if (!m) return; const sc = STAGE_SCALE[n];
         m.updateWorldMatrix(true, false); m.geometry.computeBoundingBox();
         const wb = () => m.geometry.boundingBox.clone().applyMatrix4(m.matrixWorld);
         const b0 = wb();
-        m.scale.x *= 1.25; m.scale.z *= 1.25; m.updateWorldMatrix(true, false);
+        m.scale.x *= sc; m.scale.z *= sc; m.updateWorldMatrix(true, false);
         const b1 = wb(), ps = new THREE.Vector3(); m.parent.getWorldScale(ps);
         m.position.x += (b0.min.x - b1.min.x) / (ps.x || 1); m.position.z += (b0.min.z - b1.min.z) / (ps.z || 1);
         m.updateWorldMatrix(true, false);
@@ -1519,7 +1527,7 @@
         const grp = (x, z, rotY) => { const gg = new THREE.Group(); gg.position.set(x, top, z); gg.rotation.y = rotY; g.add(gg); return gg; };
         const part = (gg, geo, mat, px, py, pz, rx, rz) => { const m = new THREE.Mesh(geo, mat); m.position.set(px, py, pz); if (rx) m.rotation.x = rx; if (rz) m.rotation.z = rz; m.castShadow = true; gg.add(m); return m; };
         // 그랜드 피아노 (실제의 절반 크기: 폭 0.75m · 길이 0.85m)
-        const [px, pz] = at(4.3, 74);
+        const [px, pz] = at(4.9, 76);
         const pg = grp(px, pz, Math.atan2(C.x - px, C.z - pz) + Math.PI);   // 건반이 회중 쪽을 비스듬히 봄
         const shape = new THREE.Shape(); shape.moveTo(-0.37, 0); shape.lineTo(0.37, 0); shape.lineTo(0.37, -0.35); shape.quadraticCurveTo(0.2, -0.85, -0.1, -0.85); shape.quadraticCurveTo(-0.37, -0.8, -0.37, -0.45); shape.lineTo(-0.37, 0);
         const body = new THREE.ExtrudeGeometry(shape, { depth: 0.14, bevelEnabled: false }); body.rotateX(Math.PI / 2);
@@ -1532,7 +1540,7 @@
         [[-0.3, -0.05], [0.3, -0.05], [-0.05, -0.75]].forEach(([lx, lz]) => part(pg, new THREE.CylinderGeometry(0.025, 0.02, 0.33, 10), black, lx, 0.165, lz));
         part(pg, new THREE.BoxGeometry(0.4, 0.05, 0.18), black, 0, 0.2, 0.32); part(pg, new THREE.BoxGeometry(0.36, 0.2, 0.14), black, 0, 0.1, 0.32);   // 의자
         // 드럼 세트
-        const [dx, dz] = at(4.3, 16);
+        const [dx, dz] = at(4.9, 14);
         const dg = grp(dx, dz, Math.atan2(C.x - dx, C.z - dz) + Math.PI);
         const shell = M(0x8a1f2b, { roughness: 0.35 }), head = M(0xf3efe6, { roughness: 0.6 }), brass = M(0xc8a24a, { roughness: 0.3 });
         part(dg, new THREE.CylinderGeometry(0.2, 0.2, 0.22, 24), shell, 0, 0.2, -0.05, Math.PI / 2);      // 큰북
@@ -1551,9 +1559,10 @@
       const pulpit = byName['B1_FINAL_Pulpit'];
       if (pulpit) {
         pulpit.position.y -= 0.09;
-        // 스크린 벽과 겹치지 않게 대각선으로 앞(회중 쪽)으로 옮김 (모서리에서 대각선 3.8m)
-        const d = 3.8 / Math.SQRT2;
+        // 넓어진 윗단 앞쪽에: 모서리에서 대각선 4.6m (스크린 벽과의 사이 약 1.2m — 강대상 뒤에 설 수 있음)
+        const d = 4.6 / Math.SQRT2;
         pulpit.position.x = CORNER.x + d; pulpit.position.z = CORNER.z + d;
+        PULPIT_AT.set(CORNER.x + d, -6.16, CORNER.z + d);
       }
 
       // 4) 십자가: 참고 사진처럼 벽에 붙임. 회중이 무대를 볼 때 스크린 왼쪽 = 서쪽 벽.
@@ -1954,7 +1963,7 @@
     function showPrayerTab(tab) {
       document.querySelectorAll('.pp-tab').forEach((b) => b.classList.toggle('on', b.dataset.tab === tab));
       document.getElementById('ppList').hidden = tab !== 'list'; document.getElementById('ppWrite').hidden = tab !== 'write';
-      if (tab === 'write') setTimeout(() => document.getElementById('ppText').focus(), 50);
+      if (tab === 'write') { ppSync(); setTimeout(() => document.getElementById('ppText').focus(), 50); }
     }
     function openPrayers(tab) { renderPrayers(); showPrayerTab(tab || 'list'); pp.panel.hidden = false; }
     document.getElementById('prayerBtn').addEventListener('click', () => openPrayers('list'));
@@ -1969,14 +1978,17 @@
       if (t.dataset.del && confirm('이 기도제목을 지울까요?')) { PrayerStore.remove(t.dataset.del); renderPrayers(); }
     });
     const ppText = document.getElementById('ppText'), ppSubmit = document.getElementById('ppSubmit');
-    const ppSync = () => { document.getElementById('ppLen').textContent = ppText.value.length; ppSubmit.disabled = !ppText.value.trim(); };
-    ppText.addEventListener('input', ppSync); ppSync();
+    const ppSubmitAnon = document.getElementById('ppSubmitAnon');
+    const ppSync = () => { document.getElementById('ppLen').textContent = ppText.value.length; ppSubmit.disabled = ppSubmitAnon.disabled = !ppText.value.trim(); document.getElementById('ppMyName').textContent = loadName() || '내'; };
+    ppText.addEventListener('input', ppSync);   // 처음 표시는 창을 열 때 (이름 기능이 아래에서 준비된 뒤)
     ['keydown', 'keyup'].forEach((ev) => ppText.addEventListener(ev, (e) => e.stopPropagation()));   // 글 쓰는 동안 W·A·S·D로 캐릭터가 움직이지 않게
-    ppSubmit.addEventListener('click', () => {
+    const submitPrayer = (anon) => {
       const v = ppText.value.trim(); if (!v) return;
-      PrayerStore.add(v.slice(0, 300), pp.cat, document.getElementById('ppAnon').checked);
+      PrayerStore.add(v.slice(0, 300), pp.cat, anon);
       ppText.value = ''; ppSync(); pp.filter = 'all'; renderPrayers(); showPrayerTab('list');
-    });
+    };
+    ppSubmit.addEventListener('click', () => submitPrayer(false));
+    ppSubmitAnon.addEventListener('click', () => submitPrayer(true));
     // 공간 속 기도제목 게시판(지하 본당 동쪽 벽 · 2층 기도실): 누르면 기도제목 창이 열림
     const prayerBoards = [];
     function makePrayerBoard(x, y, z, rotY) {
@@ -2043,6 +2055,7 @@
     nameInput.addEventListener('keyup', (e) => e.stopPropagation());
     document.getElementById('nameBtn').addEventListener('click', askName);
     { const saved = loadName(); if (saved) setNameTag(saved); else askName(); }
+    document.getElementById('btnPrayerWrite').addEventListener('click', () => openPrayers('write'));
     makePrayerBoard(0.6, -6.6 + 1.45, -6.0, -Math.PI / 2);     // 지하 본당 동쪽 벽 (뒤쪽 통로 옆)
     makePrayerBoard(-1.6, F2_Y + 1.25, -7.47, Math.PI);        // 2층 기도실 남쪽 벽
     updatePrayerBoards();
@@ -2585,6 +2598,8 @@
         eyeParts.shines.forEach((e) => { e.visible = !closed; });
         eyeParts.lids.forEach((e) => { e.visible = closed; });
       }
+      const nearPulpit = curLevel() === 'B1' && Math.hypot(characterGroup.position.x - PULPIT_AT.x, characterGroup.position.z - PULPIT_AT.z) < 1.9;
+      const bpw = document.getElementById('btnPrayerWrite'); if (bpw.hidden === nearPulpit) bpw.hidden = !nearPulpit;
       const nearEl = nearElevator();
       if (btnElevator.hidden === nearEl) btnElevator.hidden = !nearEl;
       if (pendingRide && !isMoving) { if (nearEl) ride(pendingRide); else pendingRide = null; }
