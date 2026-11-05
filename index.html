@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>우리교회 가상 성전 투어 (지하 본당 내부 완벽 진입 모드)</title>
+  <title>우리교회 메타버스 성전 투어 (Walkthrough Tour)</title>
   <style>
     * {
       box-sizing: border-box;
@@ -16,7 +16,7 @@
       height: 100%;
       overflow: hidden;
       font-family: -apple-system, BlinkMacSystemFont, "Pretendard", "Segoe UI", Roboto, sans-serif;
-      background-color: #111827;
+      background-color: #0f172a;
       color: #fff;
     }
     #canvas-container {
@@ -36,92 +36,124 @@
       display: flex;
       flex-direction: column;
       justify-content: space-between;
-      padding: 18px 22px;
+      padding: 16px 20px;
     }
-    .header-box {
+    .header-bar {
       pointer-events: auto;
-      background: rgba(15, 23, 42, 0.88);
+      background: rgba(15, 23, 42, 0.85);
       backdrop-filter: blur(14px);
       padding: 12px 20px;
       border-radius: 14px;
       border: 1px solid rgba(255, 255, 255, 0.15);
-      display: inline-flex;
+      display: flex;
       align-items: center;
+      justify-content: space-between;
       gap: 16px;
-      max-width: fit-content;
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+      width: 100%;
+      max-width: 980px;
+      margin: 0 auto;
+    }
+    .header-left {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
     }
     .header-title {
       font-size: 15px;
       font-weight: 700;
+      letter-spacing: -0.3px;
     }
-    .header-desc {
-      font-size: 12px;
+    .header-sub {
+      font-size: 11px;
       color: #94a3b8;
     }
-    .floor-controls {
+    /* 투어 코스 단계별 탭 */
+    .tour-steps {
       display: flex;
-      gap: 8px;
+      gap: 6px;
+      background: rgba(0, 0, 0, 0.3);
+      padding: 4px;
+      border-radius: 10px;
     }
-    .nav-btn {
-      pointer-events: auto;
-      background: rgba(255, 255, 255, 0.12);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      color: #fff;
-      padding: 7px 14px;
-      border-radius: 8px;
+    .step-btn {
+      background: transparent;
+      border: none;
+      color: #cbd5e1;
+      padding: 6px 12px;
+      border-radius: 7px;
       font-size: 12px;
       font-weight: 600;
       cursor: pointer;
-      display: inline-flex;
+      display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 5px;
+      transition: all 0.2s ease;
+    }
+    .step-btn:hover {
+      background: rgba(255, 255, 255, 0.12);
+      color: #fff;
+    }
+    .step-btn.active {
+      background: #2563eb;
+      color: #fff;
+      box-shadow: 0 2px 10px rgba(37, 99, 235, 0.5);
+    }
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .bgm-btn {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #fff;
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 12px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 5px;
       transition: all 0.2s;
     }
-    .nav-btn:hover {
-      background: rgba(255, 255, 255, 0.22);
+    .bgm-btn:hover {
+      background: rgba(255, 255, 255, 0.2);
     }
-    .nav-btn.active {
-      background: #2563eb;
-      border-color: #60a5fa;
-      box-shadow: 0 0 14px rgba(37, 99, 235, 0.6);
-    }
-    .bottom-panel {
+    .bottom-bar {
       display: flex;
       align-items: flex-end;
       justify-content: space-between;
       width: 100%;
     }
-    .guide-box {
+    .guide-card {
       pointer-events: auto;
-      background: rgba(15, 23, 42, 0.88);
+      background: rgba(15, 23, 42, 0.85);
       backdrop-filter: blur(14px);
-      padding: 12px 18px;
+      padding: 12px 16px;
       border-radius: 12px;
       border: 1px solid rgba(255, 255, 255, 0.12);
       font-size: 12px;
       line-height: 1.6;
       color: #cbd5e1;
-      max-width: 480px;
+      max-width: 440px;
       box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
     }
-    .guide-box b {
+    .guide-card b {
       color: #38bdf8;
     }
-    .action-panel {
+    .action-group {
       pointer-events: auto;
       display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      justify-content: flex-end;
+      gap: 8px;
     }
     .action-btn {
       background: rgba(30, 41, 59, 0.9);
       border: 1px solid rgba(255, 255, 255, 0.2);
       color: #fff;
-      padding: 10px 16px;
+      padding: 9px 15px;
       border-radius: 10px;
-      font-size: 13px;
+      font-size: 12px;
       font-weight: 600;
       cursor: pointer;
       display: flex;
@@ -150,13 +182,13 @@
       transition: opacity 0.5s ease;
     }
     .spinner {
-      width: 48px;
-      height: 48px;
+      width: 44px;
+      height: 44px;
       border: 4px solid rgba(255, 255, 255, 0.1);
       border-top-color: #38bdf8;
       border-radius: 50%;
       animation: spin 1s linear infinite;
-      margin-bottom: 20px;
+      margin-bottom: 16px;
     }
     @keyframes spin {
       to { transform: rotate(360deg); }
@@ -165,7 +197,7 @@
       font-size: 15px;
       font-weight: 600;
       color: #e2e8f0;
-      margin-bottom: 8px;
+      margin-bottom: 6px;
     }
     #loading-sub {
       font-size: 12px;
@@ -190,42 +222,45 @@
 
   <div id="loading-screen">
     <div class="spinner"></div>
-    <div id="loading-text">가상 성전 공간을 불러오는 중입니다...</div>
-    <div id="loading-sub">본당 내부 및 시야 확보 처리 중</div>
+    <div id="loading-text">가상 성전 공간을 준비 중입니다...</div>
+    <div id="loading-sub">교회 외관 및 본당 환경 구성 중</div>
   </div>
 
   <div id="canvas-container"></div>
   <div id="click-marker"></div>
 
   <div id="ui-overlay">
-    <div class="header-box">
-      <div>
-        <div style="display: flex; align-items: center; gap: 8px;">
-          <span class="header-title">우리교회 메타버스 성전 투어</span>
-        </div>
-        <div class="header-desc">지하 1층 대본당 내부가 시원하게 열려 있습니다.</div>
+    <div class="header-bar">
+      <div class="header-left">
+        <span class="header-title">우리교회 메타버스 성전 투어</span>
+        <span class="header-sub" id="currentAreaText">현재 위치: 외관 횡단보도 (출발점)</span>
       </div>
-      <div class="floor-controls">
-        <button class="nav-btn" id="btnGoGround">🏢 1층 광장/외관</button>
-        <button class="nav-btn active" id="btnGoBasement">⛪ 지하 1층 본당 내부</button>
+
+      <div class="tour-steps">
+        <button class="step-btn active" id="step1">1. 횡단보도</button>
+        <button class="step-btn" id="step2">2. 교회 앞 광장</button>
+        <button class="step-btn" id="step3">3. 1층 로비·계단</button>
+        <button class="step-btn" id="step4">4. 지하 본당 입구</button>
       </div>
-      <button class="nav-btn" id="bgmToggle">
-        <span>🎵 잔잔한 찬양</span>
-      </button>
+
+      <div class="header-right">
+        <button class="bgm-btn" id="bgmToggle">
+          <span>🎵 잔잔한 찬양</span>
+        </button>
+      </div>
     </div>
 
-    <div class="bottom-panel">
-      <div class="guide-box">
+    <div class="bottom-bar">
+      <div class="guide-card">
         <b>[조작 안내]</b><br>
-        • <b>바닥 클릭:</b> 본당 안 통로나 원하는 자리를 찍으면 걸어갑니다.<br>
-        • <b>화면 드래그:</b> 마우스 좌클릭 드래그로 시선 360도 회전, 우클릭 드래그로 이동<br>
-        • <b>천장 뚫기(단면 뷰):</b> 지하에 있을 때 지상 건물과 천장이 투명해져 실내가 훤히 보입니다.
+        • <b>바닥 클릭/터치:</b> 원하는 곳을 콕 찍으면 캐릭터가 그곳으로 걸어갑니다.<br>
+        • <b>화면 드래그:</b> 마우스 좌클릭 드래그로 주변 360도 둘러보기, 우클릭으로 시점 이동<br>
+        • <b>상단 투어 코스:</b> 횡단보도에서 시작해 로비, 지하 본당까지 순서대로 탐방해보세요!
       </div>
 
-      <div class="action-panel">
-        <button class="action-btn" id="btnInsideAisle">🚶 본당 중앙 통로로</button>
-        <button class="action-btn" id="btnPewSit">🪑 장의자 착석</button>
-        <button class="action-btn" id="btnPray">🙏 자리에서 기도</button>
+      <div class="action-group">
+        <button class="action-btn" id="btnActionPew">🪑 장의자 착석</button>
+        <button class="action-btn" id="btnActionPray">🙏 자리에서 기도</button>
       </div>
     </div>
   </div>
@@ -254,20 +289,20 @@
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.06;
-    controls.minDistance = 1.0;
-    controls.maxDistance = 65;
+    controls.minDistance = 1.2;
+    controls.maxDistance = 55;
     controls.mouseButtons = {
       LEFT: THREE.MOUSE.ROTATE,
       MIDDLE: THREE.MOUSE.DOLLY,
       RIGHT: THREE.MOUSE.PAN
     };
 
-    // 조명
+    // 조명 (야외 태양광 + 지하 실내광)
     const hemiLight = new THREE.HemisphereLight(0xfff6ec, 0x475569, 0.95);
     hemiLight.position.set(0, 50, 0);
     scene.add(hemiLight);
 
-    const sunLight = new THREE.DirectionalLight(0xfff3e0, 1.3);
+    const sunLight = new THREE.DirectionalLight(0xfff3e0, 1.4);
     sunLight.position.set(20, 35, 25);
     sunLight.castShadow = true;
     sunLight.shadow.mapSize.width = 2048;
@@ -275,16 +310,12 @@
     sunLight.shadow.bias = -0.0004;
     scene.add(sunLight);
 
-    // 본당 내부용 따뜻한 실내 조명
-    const b1WarmLight1 = new THREE.PointLight(0xffe2b8, 2.2, 35, 0.7);
-    b1WarmLight1.position.set(-6, -4.5, 6);
-    scene.add(b1WarmLight1);
+    // 지하 본당 실내 전용 앰비언트 라이트
+    const b1WarmLight = new THREE.PointLight(0xffe3be, 2.4, 30, 0.8);
+    b1WarmLight.position.set(-6, -4.0, -8);
+    scene.add(b1WarmLight);
 
-    const b1WarmLight2 = new THREE.PointLight(0xffecd0, 2.0, 35, 0.7);
-    b1WarmLight2.position.set(-10, -4.5, 12);
-    scene.add(b1WarmLight2);
-
-    // 지면
+    // 야외 지면 베이스
     const terrain = new THREE.Mesh(
       new THREE.PlaneGeometry(300, 300),
       new THREE.MeshStandardMaterial({ color: 0xc3ccc0, roughness: 1.0 })
@@ -294,15 +325,15 @@
     terrain.receiveShadow = true;
     scene.add(terrain);
 
-    // 클릭 링 마커
+    // 클릭 타겟 링 마커
     const markerGeo = new THREE.RingGeometry(0.15, 0.45, 32);
     const markerMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8, side: THREE.DoubleSide, transparent: true, opacity: 0 });
     const targetRing = new THREE.Mesh(markerGeo, markerMat);
     targetRing.rotation.x = -Math.PI / 2;
-    targetRing.position.y = -6.58;
+    targetRing.position.y = 0.02;
     scene.add(targetRing);
 
-    // 캐릭터 (1m 2등신 아바타)
+    // 1m 아바타 캐릭터
     const characterGroup = new THREE.Group();
     const bodyGeo = new THREE.CylinderGeometry(0.24, 0.32, 0.55, 16);
     const bodyMat = new THREE.MeshStandardMaterial({ color: 0x3b82f6, roughness: 0.5 });
@@ -326,20 +357,17 @@
     hands.visible = false;
     characterGroup.add(hands);
 
-    const B1_FLOOR_Y = -6.6;
-    const G_FLOOR_Y = 0.0;
-    let currentFloor = 'B1';
-
-    // 본당 내부 중앙 통로 좌표로 스폰 (벽 바깥이 아닌 내부!)
-    // Blender 좌표 (-6.0, 8.0) 부근이 회중석 한가운데입니다.
-    characterGroup.position.set(-6.0, B1_FLOOR_Y, 7.5);
+    // 시작 지점: 외관 횡단보도 (CROSSWALK)
+    const START_POS = new THREE.Vector3(-1.5, 0.0, 7.5);
+    characterGroup.position.copy(START_POS);
+    characterGroup.rotation.y = Math.PI;
     scene.add(characterGroup);
+
+    camera.position.set(-1.5 + 4, 3.5, 7.5 + 6.5);
+    controls.target.set(-1.5, 1.0, 7.5);
 
     let loadedModel = null;
     const clickableObjects = [terrain];
-    const upperRoofsAndCeilings = [];
-    const obstructingWalls = [];
-
     const loader = new GLTFLoader();
     const loadingScreen = document.getElementById('loading-screen');
     const loadingSub = document.getElementById('loading-sub');
@@ -348,44 +376,21 @@
       'church-model-release-20261104.glb',
       (gltf) => {
         loadedModel = gltf.scene;
-
         loadedModel.traverse((child) => {
           if (child.isMesh) {
             child.castShadow = true;
             child.receiveShadow = true;
             clickableObjects.push(child);
-
-            // 유리창 투명화
             if (child.name.includes('GLASS') || child.name.includes('Glass')) {
               child.material.transparent = true;
               child.material.opacity = 0.40;
               child.material.roughness = 0.1;
               child.material.depthWrite = false;
             }
-
-            // 천장 및 지상 바닥 슬래브 감지 (지하 내부를 볼 때 시야를 막는 요소들)
-            if (
-              child.name.includes('Ceiling') || 
-              child.name.includes('ROOF') || 
-              child.name.includes('F1_PARKING') ||
-              child.name.includes('SLAB')
-            ) {
-              upperRoofsAndCeilings.push(child);
-            }
-
-            // 본당 남측/동측 외벽 (카메라 시야 가림 방지)
-            if (child.name.includes('Wall_South') || child.name.includes('Wall_East')) {
-              obstructingWalls.push(child);
-            }
           }
         });
-
         loadedModel.position.set(0, 0, 0);
         scene.add(loadedModel);
-
-        // 로드 완료 시 즉시 지하 본당 내부 최적화 뷰 적용
-        applyFloorMode('B1');
-
         loadingScreen.style.opacity = '0';
         setTimeout(() => loadingScreen.style.display = 'none', 400);
       },
@@ -396,62 +401,94 @@
         }
       },
       (err) => {
-        console.warn('GLB 대기 중 (기본 씬 유지):', err);
+        console.warn('GLB 모델 대기 중:', err);
         loadingScreen.style.opacity = '0';
         setTimeout(() => loadingScreen.style.display = 'none', 300);
-        applyFloorMode('B1');
       }
     );
 
-    // -------------------------------------------------------------
-    // 지하 1층 내부 가림막(천장/남측벽) 투명/오픈 처리 로직
-    // -------------------------------------------------------------
-    function applyFloorMode(floor) {
-      currentFloor = floor;
-      if (floor === 'B1') {
-        // 지하 모드: 천장과 위쪽 덮개를 숨겨 본당 안이 시원하게 보이게 함
-        upperRoofsAndCeilings.forEach(mesh => {
-          mesh.visible = false;
-        });
-        obstructingWalls.forEach(mesh => {
-          mesh.material.transparent = true;
-          mesh.material.opacity = 0.25;
-        });
-        terrain.visible = false;
+    // =========================================================================
+    // 투어 단계별 정의
+    // =========================================================================
+    const TOUR_WAYPOINTS = {
+      step1: {
+        name: '외관 횡단보도 (출발점)',
+        charPos: new THREE.Vector3(-1.5, 0.0, 7.5),
+        charRot: Math.PI,
+        camOffset: new THREE.Vector3(3.5, 3.2, 6.0),
+        floorY: 0.0,
+        isB1: false
+      },
+      step2: {
+        name: '교회 앞 보도 및 광장',
+        charPos: new THREE.Vector3(-1.5, 0.0, 1.8),
+        charRot: Math.PI,
+        camOffset: new THREE.Vector3(4.0, 3.5, 5.0),
+        floorY: 0.0,
+        isB1: false
+      },
+      step3: {
+        name: '1층 로비 및 계단실 입구',
+        charPos: new THREE.Vector3(-3.0, 0.0, -2.5),
+        charRot: Math.PI * 0.9,
+        camOffset: new THREE.Vector3(2.5, 2.0, 3.5),
+        floorY: 0.0,
+        isB1: false
+      },
+      step4: {
+        name: '지하 1층 대본당 (출입문 진입)',
+        // 통로 한가운데가 아닌, 출입구 문턱 바로 안쪽에 서서 입장하는 느낌
+        charPos: new THREE.Vector3(-5.5, -6.6, -1.5), 
+        charRot: Math.PI * 0.85, // 문에서 중앙 통로와 대각선 강단을 향해 비스듬히 바라봄
+        camOffset: new THREE.Vector3(2.5, 1.8, 3.0),
+        floorY: -6.6,
+        isB1: true
+      }
+    };
 
-        // 캐릭터를 본당 중앙 통로 안으로 정확히 안착
-        characterGroup.position.set(-6.0, B1_FLOOR_Y, 7.5);
-        // 강단 모서리를 올려다보도록 시선 회전 (-45도)
-        characterGroup.rotation.y = Math.PI * 0.75;
+    let currentStepKey = 'step1';
+    let currentFloorY = 0.0;
+    const currentAreaText = document.getElementById('currentAreaText');
 
-        // 카메라도 본당 안으로 진입
-        camera.position.set(-2.5, B1_FLOOR_Y + 2.5, 3.5);
-        controls.target.set(-6.0, B1_FLOOR_Y + 0.85, 7.5);
+    function goToTourStep(stepKey) {
+      currentStepKey = stepKey;
+      const wp = TOUR_WAYPOINTS[stepKey];
+      currentFloorY = wp.floorY;
+
+      document.querySelectorAll('.step-btn').forEach(btn => btn.classList.remove('active'));
+      const activeBtn = document.getElementById(stepKey);
+      if (activeBtn) activeBtn.classList.add('active');
+
+      currentAreaText.innerText = `현재 위치: ${wp.name}`;
+
+      characterGroup.position.copy(wp.charPos);
+      characterGroup.rotation.y = wp.charRot;
+      targetPos.copy(wp.charPos);
+      isMoving = false;
+      isPraying = false;
+      hands.visible = false;
+
+      const targetLook = wp.charPos.clone().add(new THREE.Vector3(0, 0.85, 0));
+      controls.target.copy(targetLook);
+      camera.position.copy(wp.charPos).add(wp.camOffset);
+
+      if (wp.isB1) {
+        controls.maxDistance = 16;
       } else {
-        // 지상 외관 모드: 천장과 지면 다시 표시
-        upperRoofsAndCeilings.forEach(mesh => {
-          mesh.visible = true;
-        });
-        obstructingWalls.forEach(mesh => {
-          mesh.material.transparent = false;
-          mesh.material.opacity = 1.0;
-        });
-        terrain.visible = true;
-
-        characterGroup.position.set(0, G_FLOOR_Y, 9.0);
-        characterGroup.rotation.y = 0;
-        camera.position.set(16, 10, 20);
-        controls.target.set(0, 0.85, 9.0);
+        controls.maxDistance = 55;
       }
     }
 
-    // 클릭 투 무브
+    document.getElementById('step1').addEventListener('click', () => goToTourStep('step1'));
+    document.getElementById('step2').addEventListener('click', () => goToTourStep('step2'));
+    document.getElementById('step3').addEventListener('click', () => goToTourStep('step3'));
+    document.getElementById('step4').addEventListener('click', () => goToTourStep('step4'));
+
     const raycaster = new THREE.Raycaster();
     const mouse = new THREE.Vector2();
     let isMoving = false;
     const targetPos = new THREE.Vector3().copy(characterGroup.position);
     let targetMarkerTimer = 0;
-    let isSitting = false;
     let isPraying = false;
     let downTime = 0;
     let downPos = { x: 0, y: 0 };
@@ -478,79 +515,41 @@
         let hit = null;
         for (let i = 0; i < intersects.length; i++) {
           const p = intersects[i].point;
-          // 벽이나 높은 천장이 아닌 실제 바닥 근처 높이 필터링
-          if (currentFloor === 'B1') {
-            if (p.y <= -5.0 && p.y >= -7.0) { hit = p; break; }
+          if (currentFloorY < -3.0) {
+            if (p.y <= -4.0) { hit = p; break; }
           } else {
-            if (p.y >= -0.5 && p.y <= 1.0) { hit = p; break; }
+            if (p.y >= -1.0) { hit = p; break; }
           }
         }
         if (!hit) {
-          // 바닥 필터 실패 시 Y값 강제 보정
           hit = intersects[0].point.clone();
-          hit.y = (currentFloor === 'B1' ? B1_FLOOR_Y : G_FLOOR_Y);
+          hit.y = currentFloorY;
         }
-
-        targetPos.set(hit.x, (currentFloor === 'B1' ? B1_FLOOR_Y : G_FLOOR_Y), hit.z);
+        targetPos.set(hit.x, currentFloorY, hit.z);
         isMoving = true;
-        isSitting = false;
         isPraying = false;
         hands.visible = false;
 
-        targetRing.position.set(hit.x, targetPos.y + 0.03, hit.z);
+        targetRing.position.set(hit.x, currentFloorY + 0.03, hit.z);
         targetRing.scale.set(0.1, 0.1, 0.1);
         targetRing.material.opacity = 0.9;
         targetMarkerTimer = 1.0;
       }
     });
 
-    // 층 전환 버튼
-    const btnGoGround = document.getElementById('btnGoGround');
-    const btnGoBasement = document.getElementById('btnGoBasement');
-
-    btnGoGround.addEventListener('click', () => {
-      btnGoGround.classList.add('active');
-      btnGoBasement.classList.remove('active');
-      applyFloorMode('G');
-    });
-
-    btnGoBasement.addEventListener('click', () => {
-      btnGoBasement.classList.add('active');
-      btnGoGround.classList.remove('active');
-      applyFloorMode('B1');
-    });
-
-    // 인터랙션 버튼
-    document.getElementById('btnInsideAisle').addEventListener('click', () => {
-      if (currentFloor !== 'B1') {
-        btnGoBasement.classList.add('active');
-        btnGoGround.classList.remove('active');
-        applyFloorMode('B1');
-      }
-      characterGroup.position.set(-6.0, B1_FLOOR_Y, 7.5);
-      targetPos.copy(characterGroup.position);
-      controls.target.set(-6.0, B1_FLOOR_Y + 0.85, 7.5);
-      camera.position.set(-2.5, B1_FLOOR_Y + 2.5, 3.5);
-    });
-
-    document.getElementById('btnPewSit').addEventListener('click', () => {
-      if (currentFloor !== 'B1') {
-        btnGoBasement.classList.add('active');
-        btnGoGround.classList.remove('active');
-        applyFloorMode('B1');
-      }
+    document.getElementById('btnActionPew').addEventListener('click', () => {
+      if (currentStepKey !== 'step4') goToTourStep('step4');
       isMoving = false;
-      isSitting = true;
       isPraying = true;
       hands.visible = true;
-      // 중앙 회중석 안으로 쏙 앉히기
-      characterGroup.position.set(-5.5, B1_FLOOR_Y - 0.15, 9.2);
+      // 중앙 부채꼴 장의자 착석 위치
+      characterGroup.position.set(-6.2, -6.6, -9.5);
       characterGroup.rotation.y = Math.PI * 0.75;
       targetPos.copy(characterGroup.position);
       controls.target.copy(characterGroup.position).add(new THREE.Vector3(0, 0.85, 0));
     });
 
-    const btnPray = document.getElementById('btnPray');
+    const btnPray = document.getElementById('btnActionPray');
     btnPray.addEventListener('click', () => {
       isMoving = false;
       isPraying = !isPraying;
@@ -564,7 +563,6 @@
       }
     });
 
-    // BGM
     let audioCtx = null;
     let isBgmPlaying = false;
     let audioTimer = null;
@@ -607,7 +605,6 @@
       }
     });
 
-    // 메인 루프
     const walkSpeed = 3.6;
     const clock = new THREE.Clock();
 
@@ -648,8 +645,8 @@
         }
       } else if (isPraying) {
         const breathe = Math.sin(clock.getElapsedTime() * 2.0) * 0.02;
-        body.position.y = (isSitting ? 0.22 : 0.38) + breathe;
-        head.position.y = (isSitting ? 0.65 : 0.85) + breathe * 0.5;
+        body.position.y = 0.38 + breathe;
+        head.position.y = 0.85 + breathe * 0.5;
         head.rotation.x = 0.25;
       } else {
         body.position.y = 0.38;
