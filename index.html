@@ -1787,6 +1787,27 @@
           l.position.set(lx, CEIL - 0.3, lz);
           ceilingRig.add(l);
         });
+        // 천장에 매달린 스피커(라인어레이): 무대 앞 양옆에 4통씩 줄에 매달려 회중 쪽으로 살짝 숙임
+        {
+          const cab = new THREE.MeshStandardMaterial({ color: 0x1d1e22, roughness: 0.6 }), grill = new THREE.MeshStandardMaterial({ color: 0x34363c, roughness: 0.9 });
+          const wire = new THREE.MeshStandardMaterial({ color: 0x8a8d93, roughness: 0.4, metalness: 0.6 });
+          const base = { x: -13.03 + 4.9 / Math.SQRT2, z: -17.58 + 4.9 / Math.SQRT2 };   // 무대 모서리에서 대각선 4.9m
+          [-3.3, 3.3].forEach((off) => {
+            const sx = base.x + off * Math.SQRT1_2, sz = base.z - off * Math.SQRT1_2;
+            const arr = new THREE.Group(); arr.position.set(sx, CEIL - 0.55, sz); arr.rotation.set(0, Math.PI / 4, 0);
+            const bar = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.05, 0.12), wire); arr.add(bar);   // 매다는 철제 바
+            [-0.3, 0.3].forEach((wx) => { const w = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.55, 5), wire); w.position.set(wx, 0.28, 0); arr.add(w); });   // 천장까지 줄
+            let y = -0.03, tilt = 0.06;
+            for (let i = 0; i < 4; i++) {
+              const box = new THREE.Group(); box.position.set(0, y, 0); box.rotation.x = tilt;
+              const c = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.26, 0.44), cab); c.position.set(0, -0.13, -0.02); box.add(c);
+              const f = new THREE.Mesh(new THREE.BoxGeometry(0.58, 0.22, 0.01), grill); f.position.set(0, -0.13, 0.205); box.add(f);
+              arr.add(box); y -= 0.27 * Math.cos(tilt); tilt += 0.07;   // 아래로 갈수록 더 숙여 J자 모양
+            }
+            arr.traverse((o) => { if (o.isMesh) { o.castShadow = false; o.userData.noCamBlock = true; } });
+            ceilingRig.add(arr);
+          });
+        }
         g.add(ceilingRig);
       }
 
