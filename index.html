@@ -1813,7 +1813,7 @@
       geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
       return geo;
     }
-    // ---- 투명 아크릴 강대상 (사용자 요청): 원래 강대상 상자는 보이지 않게만 하고(걷기 막힘은 그대로) 같은 자리에 새로 그림 ----
+    // ---- 투명 아크릴 강대상 (사용자 요청, 앞이 둥근 모양): 원래 강대상 상자는 보이지 않게만 하고(걷기 막힘은 그대로) 같은 자리에 새로 그림 ----
     function acrylicPulpit(g, pulpit) {
       const W = 1.1, D = 0.5, H = 0.6;                           // 화면에 보일 크기: 폭 1.1 · 깊이 0.5 · 높이 0.6 (캐릭터 0.8m)
       pulpit.scale.x = W / 1.4; pulpit.scale.z = D / 0.65;        // 막힘 상자도 같은 크기로
@@ -1830,12 +1830,24 @@
         if (m === acr) me.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo), edge)); else me.castShadow = true;
         return me;
       };
-      part(W, 0.02, D, 0, 0.01, 0, acr);                                          // 바닥 판
-      part(W, H - 0.06, 0.025, 0, 0.02 + (H - 0.06) / 2, D / 2 - 0.05, acr);      // 앞판
-      [-1, 1].forEach((sx) => part(0.025, H - 0.06, D - 0.12, sx * (W / 2 - 0.0125), 0.02 + (H - 0.06) / 2, 0.0, acr));   // 옆판
-      part(W + 0.04, 0.022, D - 0.04, 0, H - 0.01, -0.01, acr, -0.14);            // 위판 (설교자 쪽으로 기울어짐)
-      part(W + 0.04, 0.035, 0.03, 0, H - 0.045, -D / 2 + 0.02, wood);             // 위판 뒤 받침 (원고가 미끄러지지 않게)
-      const fz = D / 2 - 0.05 + 0.0125 + 0.008;                                   // 앞판 앞면에 나무 십자가
+      // 둥근 모양 (사용자 요청): 뒤는 곧고 앞은 회중 쪽으로 둥글게 나온 반달꼴. 뒤 z=-0.2, 앞 끝 z=+0.25
+      const BZ = -0.2, FZ = 0.25, HW = W / 2, R = (HW * HW + (FZ - BZ) ** 2) / (2 * (FZ - BZ)), CZ = FZ - R, AL = Math.asin(HW / R);
+      const plate = (grow, h, y, m, rx) => {                                       // 반달꼴 판 (grow만큼 둘레를 키움)
+        const sh = new THREE.Shape(); sh.moveTo(-HW - grow, -(BZ - grow));
+        for (let i = 0; i <= 32; i++) { const t = -AL + (2 * AL * i) / 32; sh.lineTo((R + grow) * Math.sin(t), -(CZ + (R + grow) * Math.cos(t))); }
+        sh.lineTo(-HW - grow, -(BZ - grow));
+        const geo = new THREE.ExtrudeGeometry(sh, { depth: h, bevelEnabled: false, curveSegments: 1 }); geo.rotateX(-Math.PI / 2);
+        const me = new THREE.Mesh(geo, m); me.position.y = y; if (rx) me.rotation.x = rx; P.add(me);
+        if (m === acr) me.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo, 20), edge));
+        return me;
+      };
+      plate(0, 0.02, 0, acr);                                                      // 바닥 판
+      const PH = H - 0.06, shell = new THREE.CylinderGeometry(R, R, PH, 48, 1, true, -AL, 2 * AL);   // 둥근 앞판 (옆까지 감쌈)
+      const front = new THREE.Mesh(shell, acr); front.position.set(0, 0.02 + PH / 2, CZ); P.add(front);
+      front.add(new THREE.LineSegments(new THREE.EdgesGeometry(shell, 20), edge));
+      plate(0.025, 0.022, H - 0.02, acr, -0.12);                                    // 위판 (설교자 쪽으로 살짝 기울어짐)
+      part(W + 0.04, 0.035, 0.03, 0, H - 0.04, BZ + 0.01, wood);                    // 위판 뒤 받침 (원고가 미끄러지지 않게)
+      const fz = FZ + 0.01;                                                         // 둥근 앞면 가운데에 나무 십자가
       part(0.05, 0.36, 0.016, 0, 0.32, fz, wood); part(0.22, 0.05, 0.016, 0, 0.39, fz, wood);
       P.traverse((o) => { o.userData.noCamBlock = true; o.userData.pickOnly = true; o.raycast = () => {}; });
     }

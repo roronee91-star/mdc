@@ -7,6 +7,7 @@ const { chromium } = require('playwright');
   await p.evaluate(() => window.__dbg.goTo('step4')); await p.waitForTimeout(2500);
   const o = (n) => `docs/verification/2026-11-05/${process.argv[2] || 'pulpit'}-${n}.png`;
   await p.evaluate(() => { document.getElementById('ui-overlay').style.display='none'; window.__dbg.setCam([-7.0,-5.2,-11.6],[-9.78,-5.9,-14.33]); }); await p.waitForTimeout(1800); await p.screenshot({ path: o('front') });
+  await p.evaluate(() => window.__dbg.setCam([-7.6,-5.0,-13.9],[-9.78,-5.95,-14.33])); await p.waitForTimeout(1800); await p.screenshot({ path: o('side') });
   await p.evaluate(() => window.__dbg.setCam([-2.5,-4.6,-3],[-10.5,-3.4,-14])); await p.waitForTimeout(1800); await p.screenshot({ path: o('hall') });
   console.log(errs.join('\n')||'no errors'); await b.close();
 })();
