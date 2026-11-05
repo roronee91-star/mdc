@@ -553,6 +553,7 @@
       if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
       const bb = o.geometry.boundingBox.clone().applyMatrix4(o.matrixWorld);
       if (bb.max.y - bb.min.y < 0.35 && (bb.max.x - bb.min.x) * (bb.max.z - bb.min.z) > 6) return false;   // 바닥·천장 판은 제외
+      if (bb.max.y < currentFloorY + 0.45) return false;   // 식탁처럼 낮은 가구는 투명하게 하지 않음(위에 놓인 식판만 떠 보이던 문제)
       return true;
     }
     function camBeforeUpdate() {}
@@ -1053,24 +1054,24 @@
     const SOUPS = ['soup', 'doenjang', 'miyeok'], SIDES = ['kimchi', 'namul', 'egg', 'meat', 'bean'];
     // 한 사람 몫: side = 앉은 쪽(-1 서쪽 / +1 동쪽). 식판은 앉은 사람 앞, 물컵은 식탁 가운데 쪽
     function dinePlace(tx, z, side, n) {
-      const T = 0.38, ax = (d) => tx + side * d;
-      dBox(0.15, 0.008, 0.26, ax(0.095), T, z, dMat.tray);                         // 식판
-      dCyl(0.032, 0.022, 0.024, ax(0.125), T + 0.008, z - 0.07, dMat.bowl);         // 밥그릇 + 밥
-      dDome(0.029, ax(0.125), T + 0.03, z - 0.07, dMat.rice, 0.55);
-      dCyl(0.034, 0.024, 0.026, ax(0.125), T + 0.008, z + 0.07, dMat.steel);        // 국그릇 + 국
-      dCyl(0.03, 0.03, 0.002, ax(0.125), T + 0.028, z + 0.07, dMat[SOUPS[n % 3]]);
-      [-0.08, 0, 0.08].forEach((dz, i) => {                                         // 반찬 3칸
-        dBox(0.04, 0.006, 0.055, ax(0.055), T + 0.008, z + dz, dMat.tray);
+      const T = 0.38, ax = (d) => tx + side * d;                                   // 식판: 가운데 0.02 ~ 가장자리 쪽 0.145 (식탁 끝 0.2)
+      dBox(0.125, 0.008, 0.22, ax(0.0825), T, z, dMat.tray);                       // 식판
+      dCyl(0.026, 0.018, 0.02, ax(0.11), T + 0.008, z - 0.058, dMat.bowl);          // 밥그릇 + 밥
+      dDome(0.024, ax(0.11), T + 0.026, z - 0.058, dMat.rice, 0.55);
+      dCyl(0.028, 0.02, 0.022, ax(0.11), T + 0.008, z + 0.058, dMat.steel);         // 국그릇 + 국
+      dCyl(0.025, 0.025, 0.002, ax(0.11), T + 0.024, z + 0.058, dMat[SOUPS[n % 3]]);
+      [-0.068, 0, 0.068].forEach((dz, i) => {                                       // 반찬 3칸
+        dBox(0.034, 0.006, 0.048, ax(0.045), T + 0.008, z + dz, dMat.tray);
         const f = dMat[SIDES[(n + i * 2) % 5]];
-        if (SIDES[(n + i * 2) % 5] === 'egg') dDome(0.016, ax(0.055), T + 0.012, z + dz, f, 0.5);
-        else dBox(0.032, 0.01, 0.042, ax(0.055), T + 0.012, z + dz, f);
+        if (SIDES[(n + i * 2) % 5] === 'egg') dDome(0.014, ax(0.045), T + 0.012, z + dz, f, 0.5);
+        else dBox(0.027, 0.009, 0.036, ax(0.045), T + 0.012, z + dz, f);
       });
-      dBox(0.006, 0.004, 0.11, ax(0.158), T + 0.008, z - 0.02, dMat.steel);         // 숟가락 자루 + 머리
-      dPut(new THREE.CylinderGeometry(0.011, 0.011, 0.004, 10).scale(1, 1, 1.4), dMat.steel, ax(0.158), T + 0.012, z + 0.045);
-      dBox(0.003, 0.003, 0.12, ax(0.150), T + 0.008, z - 0.01, dMat.steel);        // 젓가락 한 쌍
-      dBox(0.003, 0.003, 0.12, ax(0.145), T + 0.008, z - 0.01, dMat.steel);
-      dCyl(0.017, 0.014, 0.042, ax(0.03), T, z + 0.17, dMat.cup);                   // 물컵 + 물
-      dCyl(0.015, 0.0135, 0.03, ax(0.03), T + 0.002, z + 0.17, dMat.water);
+      dBox(0.005, 0.004, 0.09, ax(0.138), T + 0.008, z - 0.015, dMat.steel);        // 숟가락 자루 + 머리
+      dPut(new THREE.CylinderGeometry(0.009, 0.009, 0.004, 10).scale(1, 1, 1.4), dMat.steel, ax(0.138), T + 0.012, z + 0.04);
+      dBox(0.003, 0.003, 0.1, ax(0.131), T + 0.008, z - 0.005, dMat.steel);        // 젓가락 한 쌍
+      dBox(0.003, 0.003, 0.1, ax(0.126), T + 0.008, z - 0.005, dMat.steel);
+      dCyl(0.015, 0.012, 0.038, ax(0.04), T, z + 0.15, dMat.cup);                   // 물컵 + 물
+      dCyl(0.013, 0.0115, 0.027, ax(0.04), T + 0.002, z + 0.15, dMat.water);
     }
     // 식탁 가운데: 냅킨 통 / 물병
     function dineCenter(tx, z, kind) {
@@ -1105,8 +1106,8 @@
       DINING_ROWS.forEach((tz) => {
         table(tx, tz, 2.6, 0.4);
         [-0.85, 0, 0.85].forEach((k) => {
-          chair(tx - 0.30, tz + k, +1);
-          chair(tx + 0.30, tz + k, -1);
+          chair(tx - 0.32, tz + k, +1);                    // 식탁 가장자리에서 조금 띄움(의자가 식판 아래로 파고들어 보이지 않게)
+          chair(tx + 0.32, tz + k, -1);
           [-1, 1].forEach((side) => dinePlace(tx, tz + k, side, ++dineSeed));
         });
         dineCenter(tx, tz - 0.42, 0); dineCenter(tx, tz + 0.42, 1);
