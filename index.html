@@ -1823,8 +1823,8 @@
       pulpit.updateWorldMatrix(true, false); pulpit.geometry.computeBoundingBox();
       const wb = pulpit.geometry.boundingBox.clone().applyMatrix4(pulpit.matrixWorld), wp = new THREE.Vector3(); pulpit.getWorldPosition(wp);
       const P = new THREE.Group(); P.position.set(wp.x, wb.min.y, wp.z); P.rotation.y = pulpit.rotation.y; g.add(P);   // 앞(+z)이 회중 쪽
-      const acr = new THREE.MeshStandardMaterial({ color: 0xeef8fc, roughness: 0.05, metalness: 0.0, transparent: true, opacity: 0.22, depthWrite: false, side: THREE.DoubleSide });
-      const edge = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.75 });
+      const acr = new THREE.MeshStandardMaterial({ color: 0xf6f9fb, emissive: 0xffffff, emissiveIntensity: 0.12, roughness: 0.35, metalness: 0.0, transparent: true, opacity: 0.55, depthWrite: false, side: THREE.DoubleSide });   // 반투명(젖빛) 아크릴 — 사용자 요청: 너무 투명해서 안 보임
+      const edge = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.9 });
       const wood = new THREE.MeshStandardMaterial({ color: 0x7a5232, roughness: 0.55 });
       const part = (w, h, d, x, y, z, m, rx) => {
         const geo = new THREE.BoxGeometry(w, h, d), me = new THREE.Mesh(geo, m); me.position.set(x, y, z); if (rx) me.rotation.x = rx; P.add(me);
