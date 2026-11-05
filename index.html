@@ -216,6 +216,16 @@
     #joyKnob { position: absolute; left: 50%; top: 50%; width: 50px; height: 50px; margin: -25px 0 0 -25px; border-radius: 50%;
       background: rgba(255, 255, 255, 0.75); box-shadow: 0 2px 8px rgba(0,0,0,0.3); }
     @media (pointer: coarse) { #joy { display: block; } }
+    #elevPanel { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 6; width: min(300px, 86vw);
+      background: rgba(15, 23, 42, 0.92); border: 1px solid rgba(255,255,255,0.18); border-radius: 16px; padding: 14px; display: flex; flex-direction: column; gap: 8px; }
+    .elev-title { font-weight: 700; font-size: 15px; text-align: center; margin-bottom: 2px; }
+    .elev-btn { background: #1e293b; color: #fff; border: 1px solid rgba(255,255,255,0.18); border-radius: 10px; padding: 11px; font-size: 14px; font-weight: 600; cursor: pointer; text-align: left; }
+    .elev-btn:hover { background: #2563eb; }
+    .elev-btn:disabled { opacity: 0.45; cursor: default; background: #334155; }
+    .elev-close { background: transparent; color: #cbd5e1; border: none; padding: 6px; font-size: 13px; cursor: pointer; }
+    #elevFade { position: absolute; inset: 0; background: #0b1220; opacity: 0; pointer-events: none; transition: opacity 0.45s; z-index: 7;
+      display: flex; align-items: center; justify-content: center; color: #fff; font-size: 18px; font-weight: 700; }
+    #elevFade.on { opacity: 1; }
   </style>
 
   <script type="importmap">{"imports":{"three":"./vendor/three/three.module.js"}}</script>
@@ -263,6 +273,7 @@
 
     <div class="bottom-bar">
       <div class="action-group">
+        <button class="action-btn" id="btnElevator" hidden>🛗 엘리베이터</button>
         <button class="action-btn" id="btnActionPew">🪑 의자 착석</button>
         <button class="action-btn" id="btnActionPray">🙏 기도</button>
         <button class="action-btn" id="btnActionEat">🍚 밥먹기</button>
@@ -272,6 +283,16 @@
   </div>
   <button id="uiShow" class="bgm-btn" hidden title="버튼 보이기">👁 버튼 보이기</button>
   <div id="joy" aria-label="이동 조이스틱"><div id="joyKnob"></div></div>
+  <div id="elevPanel" hidden>
+    <div class="elev-title">🛗 몇 층으로 갈까요?</div>
+    <button class="elev-btn" data-lv="F4">4층 · 목양실 · 옥상 정원</button>
+    <button class="elev-btn" data-lv="F3">3층 · 식당 · 소그룹실</button>
+    <button class="elev-btn" data-lv="F2">2층 · 소그룹실 · 기도실</button>
+    <button class="elev-btn" data-lv="F1">1층 · 로비 · 필로티</button>
+    <button class="elev-btn" data-lv="B1">지하 1층 · 본당</button>
+    <button class="elev-close" id="elevClose">닫기</button>
+  </div>
+  <div id="elevFade"><span id="elevFadeText"></span></div>
 
   <script type="module">
     import * as THREE from 'three';
@@ -671,10 +692,11 @@
       const d = Math.abs(zb - za) || t;
       box(w, h || 2.2, d, (xa + xb) / 2, 0, (za + zb) / 2, mWall);
     }
-    function chair(x, z, dir) { // dir = +1 이면 동쪽(+x)을 보고 앉는 의자
-      box(0.28, 0.04, 0.28, x, 0.18, z, mSeat);          // 앉는 면 (윗면 높이 0.22)
-      box(0.05, 0.18, 0.05, x, 0, z, mBack);              // 의자 다리
-      box(0.03, 0.26, 0.28, x - dir * 0.125, 0.22, z, mBack); // 등받이
+    function chair(x, z, dir) { // dir = +1 이면 동쪽(+x)을 보고 앉는 의자. 다리 4개, 앉는 면 윗면 0.20m
+      box(0.30, 0.03, 0.30, x, 0.17, z, mSeat);                                   // 앉는 면
+      [[-1, -1], [-1, 1], [1, -1], [1, 1]].forEach(([sx, sz]) => box(0.03, 0.17, 0.03, x + sx * 0.13, 0, z + sz * 0.13, mBack)); // 다리 4개
+      [-1, 1].forEach((sz) => box(0.03, 0.30, 0.03, x - dir * 0.135, 0.20, z + sz * 0.13, mBack));                         // 등받이 기둥
+      box(0.025, 0.14, 0.28, x - dir * 0.135, 0.34, z, mBack);                     // 등받이 판
     }
     function table(x, z, len, wid) {
       box(wid, 0.04, len, x, 0.34, z, mWood);             // 윗면 높이 0.38
@@ -815,10 +837,13 @@
           const t = 0.08, L = dw;
           if (along === 'x') k.box(L, h - 2.0, t, dc, 2.0, za, mat || k.mWall); else k.box(t, h - 2.0, L, xa, 2.0, dc, mat || k.mWall);
         },
-        chair(x, z, rotY, mat) {           // rotY: 앉은 사람이 바라보는 방향 (0 = +z)
+        chair(x, z, rotY, mat) {           // rotY: 앉은 사람이 바라보는 방향 (0 = +z). 다리 4개, 앉는 면 0.20m
           const g = new THREE.Group(); g.position.set(x, Y, z); g.rotation.y = rotY; group.add(g);
           const add = (w, h, d, px, py, pz, m) => { const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); b.position.set(px, py + h / 2, pz); b.castShadow = true; g.add(b); };
-          add(0.28, 0.04, 0.28, 0, 0.18, 0, mat || k.mSeat); add(0.05, 0.18, 0.05, 0, 0, 0, k.mWood); add(0.28, 0.26, 0.03, 0, 0.22, -0.125, mat || k.mSeat);
+          add(0.30, 0.03, 0.30, 0, 0.17, 0, mat || k.mSeat);
+          [[-1, -1], [-1, 1], [1, -1], [1, 1]].forEach(([sx, sz]) => add(0.03, 0.17, 0.03, sx * 0.13, 0, sz * 0.13, k.mWood));
+          [-1, 1].forEach((sx) => add(0.03, 0.30, 0.03, sx * 0.13, 0.20, -0.135, k.mWood));
+          add(0.28, 0.14, 0.025, 0, 0.34, -0.135, mat || k.mSeat);
         },
         table(x, z, w, d, mat) {
           k.box(w, 0.04, d, x, 0.34, z, mat || k.mWood);
@@ -1071,6 +1096,31 @@
         [[-17.4, F4_IN_S], [F4_CORE_N, 0.0]].forEach(([z0, z1]) => { const m = new THREE.Mesh(new THREE.BoxGeometry(0.19, 14.1 - top, z1 - z0), wallMat); m.position.set(-12.355, (top + 14.1) / 2, (z0 + z1) / 2); m.castShadow = true; scene.add(m); });
       }
     }
+    // ---- 엘리베이터: 모든 층 같은 자리(건물 앞쪽 오른편, x -3.5~-2.3 · z -2.4~0)에 문은 북쪽을 봄 ----
+    const ELEV = { x: -2.9, doorZ: -2.4, frontZ: -3.1 };
+    const LEVEL_Y = { B1: -6.6, F1: 0.0, F2: F2_Y, F3: F3_Y, F4: F4_Y };
+    const LEVEL_STEP = { B1: 'step4', F1: 'stepF1', F2: 'step6', F3: 'step5', F4: 'step7' };
+    const LEVEL_NAME = { B1: '지하 1층 본당', F1: '1층', F2: '2층', F3: '3층', F4: '4층' };
+    const CALL_POINTS = { F1: [[ELEV.x, -2.85], [-3.75, -14.4]], F4: [[ELEV.x, -2.85], [-4.0, -6.3]] };   // 1층은 로비 안, 4층은 계단실 문 앞에서도 탈 수 있음
+    function addElevator(Y, group, lv, shaft) {
+      const k = makeKit(Y, group, lv);
+      const steel = k.M(0xb8bcc2, 0.3), frameM = k.M(0x5d6470, 0.4), wallM = k.M(0xe8e1d6);
+      if (shaft) {
+        k.wallDoor(-3.5, ELEV.doorZ, -2.3, ELEV.doorZ, ELEV.x, 0.8, 2.8, wallM);
+        k.wall(-3.5, ELEV.doorZ, -3.5, 0.0, 2.8, wallM); k.wall(-2.3, ELEV.doorZ, -2.3, 0.0, 2.8, wallM); k.wall(-3.5, 0.0, -2.3, 0.0, 2.8, wallM);
+      }
+      [-1, 1].forEach((sd) => k.box(0.39, 2.0, 0.04, ELEV.x + sd * 0.2, 0, ELEV.doorZ - 0.03, steel));   // 닫힌 문 두 짝
+      k.box(0.9, 0.08, 0.06, ELEV.x, 2.0, ELEV.doorZ - 0.04, frameM);
+      k.box(0.08, 0.14, 0.03, ELEV.x + 0.55, 0.95, ELEV.doorZ - 0.04, k.M(0x222831));                    // 호출 버튼
+      k.label('🛗 엘리베이터', ELEV.x, ELEV.doorZ - 0.3, 2.35);
+    }
+    {
+      const b1g = new THREE.Group(); b1g.name = 'B1_ELEVATOR'; scene.add(b1g); addElevator(-6.6, b1g, 'B1', true);
+      addElevator(F1_Y, f1, 'F1', false);            // 1층은 앞쪽 코너 벽(FRONT_CORNER_PILOTIS_WALL) 북쪽 면에 문만
+      addElevator(F2_Y, f2, 'F2', true);
+      addElevator(F3_Y, furn, 'F3', true);
+      // 4층은 계단실 #2 안에 이미 엘리베이터 문이 있음
+    }
     // ===FLOORS-END===
 
     // ===PEW-BEGIN===
@@ -1121,7 +1171,7 @@
     function pickB1Seat(x, z) {
       let best = null, bd = 1e9;
       b1Seats.forEach((s) => { const d = Math.hypot(s.x - x, s.z - z); if (d < bd) { bd = d; best = s; } });
-      return best || { x: x, z: z, y: -6.32, rot: -Math.PI * 0.86 };
+      return best || { x: x, z: z, y: -6.36, rot: -Math.PI * 0.86 };
     }
     function labelAt(text, x, y, z, sw) {
       const c = document.createElement('canvas');
@@ -1203,7 +1253,7 @@
           g.add(bench);
           [-0.27, 0.27].forEach((t) => {
             const sx = p.x + t * Math.sin(p.yaw), sz = p.z + t * Math.cos(p.yaw);
-            b1Seats.push({ x: sx, z: sz, y: FLOOR + SEAT_TOP + 0.04, rot: Math.atan2(-13.0 - sx, -17.5 - sz) });
+            b1Seats.push({ x: sx, z: sz, y: FLOOR + SEAT_TOP, rot: Math.atan2(-13.0 - sx, -17.5 - sz) });
           });
         });
 
@@ -1408,9 +1458,9 @@
         name: '지하 1층 본당',
         level: 'B1',
         // 출입문 바로 안쪽, 중앙 통로와 대각선 강단이 한눈에 보이는 최적 좌표
-        // 맨 뒷줄 의자 뒤 빈 곳(방송실·방송 데스크와 떨어진 동쪽)에서 강단을 바라봄
-        charPos: new THREE.Vector3(-2.4, -6.6, -3.4),
-        charRot: Math.atan2(-13.0 + 2.4, -17.5 + 3.4),
+        // 엘리베이터에서 내려 맨 뒷줄 뒤에서 강단을 바라봄
+        charPos: new THREE.Vector3(-2.9, -6.6, -3.1),
+        charRot: Math.atan2(-13.0 + 2.9, -17.5 + 3.1),
         // 후면에서 전체 예배당을 내려다보는 웅장한 디오라마 시야각
         // 위에서 비스듬히 내려다보는 시점 (본당 밖 건물은 숨김)
         camPos: new THREE.Vector3(-3.5, 9.5, 8.5),
@@ -1422,7 +1472,7 @@
       step5: {
         name: '3층 식당 · 소그룹실',
         level: 'F3',
-        charPos: new THREE.Vector3(-6.2, 7.25, -3.0),
+        charPos: new THREE.Vector3(-2.9, 7.25, -3.1),   // 엘리베이터 문 앞
         charRot: Math.PI,
         // 4층·지붕을 숨기고 위에서 내려다보는 시점
         camPos: new THREE.Vector3(-6.2, 17.0, 5.5),
@@ -1431,10 +1481,19 @@
         isB1: false,
         hideTop: true
       },
+      stepF1: {
+        name: '1층 엘리베이터 앞 · 필로티',
+        level: 'F1',
+        charPos: new THREE.Vector3(-2.9, 0.0, -3.1),
+        charRot: Math.PI,
+        camPos: new THREE.Vector3(-2.9, 3.0, 2.0), camLook: new THREE.Vector3(-2.9, 0.8, -6.0),
+        floorY: 0.0,
+        isB1: false
+      },
       step6: {
         name: '2층 소그룹실 · 기도실 · 사무실',
         level: 'F2',
-        charPos: new THREE.Vector3(-6.2, 3.65, -3.4),   // 엘리베이터에서 내려 복도 남쪽 끝
+        charPos: new THREE.Vector3(-2.9, 3.65, -3.1),   // 엘리베이터 문 앞 (창가 휴게 홀 옆)
         charRot: Math.PI,
         camPos: new THREE.Vector3(-6.2, 8.0, 2.0), camLook: new THREE.Vector3(-6.2, 3.7, -9.0),
         floorY: 3.65,
@@ -1443,7 +1502,7 @@
       step7: {
         name: '4층 목양실 · 옥상 정원',
         level: 'F4',
-        charPos: new THREE.Vector3(-6.5, 10.75, -9.3),  // 옥상 정원 가운데에서 목양실·교육관 쪽을 바라봄 (카메라는 정원 앞쪽)
+        charPos: new THREE.Vector3(-4.0, 10.75, -6.4),  // 엘리베이터 계단실 문을 나와 옥상 정원에서 목양실 쪽을 바라봄
         charRot: Math.PI,
         camPos: new THREE.Vector3(-6.2, 15.0, 2.0), camLook: new THREE.Vector3(-6.2, 10.8, -9.0),
         floorY: 10.75,
@@ -1471,7 +1530,19 @@
       const p = characterGroup.position, r = characterGroup.rotation.y;
       const fx = Math.sin(r), fz = Math.cos(r);
       controls.target.set(p.x, p.y + EYE_H, p.z);
-      camera.position.set(p.x - fx * (back || CAM_BACK), p.y + EYE_H + CAM_UP, p.z - fz * (back || CAM_BACK));
+      const bk = back || CAM_BACK;
+      // 바로 뒤가 벽(엘리베이터 안 등)이면 좌우로 돌려 가장 탁 트인 쪽에서 바라봄
+      let bestYaw = 0, bestFree = -1;
+      for (const k of [0, 0.5, -0.5, 1.0, -1.0, 1.5, -1.5, 2.1, -2.1, 2.6, -2.6, Math.PI]) {
+        const yy = r + Math.PI + k, d = new THREE.Vector3(Math.sin(yy) * bk, EYE_H + CAM_UP - EYE_H, Math.cos(yy) * bk);
+        const len = d.length(); d.normalize();
+        const hit = blockDistFrom(controls.target, d, len + 0.3);
+        const free = hit === null ? len + 1 : hit;
+        if (free > bestFree + 0.3) { bestFree = free; bestYaw = k; }
+        if (hit === null) break;
+      }
+      const yy = r + Math.PI + bestYaw;
+      camera.position.set(p.x + Math.sin(yy) * bk, p.y + EYE_H + CAM_UP, p.z + Math.cos(yy) * bk);
       lastCharPos.copy(p);
       resetCamPull();
     }
@@ -1541,7 +1612,7 @@
         controls.maxDistance = eye ? 14 : 55;   // 휠·두 손가락으로 더 멀리 볼 수 있게
       }
 
-      rebuildWalk(); buildNav(); walkPath = [];
+      rebuildWalk(); buildNav(); walkPath = []; updateActions();
       if (eye) { eyeCam(); return; }
       controls.target.copy(wp.camLook);
       camera.position.copy(wp.camPos);
@@ -1570,16 +1641,70 @@
       e.currentTarget.textContent = camPreset === 'wide' ? '👀 가까이' : '🔭 넓게';
       eyeCam();
     });
+    // ---- 엘리베이터로만 층 이동, 행동 버튼은 그 층에 도착했을 때만 ----
+    const btnElevator = document.getElementById('btnElevator'), elevPanel = document.getElementById('elevPanel');
+    const elevFade = document.getElementById('elevFade'), elevFadeText = document.getElementById('elevFadeText');
+    let pendingRide = null, riding = false;
+    const curLevel = () => TOUR_WAYPOINTS[currentStepKey].level;
+    function callPoints(lv) { return CALL_POINTS[lv] || [[ELEV.x, -2.85]]; }
+    function nearElevator() {
+      const p = characterGroup.position;
+      return callPoints(curLevel()).some(([x, z]) => Math.hypot(p.x - x, p.z - z) < 1.1);
+    }
+    function updateActions() {
+      const lv = curLevel();
+      document.getElementById('btnActionPew').hidden = lv !== 'B1';
+      document.getElementById('btnActionPray').hidden = !(lv === 'B1' || lv === 'F2');
+      document.getElementById('btnActionEat').hidden = lv !== 'F3';
+      document.getElementById('btnActionGroup').hidden = lv !== 'F3';
+      // 위쪽 장소 버튼: 지금 층 표시
+      const map = { F1: 'step1', B1: 'step4', F2: 'step6', F3: 'step5', F4: 'step7' };
+      document.querySelectorAll('.step-btn').forEach((b) => b.classList.toggle('active', b.id === map[lv]));
+    }
+    function openElevPanel() {
+      elevPanel.querySelectorAll('.elev-btn').forEach((b) => { b.disabled = b.dataset.lv === curLevel(); });
+      elevPanel.hidden = false;
+    }
+    function ride(lv) {
+      if (riding) return;
+      riding = true; elevPanel.hidden = true; pendingRide = null;
+      elevFadeText.textContent = `🛗 ${LEVEL_NAME[lv]}(으)로 이동 중…`;
+      elevFade.classList.add('on');
+      setTimeout(() => {
+        goToTourStep(LEVEL_STEP[lv]);
+        elevFadeText.textContent = `${LEVEL_NAME[lv]} 도착`;
+        setTimeout(() => { elevFade.classList.remove('on'); riding = false; }, 450);
+      }, 650);
+    }
+    // 장소 버튼: 엘리베이터까지 걸어간 뒤 타고 이동 (같은 층이면 그 층 엘리베이터 앞으로 걸어감)
+    function goByElevator(lv) {
+      elevPanel.hidden = true;
+      if (lv === curLevel()) return;
+      if (nearElevator()) { ride(lv); return; }
+      const p = characterGroup.position;
+      let best = null;
+      callPoints(curLevel()).forEach(([x, z]) => {
+        const path = findPath(p, new THREE.Vector3(x, currentFloorY, z));
+        if (path && path.length && (!best || path.length < best.length)) best = path;
+      });
+      if (!best) { ride(lv); return; }            // 길이 없으면 바로 이동
+      walkPath = best; targetPos.copy(walkPath.shift());
+      isMoving = true; isSitting = false; isPraying = false; isEating = false;
+      pendingRide = lv;
+    }
+    btnElevator.addEventListener('click', openElevPanel);
+    document.getElementById('elevClose').addEventListener('click', () => { elevPanel.hidden = true; });
+    elevPanel.querySelectorAll('.elev-btn').forEach((b) => b.addEventListener('click', () => ride(b.dataset.lv)));
     const guideCard = document.getElementById('guideCard');
     document.getElementById('helpToggle').addEventListener('click', () => { guideCard.hidden = !guideCard.hidden; });
     const uiOverlay = document.getElementById('ui-overlay'), uiShow = document.getElementById('uiShow');
     document.getElementById('uiToggle').addEventListener('click', () => { uiOverlay.classList.add('ui-hidden'); uiShow.hidden = false; });
     uiShow.addEventListener('click', () => { uiOverlay.classList.remove('ui-hidden'); uiShow.hidden = true; });
-    document.getElementById('step1').addEventListener('click', () => goToTourStep('step1'));
-    document.getElementById('step4').addEventListener('click', () => goToTourStep('step4'));
-    document.getElementById('step5').addEventListener('click', () => goToTourStep('step5'));
-    document.getElementById('step6').addEventListener('click', () => goToTourStep('step6'));
-    document.getElementById('step7').addEventListener('click', () => goToTourStep('step7'));
+    document.getElementById('step1').addEventListener('click', () => { if (curLevel() === 'F1') goToTourStep('step1'); else goByElevator('F1'); });
+    document.getElementById('step4').addEventListener('click', () => goByElevator('B1'));
+    document.getElementById('step5').addEventListener('click', () => goByElevator('F3'));
+    document.getElementById('step6').addEventListener('click', () => goByElevator('F2'));
+    document.getElementById('step7').addEventListener('click', () => goByElevator('F4'));
 
     // -------------------------------------------------------------------------
     // 5. 클릭 투 무브 (Click-to-Move)
@@ -1605,7 +1730,7 @@
       const diffTime = performance.now() - downTime;
       const dist = Math.hypot(e.clientX - downPos.x, e.clientY - downPos.y);
       if (diffTime > 260 || dist > 6) return;
-      if (e.target.closest('#ui-overlay') || e.target.closest('#uiShow') || e.target.closest('#joy')) return;
+      if (e.target.closest('#ui-overlay') || e.target.closest('#uiShow') || e.target.closest('#joy') || e.target.closest('#elevPanel')) return;
 
       mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
       mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
@@ -1650,7 +1775,6 @@
     const btnActionPray = document.getElementById('btnActionPray');
 
     btnActionPew.addEventListener('click', () => {
-      if (currentStepKey !== 'step4') goToTourStep('step4');
       isEating = false;
       isMoving = false;
       isSitting = true;
@@ -1689,15 +1813,14 @@
       isMoving = false;
       isPraying = false;
       isSitting = true;
-      characterGroup.position.set(x, F3_Y + 0.26, z);
+      characterGroup.position.set(x, F3_Y + 0.20, z);   // 앉는 면(0.20m) 위에 바로
       characterGroup.rotation.y = rotY;
       targetPos.copy(characterGroup.position);
       controls.target.set(x, F3_Y + 0.85, z);
     }
 
     document.getElementById('btnActionEat').addEventListener('click', () => {
-      if (currentStepKey !== 'step5') goToTourStep('step5');
-      sitAt(-5.85, DINING_ROWS[1], Math.PI / 2);   // 가운데 열 · 가운데 줄 서쪽 의자, 동쪽을 보고 앉음
+      sitAt(-5.70, DINING_ROWS[1], Math.PI / 2);   // 가운데 열 · 가운데 줄 서쪽 의자 한가운데, 동쪽을 보고 앉음
       isEating = true;
       if (viewMode === 'eye') { eyeCam(1.4); return; }
       camera.position.set(-3.6, F3_Y + 1.7, DINING_ROWS[1] + 2.0);
@@ -1705,9 +1828,8 @@
     });
 
     document.getElementById('btnActionGroup').addEventListener('click', () => {
-      if (currentStepKey !== 'step5') goToTourStep('step5');
       const gz = (roomZ[0] + roomZ[1]) / 2 - 0.23;
-      sitAt(-1.55, gz, Math.PI / 2); // 소그룹실 1 서쪽 의자
+      sitAt(-1.40, gz, Math.PI / 2); // 소그룹실 1 서쪽 의자 한가운데
       // 방 안쪽(동쪽 창가) 위에서 내려다봐 칸막이 벽이 캐릭터를 가리지 않게
       if (viewMode === 'eye') {
         // 방이 좁아 뒤쪽은 벽이라, 맞은편 창가 쪽 눈높이에서 비스듬히 바라봄 (앉은 얼굴과 식탁이 보이게)
@@ -2018,6 +2140,9 @@
       }
 
       poseLimbs(isMoving ? time * 13 : null);
+      const nearEl = nearElevator();
+      if (btnElevator.hidden === nearEl) btnElevator.hidden = !nearEl;
+      if (pendingRide && !isMoving) { if (nearEl) ride(pendingRide); else pendingRide = null; }
       if (viewMode === 'eye') followEye();
       camBeforeUpdate();
       controls.update();
