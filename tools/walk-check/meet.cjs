@@ -31,7 +31,7 @@ const { chromium } = require('playwright');
   // B가 다른 층으로 가면 A에서 안 보임
   await B.evaluate(() => window.__dbg.goTo('step5')); await A.waitForTimeout(2500);
   console.log('B가 3층 간 뒤 A에서 보임?', await A.evaluate(() => { const r = [...window.__remotes.values()][0]; return r && r.group.visible; }));
-  await B.close(); await A.waitForTimeout(8500);
+  await B.close(); await A.waitForTimeout(14500);
   console.log('B 나간 뒤 A:', await A.textContent('#onlineCount'), '| remotes', await A.evaluate(() => window.__remotes.size));
   console.log(errs.join('\n') || 'no errors'); await b.close();
 })();

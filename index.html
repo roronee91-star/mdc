@@ -2287,15 +2287,27 @@
         this.ch = ch;
         ch.on('presence', { event: 'sync' }, () => {
           const st = ch.presenceState(); this.peers.clear();
-          Object.entries(st).forEach(([k, metas]) => { if (metas && metas[0]) this.peers.set(k, metas[metas.length - 1]); });
+          Object.entries(st).forEach(([k, metas]) => { if (metas && metas[0]) { this.peers.set(k, metas[metas.length - 1]); (this.known = this.known || new Set()).add(k); } });
+          this.firstSync = true;
           this.syncPeers();
         });
-        ch.on('presence', { event: 'join' }, ({ key, newPresences }) => { if (key !== PrayerStore.device() && newPresences[0]) sysLine(`${newPresences[0].n || '성도'}님이 들어오셨어요 🙌`); });
-        ch.on('presence', { event: 'leave' }, ({ key, leftPresences }) => { if (key !== PrayerStore.device() && leftPresences[0]) sysLine(`${leftPresences[0].n || '성도'}님이 나가셨어요`); });
+        // 들어옴·나감 알림: 처음 보는 사람만 '들어오셨어요', 정말 사라졌을 때만(2초 뒤에도 없으면) '나가셨어요'
+        //  (이름 바꾸기 등으로 접속 정보가 다시 등록될 때 Supabase가 나감+들어옴을 같이 보내도 알림이 뜨지 않게)
+        const known = this.known = this.known || new Set();
+        ch.on('presence', { event: 'join' }, ({ key, newPresences }) => {
+          if (key === PrayerStore.device() || known.has(key) || !newPresences[0]) return;
+          known.add(key);
+          if (this.firstSync) sysLine(`${newPresences[0].n || '성도'}님이 들어오셨어요 🙌`);   // 내가 들어왔을 때 처음 받는 명단(이미 있던 분)은 알림 없이
+        });
+        ch.on('presence', { event: 'leave' }, ({ key, leftPresences }) => {
+          if (key === PrayerStore.device() || !leftPresences[0]) return;
+          const nm = leftPresences[0].n || '성도';
+          setTimeout(() => { if (!ch.presenceState()[key] && known.has(key)) { known.delete(key); sysLine(`${nm}님이 나가셨어요`); } }, 2000);
+        });
         ch.on('broadcast', { event: 'pos' }, ({ payload }) => this.onPos(payload));
         ch.on('broadcast', { event: 'chat' }, ({ payload }) => this.onChat(payload));
         ch.subscribe(async (status) => {
-          if (status === 'SUBSCRIBED') { this.ready = true; await ch.track(myState()); this.setStatus(true); }
+          if (status === 'SUBSCRIBED') { this.ready = true; this.subAt = performance.now(); await ch.track(myState()); this.setStatus(true); }
           else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') { this.ready = false; this.setStatus(false); }
         });
       },
@@ -2306,7 +2318,7 @@
           if (data.t === 'pos') { seen.set(data.p.id, performance.now()); if (!this.peers.has(data.p.id)) { this.peers.set(data.p.id, data.p); sysLine(`${data.p.n}님이 들어오셨어요 🙌`); this.syncPeers(); } else this.peers.set(data.p.id, data.p); this.onPos(data.p); }
           if (data.t === 'chat') this.onChat(data.p);
         };
-        setInterval(() => { const now = performance.now(); seen.forEach((t, id) => { if (now - t > 6000) { seen.delete(id); const p = this.peers.get(id); this.peers.delete(id); if (p) sysLine(`${p.n}님이 나가셨어요`); this.syncPeers(); } }); }, 2000);
+        setInterval(() => { const now = performance.now(); seen.forEach((t, id) => { if (now - t > 12000) { seen.delete(id); const p = this.peers.get(id); this.peers.delete(id); if (p) sysLine(`${p.n}님이 나가셨어요`); this.syncPeers(); } }); }, 2000);
         this.setStatus(true);
       },
       send(event, payload) {
@@ -2319,14 +2331,14 @@
         if (!this.ready) return;
         const st = myState(), key = JSON.stringify(st);
         const gap = now - this.lastSent;
-        if ((key !== this.lastKey && gap > 160) || gap > 2000) { this.send('pos', st); this.lastSent = now; if (st.lv !== (JSON.parse(this.lastKey || '{}').lv)) this.updateMe(); this.lastKey = key; }
+        if ((key !== this.lastKey && gap > 160) || gap > 2000) { this.send('pos', st); this.lastSent = now; this.lastKey = key; }   // 층은 위치 신호에 들어 있음 (접속 정보 다시 등록 안 함)
       },
-      onPos(p) { if (!p || p.id === PrayerStore.device()) return; const r = getRemote(p.id, p.n); r.target = p; if (r.name !== p.n) setRemoteName(r, p.n); },
+      onPos(p) { if (!p || !p.id || typeof p.id !== 'string' || p.id === PrayerStore.device()) return; const r = getRemote(p.id, p.n); r.target = p; if (r.name !== p.n) setRemoteName(r, p.n); },
       onChat(c) { if (!c || !c.text) return; const r = remotes.get(c.id); chatLine(c.n, c.text); if (r) showBubble(r.group, c.text, r); },
       syncPeers() {
         const ids = new Set(this.peers.keys());
         remotes.forEach((r, id) => { if (!ids.has(id)) { scene.remove(r.group); remotes.delete(id); } });
-        this.peers.forEach((p, id) => { if (id !== PrayerStore.device() && p.x !== undefined) this.onPos(p); });
+        this.peers.forEach((p, id) => { if (id !== PrayerStore.device() && p.x !== undefined) this.onPos(Object.assign({}, p, { id })); });   // 접속 정보의 열쇠(key)를 기기 번호로
         this.setStatus(true);
       },
     };
