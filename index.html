@@ -631,9 +631,9 @@
     // 반구를 뒤로 기울여 앞(이마)은 눈썹 위에서 끝나고 뒤통수는 목덜미까지 덮게
     addTo(headGroup, new THREE.SphereGeometry(0.272, 28, 20, 0, Math.PI * 2, 0, Math.PI * 0.5), hairMat, 0, 0.0, -0.01).rotation.x = -0.42;
     [-1, 1].forEach((sx) => { const side = addTo(headGroup, new THREE.SphereGeometry(0.09, 12, 10), hairMat, sx * 0.21, 0.04, 0.05); side.scale.set(0.55, 1.15, 0.9); });
-    [[-0.11, 0.142, -0.35], [0.0, 0.157, 0.0], [0.11, 0.142, 0.35]].forEach(([x, y, rz]) => {   // 앞머리 (눈썹이 보이게 조금 올림)
-      const bang = addTo(headGroup, new THREE.SphereGeometry(0.1, 14, 10), hairMat, x, y, 0.19);
-      bang.scale.set(1.0, 0.6, 0.55); bang.rotation.z = rz;
+    [[-0.1, 0.168, -0.35], [0.0, 0.18, 0.0], [0.1, 0.168, 0.35]].forEach(([x, y, rz]) => {   // 앞머리: 작고 얇게, 이마가 보이게
+      const bang = addTo(headGroup, new THREE.SphereGeometry(0.08, 14, 10), hairMat, x, y, 0.18);
+      bang.scale.set(0.95, 0.42, 0.5); bang.rotation.z = rz;
     });
     const tuft = addTo(headGroup, new THREE.ConeGeometry(0.022, 0.08, 8), hairMat, 0.03, 0.275, 0.02);
     tuft.rotation.set(-0.5, 0, -0.4); tuft.name = 'tuftM';
