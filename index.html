@@ -233,6 +233,34 @@
     #nameInput { font-size: 17px; padding: 11px 12px; border-radius: 10px; border: 1.5px solid #d8c7ab; outline: none; user-select: text; }
     #nameInput:focus { border-color: #b08a5a; }
     #nameOk { font-size: 15px; font-weight: 700; padding: 11px; border-radius: 10px; border: none; background: #8a6a42; color: #fff; cursor: pointer; }
+    #prayerPanel { position: absolute; inset: 0; z-index: 8; background: rgba(15, 23, 42, 0.45); display: flex; align-items: center; justify-content: center; }
+    .pp-card { width: min(420px, 94vw); max-height: 86vh; background: #fffaf2; color: #3b2f22; border-radius: 18px; display: flex; flex-direction: column; box-shadow: 0 12px 40px rgba(0,0,0,0.35); overflow: hidden; }
+    .pp-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px 6px; }
+    .pp-title { font-size: 18px; font-weight: 800; }
+    .pp-x { border: none; background: none; font-size: 18px; color: #7a6a58; cursor: pointer; padding: 4px 8px; }
+    .pp-tabs { display: flex; gap: 6px; padding: 0 12px 8px; }
+    .pp-tab { flex: 1; padding: 9px; border-radius: 10px; border: 1px solid #e3d5bd; background: #fff; color: #6b563c; font-weight: 700; font-size: 14px; cursor: pointer; }
+    .pp-tab.on { background: #8a6a42; color: #fff; border-color: #8a6a42; }
+    .pp-body { padding: 4px 14px 10px; overflow-y: auto; }
+    .pp-filter, .pp-cats { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+    .pp-chip { padding: 6px 11px; border-radius: 999px; border: 1px solid #e3d5bd; background: #fff; color: #6b563c; font-size: 13px; cursor: pointer; }
+    .pp-chip.on { background: #f1e2c8; border-color: #c9a97a; font-weight: 700; }
+    .pp-item { background: #fff; border: 1px solid #eadcc6; border-radius: 12px; padding: 11px 12px; margin-bottom: 8px; }
+    .pp-meta { display: flex; gap: 6px; align-items: center; font-size: 12px; color: #8b7a66; margin-bottom: 5px; flex-wrap: wrap; }
+    .pp-cat { background: #f1e2c8; color: #6b4f33; border-radius: 6px; padding: 1px 7px; font-weight: 700; }
+    .pp-txt { font-size: 15px; line-height: 1.55; white-space: pre-wrap; word-break: break-word; user-select: text; }
+    .pp-actions { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; }
+    .pp-pray { border: 1px solid #c9a97a; background: #fff; color: #6b4f33; border-radius: 999px; padding: 6px 12px; font-size: 13px; font-weight: 700; cursor: pointer; }
+    .pp-pray.on { background: #8a6a42; color: #fff; border-color: #8a6a42; }
+    .pp-del { border: none; background: none; color: #b08a6a; font-size: 12px; cursor: pointer; }
+    .pp-empty { text-align: center; color: #8b7a66; padding: 26px 0; font-size: 14px; }
+    .pp-label { font-size: 13px; color: #7a6a58; display: block; margin-bottom: 6px; }
+    #ppText { width: 100%; font-size: 15px; padding: 10px; border-radius: 10px; border: 1.5px solid #d8c7ab; resize: vertical; user-select: text; font-family: inherit; }
+    .pp-count { text-align: right; font-size: 12px; color: #9a8a76; margin: 3px 0 8px; }
+    .pp-check { display: flex; gap: 6px; align-items: center; font-size: 14px; margin-bottom: 10px; }
+    #ppSubmit { width: 100%; padding: 12px; border: none; border-radius: 10px; background: #8a6a42; color: #fff; font-size: 15px; font-weight: 800; cursor: pointer; }
+    #ppSubmit:disabled { opacity: 0.5; }
+    .pp-note { font-size: 12px; color: #9a8a76; padding: 8px 14px 12px; border-top: 1px solid #f0e4d2; }
   </style>
 
   <script type="importmap">{"imports":{"three":"./vendor/three/three.module.js"}}</script>
@@ -264,6 +292,7 @@
       </div>
 
       <div class="header-right">
+        <button class="bgm-btn" id="prayerBtn" title="기도제목">📝 기도제목</button>
         <button class="bgm-btn" id="nameBtn" title="이름 바꾸기">👤 이름</button>
         <button class="bgm-btn" id="bgmToggle" title="잔잔한 찬양 켜기/끄기">🎵</button>
         <button class="bgm-btn" id="helpToggle" title="조작 안내">❔</button>
@@ -274,6 +303,7 @@
     <div class="guide-card" id="guideCard" hidden>
       <b>바닥 누르기</b> 캐릭터가 그곳으로 걸어가요<br>
       <b>의자 누르기</b> 그 자리에 가서 앉아요 (장의자는 기도, 식당은 밥먹기)<br>
+      <b>📝 기도제목</b> 기도제목 쓰기·함께 기도하기 (본당·2층 기도실 게시판을 눌러도 돼요)<br>
       <b>W A S D · 방향키</b> 걷기 (폰은 왼쪽 아래 동그라미)<br>
       <b>화면 끌기</b> 돌려 보기<br>
       <b>두 손가락 벌리기·오므리기 / 휠</b> 멀리·가까이<br>
@@ -282,7 +312,7 @@
 
     <div class="bottom-bar">
       <div class="action-group">
-        <button class="action-btn" id="btnElevator" hidden>🛗 엘리베이터</button>
+        <button class="action-btn" id="btnElevator" hidden>🛗 엘리베이터 타기</button>
         <button class="action-btn" id="btnActionPew">🪑 의자 착석</button>
         <button class="action-btn" id="btnActionPray">🙏 기도</button>
         <button class="action-btn" id="btnActionEat">🍚 밥먹기</button>
@@ -302,6 +332,31 @@
     <button class="elev-close" id="elevClose">닫기</button>
   </div>
   <div id="elevFade"><span id="elevFadeText"></span></div>
+  <div id="prayerPanel" hidden>
+    <div class="pp-card">
+      <div class="pp-head">
+        <div class="pp-title">🙏 기도제목</div>
+        <button class="pp-x" id="ppClose" aria-label="닫기">✕</button>
+      </div>
+      <div class="pp-tabs">
+        <button class="pp-tab on" data-tab="list">함께 기도해요</button>
+        <button class="pp-tab" data-tab="write">기도제목 쓰기</button>
+      </div>
+      <div id="ppList" class="pp-body">
+        <div class="pp-filter" id="ppFilter"></div>
+        <div id="ppItems"></div>
+      </div>
+      <div id="ppWrite" class="pp-body" hidden>
+        <label class="pp-label">어떤 기도제목인가요?</label>
+        <div class="pp-cats" id="ppCats"></div>
+        <textarea id="ppText" maxlength="300" rows="5" placeholder="함께 기도해 주셨으면 하는 내용을 적어 주세요 (300자까지)"></textarea>
+        <div class="pp-count"><span id="ppLen">0</span> / 300</div>
+        <label class="pp-check"><input type="checkbox" id="ppAnon"> 이름 없이 올리기 (익명)</label>
+        <button id="ppSubmit">기도제목 올리기</button>
+      </div>
+      <div class="pp-note" id="ppNote">지금은 이 기기에만 저장돼요. 교회 연결(Supabase)을 마치면 모든 성도님과 함께 보여요.</div>
+    </div>
+  </div>
   <div id="nameModal" hidden>
     <div class="name-card">
       <div class="name-title">물댄동산교회에 오신 것을 환영해요 🙌</div>
@@ -647,6 +702,7 @@
         scene.add(loadedModel);
         try { applyB1Fixes(loadedModel); } catch (e) { console.warn('본당 보정 실패', e); }
         try { applyF4Fixes(loadedModel); } catch (e) { console.warn('4층 보정 실패', e); }
+        try { fixCrosswalk(loadedModel); } catch (e) { console.warn('횡단보도 보정 실패', e); }
         goToTourStep('step1'); // 처음부터 캐릭터 눈높이 시점
 
         loadingScreen.style.opacity = '0';
@@ -935,8 +991,12 @@
       // 주차칸(바닥 선 x -11.9 / -9.7 / -7.5 / -5.3 / -3.1, z -9.2 ~ -5.2) 중 3칸에 차
       const car = (x, z, col) => {
         const body = k.M(col, 0.4), win = k.M(0x2b3440, 0.2), tire = k.M(0x1b1b1b);
-        k.box(0.92, 0.36, 2.0, x, 0.12, z, body); k.box(0.8, 0.3, 1.1, x, 0.48, z - 0.05, win); k.box(0.82, 0.04, 1.12, x, 0.78, z - 0.05, body);
-        [[-1, -1], [-1, 1], [1, -1], [1, 1]].forEach(([sx, sz]) => { const t = k.cyl(0.14, 0.1, x + sx * 0.44, 0.0, z + sz * 0.62, tire); t.rotation.z = Math.PI / 2; t.position.y = F1_Y + 0.14; });
+        k.box(0.88, 0.34, 2.0, x, 0.16, z, body); k.box(0.78, 0.3, 1.1, x, 0.5, z - 0.05, win); k.box(0.8, 0.04, 1.12, x, 0.8, z - 0.05, body);
+        // 바퀴 4개: 차체 옆면 밖으로 나오게(x ±0.49), 휠 캡
+        [[-1, -1], [-1, 1], [1, -1], [1, 1]].forEach(([sx, sz]) => {
+          const t = k.cyl(0.16, 0.1, x + sx * 0.49, 0.0, z + sz * 0.64, tire); t.rotation.z = Math.PI / 2; t.position.y = F1_Y + 0.16;
+          const hub = k.cyl(0.07, 0.02, x + sx * 0.545, 0.0, z + sz * 0.64, k.M(0xc9ccd1, 0.3)); hub.rotation.z = Math.PI / 2; hub.position.y = F1_Y + 0.16;
+        });
       };
       car(-10.8, -7.2, 0xf5f5f5); car(-8.6, -7.2, 0x3b5b8c); car(-4.2, -7.2, 0x8c8f94);
       // 로비(전실): x -5.4 ~ -0.2, z -15.0 ~ -10.4, 앞면 유리 + 가운데 자동문(폭 1.2m)
@@ -1122,6 +1182,39 @@
       plate(-12.26, 0.05, -17.36, -11.5, F4_Y + 0.002, floorM);                     // 4층 실내
       plate(-12.26, -10.5, -5.6, 0.08, F4_Y + 0.002, floorM); plate(-5.4, 0.05, -5.6, 0.08, F4_Y + 0.002, floorM);   // 4층 계단실
       plate(-12.26, 0.0, -17.36, -17.33, F4_Y, wallM, 3.15); plate(-12.23, -12.2, -17.33, -11.5, F4_Y, wallM, 3.15);
+    }
+    // 횡단보도: 원래 줄이 남북으로 길게, 게다가 인도에 반쯤 걸쳐 있어서 → 차도를 건너는 동서 방향 줄로 다시 그림
+    function fixCrosswalk(root) {
+      const stripes = []; root.traverse((o) => { if (o.isMesh && o.name.indexOf('CROSSWALK_FRONT') === 0) stripes.push(o); });
+      if (!stripes.length) return;
+      let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity, top = -Infinity;
+      stripes.forEach((o) => { o.geometry.computeBoundingBox(); const b = o.geometry.boundingBox.clone().applyMatrix4(o.matrixWorld);
+        x0 = Math.min(x0, b.min.x); x1 = Math.max(x1, b.max.x); z0 = Math.min(z0, b.min.z); z1 = Math.max(z1, b.max.z); top = Math.max(top, b.max.y);
+        o.visible = false; o.userData.forceHidden = true; });
+      // 차도(교회 앞 인도 끝 z 7.0 ~ 건너편 인도 z 20.5)를 가로지르도록: 폭 3.2m, 줄 0.5m, 간격 0.36m
+      const mat = stripes[0].material, cx = (x0 + x1) / 2, len = 3.2, w = 0.5, gap = 0.36;
+      z0 = 7.25; z1 = 20.3;
+      const n = Math.floor((z1 - z0 + gap) / (w + gap));
+      // 줄은 도로면보다 살짝 위 (도로 높이가 구간마다 조금 달라 묻히지 않게)
+      // 횡단보도 위·바로 옆에 서 있는 길가 차는 가까운 쪽 바깥으로 비켜 세움 (같은 차의 부품은 함께)
+      const cars = {};
+      root.traverse((o) => { if (o.isMesh && /^ENV_CAR_\d+/.test(o.name)) { const k = o.name.match(/^ENV_CAR_\d+/)[0]; (cars[k] = cars[k] || []).push(o); } });
+      Object.values(cars).forEach((parts) => {
+        const bb = new THREE.Box3(); parts.forEach((o) => { o.geometry.computeBoundingBox(); bb.union(o.geometry.boundingBox.clone().applyMatrix4(o.matrixWorld)); });
+        if (bb.max.x > cx - len / 2 - 0.3 && bb.min.x < cx + len / 2 + 0.3 && bb.max.z > z0 && bb.min.z < z1) {
+          const mid = (bb.min.x + bb.max.x) / 2;
+          const dx = mid < cx ? (cx - len / 2 - 0.8) - bb.max.x : (cx + len / 2 + 0.8) - bb.min.x;   // 가까운 쪽 바깥으로 비켜 세움
+          parts.forEach((o) => { const ps = new THREE.Vector3(); o.parent.getWorldScale(ps); o.position.x += dx / (ps.x || 1); o.updateMatrixWorld(true); });
+        }
+      });
+      const down = new THREE.Raycaster(); root.updateMatrixWorld(true);
+      for (let i = 0; i < n; i++) {
+        const z = z0 + w / 2 + i * (w + gap);
+        down.set(new THREE.Vector3(cx, 3, z), new THREE.Vector3(0, -1, 0));
+        const h = down.intersectObject(root, true).find((x) => x.object.visible && x.object.name.indexOf('CROSSWALK') !== 0 && x.point.y < 0.3);
+        const y = h ? h.point.y : top;
+        const m = new THREE.Mesh(new THREE.BoxGeometry(len, 0.02, w), mat); m.position.set(cx, y + 0.006, z); m.receiveShadow = true; scene.add(m);
+      }
     }
     // 4층 GLB 보정: 파일은 그대로 두고, 화면이 열릴 때 도면처럼 옥상 정원 위 지붕과 유리를 없앤다
     function applyF4Fixes(root) {
@@ -1407,6 +1500,54 @@
       }
 
       // 3) 강대상: 바닥에서 9cm 뜬 것 내려놓기
+      // 강단 넓히기: 무대 모서리(서북쪽 끝)는 그대로 두고 가로·세로 1.25배 (월드 좌표로 맞춤)
+      ['B1_FINAL_Stage_Tier_0', 'B1_FINAL_Stage_Tier_1'].forEach((n) => {
+        const m = byName[n]; if (!m) return;
+        m.updateWorldMatrix(true, false); m.geometry.computeBoundingBox();
+        const wb = () => m.geometry.boundingBox.clone().applyMatrix4(m.matrixWorld);
+        const b0 = wb();
+        m.scale.x *= 1.25; m.scale.z *= 1.25; m.updateWorldMatrix(true, false);
+        const b1 = wb(), ps = new THREE.Vector3(); m.parent.getWorldScale(ps);
+        m.position.x += (b0.min.x - b1.min.x) / (ps.x || 1); m.position.z += (b0.min.z - b1.min.z) / (ps.z || 1);
+        m.updateWorldMatrix(true, false);
+      });
+      // 피아노(강단 왼쪽, 회중에서 볼 때)와 드럼(오른쪽)
+      {
+        const C = { x: -13.0, z: -17.5 }, top = FLOOR + 0.44;      // 강단 윗단 높이
+        const at = (r, deg) => [C.x + r * Math.cos(deg * Math.PI / 180), C.z + r * Math.sin(deg * Math.PI / 180)];
+        const black = M(0x111214, { roughness: 0.25 }), keysW = M(0xf7f7f2), keysB = M(0x1a1a1a), chrome = M(0xc9ccd1, { roughness: 0.25 });
+        const grp = (x, z, rotY) => { const gg = new THREE.Group(); gg.position.set(x, top, z); gg.rotation.y = rotY; g.add(gg); return gg; };
+        const part = (gg, geo, mat, px, py, pz, rx, rz) => { const m = new THREE.Mesh(geo, mat); m.position.set(px, py, pz); if (rx) m.rotation.x = rx; if (rz) m.rotation.z = rz; m.castShadow = true; gg.add(m); return m; };
+        // 그랜드 피아노 (실제의 절반 크기: 폭 0.75m · 길이 0.85m)
+        const [px, pz] = at(4.3, 74);
+        const pg = grp(px, pz, Math.atan2(C.x - px, C.z - pz) + Math.PI);   // 건반이 회중 쪽을 비스듬히 봄
+        const shape = new THREE.Shape(); shape.moveTo(-0.37, 0); shape.lineTo(0.37, 0); shape.lineTo(0.37, -0.35); shape.quadraticCurveTo(0.2, -0.85, -0.1, -0.85); shape.quadraticCurveTo(-0.37, -0.8, -0.37, -0.45); shape.lineTo(-0.37, 0);
+        const body = new THREE.ExtrudeGeometry(shape, { depth: 0.14, bevelEnabled: false }); body.rotateX(Math.PI / 2);
+        part(pg, body, black, 0, 0.42, 0);
+        const lid = new THREE.ShapeGeometry(shape); lid.rotateX(Math.PI / 2);                              // 몸통과 같은 방향으로 눕힌 뚜껑
+        const lidM = part(pg, lid, M(0x1c1d20, { roughness: 0.2, side: THREE.DoubleSide }), 0, 0.425, 0);
+        part(pg, new THREE.BoxGeometry(0.012, 0.3, 0.012), black, 0.3, 0.57, -0.4);                         // 뚜껑 받침대(장식)
+        part(pg, new THREE.BoxGeometry(0.72, 0.03, 0.1), keysW, 0, 0.34, 0.05);
+        for (let i = 0; i < 14; i++) if (i % 7 !== 2 && i % 7 !== 6) part(pg, new THREE.BoxGeometry(0.02, 0.02, 0.06), keysB, -0.33 + i * 0.05, 0.36, 0.03);
+        [[-0.3, -0.05], [0.3, -0.05], [-0.05, -0.75]].forEach(([lx, lz]) => part(pg, new THREE.CylinderGeometry(0.025, 0.02, 0.33, 10), black, lx, 0.165, lz));
+        part(pg, new THREE.BoxGeometry(0.4, 0.05, 0.18), black, 0, 0.2, 0.32); part(pg, new THREE.BoxGeometry(0.36, 0.2, 0.14), black, 0, 0.1, 0.32);   // 의자
+        // 드럼 세트
+        const [dx, dz] = at(4.3, 16);
+        const dg = grp(dx, dz, Math.atan2(C.x - dx, C.z - dz) + Math.PI);
+        const shell = M(0x8a1f2b, { roughness: 0.35 }), head = M(0xf3efe6, { roughness: 0.6 }), brass = M(0xc8a24a, { roughness: 0.3 });
+        part(dg, new THREE.CylinderGeometry(0.2, 0.2, 0.22, 24), shell, 0, 0.2, -0.05, Math.PI / 2);      // 큰북
+        part(dg, new THREE.CylinderGeometry(0.19, 0.19, 0.005, 24), head, 0, 0.2, 0.065, Math.PI / 2);
+        [[-0.12, 0.47, -0.02], [0.12, 0.47, -0.02]].forEach(([x, y, z]) => { part(dg, new THREE.CylinderGeometry(0.09, 0.09, 0.09, 20), shell, x, y, z, 0.3); });  // 탐탐
+        part(dg, new THREE.CylinderGeometry(0.11, 0.11, 0.07, 20), chrome, -0.3, 0.33, 0.12);              // 스네어
+        part(dg, new THREE.CylinderGeometry(0.012, 0.012, 0.33, 8), chrome, -0.3, 0.16, 0.12);
+        part(dg, new THREE.CylinderGeometry(0.13, 0.13, 0.12, 20), shell, 0.32, 0.12, 0.12);               // 플로어 탐
+        [[-0.42, 0.62, -0.1], [0.38, 0.7, -0.15]].forEach(([x, y, z]) => {                                  // 심벌즈
+          part(dg, new THREE.CylinderGeometry(0.14, 0.14, 0.006, 24), brass, x, y, z);
+          part(dg, new THREE.CylinderGeometry(0.008, 0.008, y, 6), chrome, x, y / 2, z);
+        });
+        part(dg, new THREE.CylinderGeometry(0.1, 0.1, 0.01, 20), brass, -0.48, 0.42, 0.12); part(dg, new THREE.CylinderGeometry(0.008, 0.008, 0.42, 6), chrome, -0.48, 0.21, 0.12);   // 하이햇
+        part(dg, new THREE.CylinderGeometry(0.1, 0.1, 0.05, 16), M(0x222222), 0, 0.22, 0.42); part(dg, new THREE.CylinderGeometry(0.015, 0.015, 0.2, 8), chrome, 0, 0.1, 0.42);   // 의자
+      }
       const pulpit = byName['B1_FINAL_Pulpit'];
       if (pulpit) {
         pulpit.position.y -= 0.09;
@@ -1443,6 +1584,8 @@
         bx(x0, x1, 0, H, -12.3, -12.0, wm);
         bx(x0, x1, 2.1, H, -12.0, -11.0, wm);              // 문(-12.0 ~ -11.0) 위
         bx(x0, x1, 0, H, -11.0, -10.95, wm);
+        bx(x0, 0.63, 0, H, -16.08, -16.0, wm);              // 자모실 북쪽 끝 벽 (뚫려 있던 곳)
+        bx(x0, 0.63, 0, H, -10.95, -10.87, wm);             // 자모실 남쪽 끝 벽
         const pink = M(0xf6c6d0), white = M(0xfafafa), wood = M(0xd2b48c);
         bx(-0.78, 0.55, 0, 0.02, -15.8, -11.2, pink);       // 바닥 매트
         [-15.2, -14.3, -13.4].forEach((z) => {              // 아기 침대
@@ -1467,6 +1610,7 @@
         bx(-4.0, -3.45, 1.2, 2.4, z0, z1, wm);
         bx(-8.4, -4.0, 1.2, 2.4, z0 + 0.05, z1 - 0.05, gm);  // 홀 쪽 유리창
         bx(-9.07, -8.95, 0, H, -1.88, 0.08, wm);              // 서쪽 벽
+        bx(-8.95, -3.45, 0, H, -0.04, 0.08, wm);              // 남쪽 벽 (건물 남쪽 벽의 4m 틈을 막음)
         bx(-3.57, -3.45, 0, H, -1.88, -1.15, wm);             // 동쪽 벽 (문 -1.15 ~ -0.3)
         bx(-3.57, -3.45, 2.1, H, -1.15, -0.3, wm);
         bx(-3.57, -3.45, 0, H, -0.3, 0.08, wm);
@@ -1682,7 +1826,7 @@
           mesh.material.depthWrite = true;
         });
         terrain.visible = !wp.isB1;
-        controls.maxDistance = eye ? 18 : 55;   // 휠·두 손가락으로 멀리(18m)부터 가까이(1m)까지
+        controls.maxDistance = eye ? (wp.level === 'F1' ? 48 : 18) : 55;   // 1층(바깥)은 교회 전체가 보이게 48m까지, 실내는 18m
       }
 
       rebuildWalk(); buildNav(); rebuildSeats(); walkPath = []; pendingSeat = null; updateActions();
@@ -1763,6 +1907,108 @@
     btnElevator.addEventListener('click', openElevPanel);
     document.getElementById('elevClose').addEventListener('click', () => { elevPanel.hidden = true; });
     elevPanel.querySelectorAll('.elev-btn').forEach((b) => b.addEventListener('click', () => ride(b.dataset.lv)));
+    // ---- 기도제목: 쓰기 · 함께 기도하기 · 지우기 ----
+    // 저장소를 한 곳(PrayerStore)으로 모아 두어, 나중에 Supabase를 연결하면 이 부분만 바꾸면 되게 함.
+    const PRAYER_CATS = ['개인', '가정', '건강', '직장·학업', '교회', '선교', '감사'];
+    const PrayerStore = {
+      KEY: 'mdc_prayers', PRAYED: 'mdc_prayed', DEVICE: 'mdc_device',
+      _get(k, d) { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch (e) { return d; } },
+      _set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* 저장 막힘 */ } },
+      device() { let d = this._get(this.DEVICE, null); if (!d) { d = 'd' + Math.random().toString(36).slice(2, 10); this._set(this.DEVICE, d); } return d; },
+      list() { return this._get(this.KEY, []).sort((a, b) => b.at - a.at); },
+      add(text, cat, anon) {
+        const all = this._get(this.KEY, []);
+        const item = { id: 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), text, cat, name: anon ? '' : (loadName() || ''), at: Date.now(), prays: 0, owner: this.device() };
+        all.push(item); this._set(this.KEY, all); return item;
+      },
+      remove(id) { this._set(this.KEY, this._get(this.KEY, []).filter((p) => !(p.id === id && p.owner === this.device()))); },
+      prayed(id) { return this._get(this.PRAYED, []).includes(id); },
+      togglePray(id) {
+        const mine = this._get(this.PRAYED, []), all = this._get(this.KEY, []);
+        const it = all.find((p) => p.id === id); if (!it) return;
+        if (mine.includes(id)) { it.prays = Math.max(0, it.prays - 1); this._set(this.PRAYED, mine.filter((x) => x !== id)); }
+        else { it.prays += 1; mine.push(id); this._set(this.PRAYED, mine); }
+        this._set(this.KEY, all);
+      },
+    };
+    const pp = { panel: document.getElementById('prayerPanel'), items: document.getElementById('ppItems'), filter: 'all', cat: PRAYER_CATS[0] };
+    const esc = (t) => t.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const when = (t) => { const d = (Date.now() - t) / 60000; if (d < 1) return '방금'; if (d < 60) return Math.floor(d) + '분 전'; if (d < 1440) return Math.floor(d / 60) + '시간 전'; const x = new Date(t); return (x.getMonth() + 1) + '월 ' + x.getDate() + '일'; };
+    function renderPrayers() {
+      const f = document.getElementById('ppFilter');
+      f.innerHTML = ['all', ...PRAYER_CATS].map((c) => `<button class="pp-chip ${pp.filter === c ? 'on' : ''}" data-f="${c}">${c === 'all' ? '전체' : c}</button>`).join('');
+      const me = PrayerStore.device();
+      const list = PrayerStore.list().filter((p) => pp.filter === 'all' || p.cat === pp.filter);
+      pp.items.innerHTML = list.length ? list.map((p) => `
+        <div class="pp-item">
+          <div class="pp-meta"><span class="pp-cat">${esc(p.cat)}</span><span>${p.name ? esc(p.name) : '익명'}</span><span>· ${when(p.at)}</span></div>
+          <div class="pp-txt">${esc(p.text)}</div>
+          <div class="pp-actions">
+            <button class="pp-pray ${PrayerStore.prayed(p.id) ? 'on' : ''}" data-pray="${p.id}">🙏 함께 기도해요 ${p.prays || ''}</button>
+            ${p.owner === me ? `<button class="pp-del" data-del="${p.id}">지우기</button>` : ''}
+          </div>
+        </div>`).join('') : '<div class="pp-empty">아직 올라온 기도제목이 없어요.<br>첫 기도제목을 나눠 주세요 🙏</div>';
+      document.getElementById('ppCats').innerHTML = PRAYER_CATS.map((c) => `<button class="pp-chip ${pp.cat === c ? 'on' : ''}" data-c="${c}">${c}</button>`).join('');
+      updatePrayerBoards();
+    }
+    function showPrayerTab(tab) {
+      document.querySelectorAll('.pp-tab').forEach((b) => b.classList.toggle('on', b.dataset.tab === tab));
+      document.getElementById('ppList').hidden = tab !== 'list'; document.getElementById('ppWrite').hidden = tab !== 'write';
+      if (tab === 'write') setTimeout(() => document.getElementById('ppText').focus(), 50);
+    }
+    function openPrayers(tab) { renderPrayers(); showPrayerTab(tab || 'list'); pp.panel.hidden = false; }
+    document.getElementById('prayerBtn').addEventListener('click', () => openPrayers('list'));
+    document.getElementById('ppClose').addEventListener('click', () => { pp.panel.hidden = true; });
+    pp.panel.addEventListener('click', (e) => {
+      const t = e.target;
+      if (t === pp.panel) { pp.panel.hidden = true; return; }
+      if (t.dataset.tab) showPrayerTab(t.dataset.tab);
+      if (t.dataset.f) { pp.filter = t.dataset.f; renderPrayers(); }
+      if (t.dataset.c) { pp.cat = t.dataset.c; renderPrayers(); }
+      if (t.dataset.pray) { PrayerStore.togglePray(t.dataset.pray); renderPrayers(); }
+      if (t.dataset.del && confirm('이 기도제목을 지울까요?')) { PrayerStore.remove(t.dataset.del); renderPrayers(); }
+    });
+    const ppText = document.getElementById('ppText'), ppSubmit = document.getElementById('ppSubmit');
+    const ppSync = () => { document.getElementById('ppLen').textContent = ppText.value.length; ppSubmit.disabled = !ppText.value.trim(); };
+    ppText.addEventListener('input', ppSync); ppSync();
+    ['keydown', 'keyup'].forEach((ev) => ppText.addEventListener(ev, (e) => e.stopPropagation()));   // 글 쓰는 동안 W·A·S·D로 캐릭터가 움직이지 않게
+    ppSubmit.addEventListener('click', () => {
+      const v = ppText.value.trim(); if (!v) return;
+      PrayerStore.add(v.slice(0, 300), pp.cat, document.getElementById('ppAnon').checked);
+      ppText.value = ''; ppSync(); pp.filter = 'all'; renderPrayers(); showPrayerTab('list');
+    });
+    // 공간 속 기도제목 게시판(지하 본당 동쪽 벽 · 2층 기도실): 누르면 기도제목 창이 열림
+    const prayerBoards = [];
+    function makePrayerBoard(x, y, z, rotY) {
+      const c = document.createElement('canvas'); c.width = 512; c.height = 340;
+      const tex = new THREE.CanvasTexture(c); if ('colorSpace' in tex) tex.colorSpace = THREE.SRGBColorSpace;
+      const board = new THREE.Group(); board.position.set(x, y, z); board.rotation.y = rotY;
+      const frame = new THREE.Mesh(new THREE.BoxGeometry(1.24, 0.84, 0.04), new THREE.MeshStandardMaterial({ color: 0x6b4f33, roughness: 0.7 }));
+      const face = new THREE.Mesh(new THREE.PlaneGeometry(1.14, 0.76), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.9 })); face.position.z = 0.022;
+      board.add(frame, face); scene.add(board);
+      board.userData = { canvas: c, tex, prayerBoard: true, noCamBlock: true };
+      frame.userData.prayerBoard = face.userData.prayerBoard = true;
+      prayerBoards.push(board);
+    }
+    function updatePrayerBoards() {
+      const list = PrayerStore.list();
+      prayerBoards.forEach((b) => {
+        const { canvas: c, tex } = b.userData, g = c.getContext('2d');
+        g.fillStyle = '#c9a97a'; g.fillRect(0, 0, 512, 340);                                   // 코르크 바탕
+        g.fillStyle = '#4a3522'; g.font = 'bold 38px sans-serif'; g.textAlign = 'center'; g.fillText('🙏 기도제목 게시판', 256, 52);
+        const notes = list.slice(0, 4);
+        if (!notes.length) { g.font = '26px sans-serif'; g.fillText('눌러서 기도제목을 나눠 주세요', 256, 190); }
+        notes.forEach((p, i) => {
+          const nx = 18 + (i % 2) * 246, ny = 76 + Math.floor(i / 2) * 128;
+          g.fillStyle = ['#fff7c2', '#ffe3e8', '#e3f4ff', '#e7f8df'][i]; g.fillRect(nx, ny, 230, 116);
+          g.fillStyle = '#5a4126'; g.font = 'bold 20px sans-serif'; g.textAlign = 'left'; g.fillText(`[${p.cat}] ${p.name || '익명'}`, nx + 10, ny + 28);
+          g.font = '19px sans-serif'; const t = p.text.replace(/\s+/g, ' ');
+          g.fillText(t.slice(0, 11), nx + 10, ny + 58); if (t.length > 11) g.fillText(t.slice(11, 22) + (t.length > 22 ? '…' : ''), nx + 10, ny + 86);
+        });
+        g.fillStyle = '#4a3522'; g.font = '20px sans-serif'; g.textAlign = 'right'; g.fillText(`모두 ${list.length}개 · 눌러서 보기·쓰기`, 500, 330);
+        tex.needsUpdate = true;
+      });
+    }
     // ---- 이름: 이 기기(브라우저)에 기억해 두고, 캐릭터 머리 위에 작게 띄움 ----
     const NAME_KEY = 'mdc_name';
     const loadName = () => { try { return localStorage.getItem(NAME_KEY) || ''; } catch (e) { return ''; } };
@@ -1797,6 +2043,9 @@
     nameInput.addEventListener('keyup', (e) => e.stopPropagation());
     document.getElementById('nameBtn').addEventListener('click', askName);
     { const saved = loadName(); if (saved) setNameTag(saved); else askName(); }
+    makePrayerBoard(0.6, -6.6 + 1.45, -6.0, -Math.PI / 2);     // 지하 본당 동쪽 벽 (뒤쪽 통로 옆)
+    makePrayerBoard(-1.6, F2_Y + 1.25, -7.47, Math.PI);        // 2층 기도실 남쪽 벽
+    updatePrayerBoards();
     const guideCard = document.getElementById('guideCard');
     document.getElementById('helpToggle').addEventListener('click', () => { guideCard.hidden = !guideCard.hidden; });
     const uiOverlay = document.getElementById('ui-overlay'), uiShow = document.getElementById('uiShow');
@@ -1849,12 +2098,14 @@
       const diffTime = performance.now() - downTime;
       const dist = Math.hypot(e.clientX - downPos.x, e.clientY - downPos.y);
       if (diffTime > 260 || dist > 6) return;
-      if (e.target.closest('#ui-overlay') || e.target.closest('#uiShow') || e.target.closest('#joy') || e.target.closest('#elevPanel') || e.target.closest('#nameModal')) return;
+      if (e.target.closest('#ui-overlay') || e.target.closest('#uiShow') || e.target.closest('#joy') || e.target.closest('#elevPanel') || e.target.closest('#nameModal') || e.target.closest('#prayerPanel')) return;
 
       mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
       mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
 
       raycaster.setFromCamera(mouse, camera);
+      const boardHit = raycaster.intersectObjects(prayerBoards, true)[0];
+      if (boardHit && boardHit.distance < 25) { openPrayers('list'); return; }
       const seatHits = raycaster.intersectObjects(seatPick, false);
       const seatHit = seatHits.find((h) => !h.object.userData.pickOnly) || seatHits[0];
       if (seatHit) {

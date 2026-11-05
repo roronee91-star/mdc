@@ -2,7 +2,8 @@
 const { chromium } = require('playwright');
 (async () => {
   const b = await chromium.launch({ args: ['--use-gl=angle','--use-angle=swiftshader'] });
-  const p = await b.newPage({ viewport: { width: 640, height: 400 } });
+  const ctx = await b.newContext({ viewport: { width: 640, height: 400 } }); await ctx.addInitScript(() => { try { localStorage.setItem('mdc_name', 'a'); } catch (e) {} });
+  const p = await ctx.newPage();
   await p.goto('http://127.0.0.1:8008/index.html'); await p.waitForTimeout(6000);
   const T = {
     step2: { y: 0, pts: { '로비 엘리베이터 앞': [-3.75, -14.3], '계단 문 앞': [-1.3, -14.4], '안내 데스크 앞': [-4.4, -11.5], '주차칸 사이': [-6.4, -7.2], '로비 소파 앞': [-1.6, -12.6] } },
