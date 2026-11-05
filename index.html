@@ -687,10 +687,11 @@
     //  ※ GLB 파일은 그대로 두고, 화면이 열릴 때 코드로 고칩니다.
     // -------------------------------------------------------------------------
     let b1Seats = [];
+    const ceilingRig = new THREE.Group(); // 본당 천장 조명 (위에서 내려다볼 때는 숨김)
     function pickB1Seat(x, z) {
       let best = null, bd = 1e9;
       b1Seats.forEach((s) => { const d = Math.hypot(s.x - x, s.z - z); if (d < bd) { bd = d; best = s; } });
-      return best || { x: x, z: z, y: -6.09, rot: -Math.PI * 0.86 };
+      return best || { x: x, z: z, y: -6.32, rot: -Math.PI * 0.86 };
     }
     function labelAt(text, x, y, z, sw) {
       const c = document.createElement('canvas');
@@ -747,14 +748,63 @@
           if (k.indexOf('B1_FINAL_Pew_Frame_') === 0 || k.indexOf('B1_FINAL_Pew_Pad_') === 0) hide(byName[k]);
         });
         b1Seats = [];
+        // 원래 의자는 높이 0.72m 통나무 상자(캐릭터 키의 72% = 사람 기준 가슴 높이)라 공간이 낮아 보였다.
+        // 캐릭터(1m) 비율에 맞춘 2인용 벤치로 새로 만든다: 앉는 면 0.24m, 등받이 끝 0.56m, 깊이 0.40m.
+        // (로컬 +x = 무대 반대쪽 = 등받이 쪽, 로컬 z = 벤치 길이 방향)
+        const woodMat = frameMesh.material, fabricMat = new THREE.MeshStandardMaterial({ color: 0xd8cbb8, roughness: 0.95 });
+        const SEAT_TOP = 0.24, BENCH_L = 1.06;
+        const benchParts = [
+          [0.36, 0.05, BENCH_L, -0.02, SEAT_TOP - 0.065, 0, woodMat],     // 앉는 판
+          [0.32, 0.025, BENCH_L - 0.06, -0.03, SEAT_TOP - 0.0125, 0, fabricMat], // 방석
+          [0.05, 0.34, BENCH_L, 0.175, SEAT_TOP + 0.15, 0, woodMat],      // 등받이
+          [0.03, 0.26, BENCH_L - 0.06, 0.145, SEAT_TOP + 0.17, 0, fabricMat], // 등받이 쿠션
+          [0.40, SEAT_TOP + 0.32, 0.04, 0.0, (SEAT_TOP + 0.32) / 2, -BENCH_L / 2, woodMat], // 양 끝 옆판
+          [0.40, SEAT_TOP + 0.32, 0.04, 0.0, (SEAT_TOP + 0.32) / 2, BENCH_L / 2, woodMat],
+        ];
+        const benchGeo = benchParts.map(([w, h, d]) => new THREE.BoxGeometry(w, h, d));
         layoutPews().forEach((p) => {
-          const f = frameMesh.clone(); f.visible = true; f.position.set(p.x, fy, p.z); f.rotation.set(0, p.yaw, 0); g.add(f);
-          const q = padMesh.clone(); q.visible = true; q.position.set(p.x, py, p.z); q.rotation.set(0, p.yaw, 0); g.add(q);
+          const bench = new THREE.Group();
+          benchParts.forEach(([, , , x, y, z, m], i) => {
+            const part = new THREE.Mesh(benchGeo[i], m);
+            part.position.set(x, y, z); part.castShadow = true; part.receiveShadow = true;
+            bench.add(part);
+          });
+          bench.position.set(p.x, FLOOR, p.z); bench.rotation.set(0, p.yaw, 0);
+          g.add(bench);
           [-0.27, 0.27].forEach((t) => {
             const sx = p.x + t * Math.sin(p.yaw), sz = p.z + t * Math.cos(p.yaw);
-            b1Seats.push({ x: sx, z: sz, y: py + 0.08, rot: Math.atan2(-13.0 - sx, -17.5 - sz) });
+            b1Seats.push({ x: sx, z: sz, y: FLOOR + SEAT_TOP + 0.04, rot: Math.atan2(-13.0 - sx, -17.5 - sz) });
           });
         });
+
+        // 천장 조명 줄: 스크린 벽과 나란한 조명 레일 5줄 + 따뜻한 스폿 (본당 안에서 볼 때만 보임)
+        const CEIL = -0.75, railMat = new THREE.MeshStandardMaterial({ color: 0x2b2b2e, roughness: 0.5 });
+        const spotMat = new THREE.MeshBasicMaterial({ color: 0xffe2b0 });
+        const spotGeo = new THREE.CylinderGeometry(0.07, 0.09, 0.12, 12);
+        const inRoom = (x, z) => x > -12.8 && x < 0.4 && z > -17.3 && z < -0.3;
+        [5.0, 7.4, 9.8, 12.2, 14.6].forEach((dd) => {
+          // 모서리에서 대각선 거리 dd 인 직선: (x - CX) + (z - CZ) = dd·√2, 방향 (1, -1)/√2
+          const ox = -13.03 + dd / Math.SQRT2, oz = -17.58 + dd / Math.SQRT2;
+          let tMin = Infinity, tMax = -Infinity;
+          for (let t = -20; t <= 20; t += 0.1) { if (inRoom(ox + t * Math.SQRT1_2, oz - t * Math.SQRT1_2)) { tMin = Math.min(tMin, t); tMax = Math.max(tMax, t); } }
+          if (tMax <= tMin) return;
+          const len = tMax - tMin, tc = (tMin + tMax) / 2;
+          const rail = new THREE.Mesh(new THREE.BoxGeometry(len, 0.06, 0.08), railMat);
+          rail.position.set(ox + tc * Math.SQRT1_2, CEIL, oz - tc * Math.SQRT1_2);
+          rail.rotation.y = Math.PI / 4;
+          ceilingRig.add(rail);
+          for (let t = tMin + 0.4; t <= tMax - 0.4; t += 0.9) {
+            const sp = new THREE.Mesh(spotGeo, spotMat);
+            sp.position.set(ox + t * Math.SQRT1_2, CEIL - 0.09, oz - t * Math.SQRT1_2);
+            ceilingRig.add(sp);
+          }
+        });
+        [[-8.5, -10.5], [-4.0, -7.0], [-7.0, -4.0]].forEach(([lx, lz]) => {   // 객석을 고르게 밝히는 따뜻한 빛
+          const l = new THREE.PointLight(0xffe6c0, 1.2, 12, 1.2);
+          l.position.set(lx, CEIL - 0.3, lz);
+          ceilingRig.add(l);
+        });
+        g.add(ceilingRig);
       }
 
       // 2) 스크린 벽 + LED 화면 (참고 이미지: 스크린 뒤가 벽, 가로로 긴 화면)
@@ -1259,6 +1309,7 @@
       }
 
       controls.update();
+      ceilingRig.visible = camera.position.y < -1.0; // 천장 위에서 내려다보면 조명 줄이 객석을 가리므로 숨김
       renderer.render(scene, camera);
     }
 
