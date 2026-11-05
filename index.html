@@ -451,7 +451,7 @@
   </div>
 
   <script type="module">
-    import * as THREE from 'three';
+    import * as THREE from 'three'; window.__RC = THREE.Raycaster;
     import {GLTFLoader} from './vendor/three/loaders/GLTFLoader.js';
     import {OrbitControls} from './vendor/three/controls/OrbitControls.js';
 
@@ -1791,8 +1791,8 @@
         {
           const cab = new THREE.MeshStandardMaterial({ color: 0x1d1e22, roughness: 0.6 }), grill = new THREE.MeshStandardMaterial({ color: 0x34363c, roughness: 0.9 });
           const wire = new THREE.MeshStandardMaterial({ color: 0x8a8d93, roughness: 0.4, metalness: 0.6 });
-          const base = { x: -13.03 + 4.9 / Math.SQRT2, z: -17.58 + 4.9 / Math.SQRT2 };   // 무대 모서리에서 대각선 4.9m
-          [-3.3, 3.3].forEach((off) => {
+          const base = { x: -13.03 + 5.3 / Math.SQRT2, z: -17.58 + 5.3 / Math.SQRT2 };   // 무대 모서리에서 대각선 5.3m
+          [-2.3, 2.3].forEach((off) => {   // 십자가(서쪽 벽)·스크린을 어느 자리에서도 가리지 않는 위치 (112석에서 확인)
             const sx = base.x + off * Math.SQRT1_2, sz = base.z - off * Math.SQRT1_2;
             const arr = new THREE.Group(); arr.position.set(sx, CEIL - 0.55, sz); arr.rotation.set(0, Math.PI / 4, 0);
             const bar = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.05, 0.12), wire); arr.add(bar);   // 매다는 철제 바
@@ -1805,7 +1805,7 @@
               arr.add(box); y -= 0.27 * Math.cos(tilt); tilt += 0.07;   // 아래로 갈수록 더 숙여 J자 모양
             }
             arr.traverse((o) => { if (o.isMesh) { o.castShadow = false; o.userData.noCamBlock = true; } });
-            ceilingRig.add(arr);
+            arr.name = 'B1_SPEAKER'; ceilingRig.add(arr);
           });
         }
         g.add(ceilingRig);
