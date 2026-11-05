@@ -336,7 +336,7 @@
       <div class="tour-steps">
         <button class="step-btn active" id="step1">1 횡단보도</button>
         <button class="step-btn" id="step4">2 지하 본당</button>
-        <button class="step-btn" id="step6">3 2층 소그룹실</button>
+        <button class="step-btn" id="step6">3 2층 소예배실</button>
         <button class="step-btn" id="step5">4 3층 식당</button>
         <button class="step-btn" id="step7">5 4층 목양실·옥상정원</button>
       </div>
@@ -378,7 +378,7 @@
     <div class="elev-title">🛗 몇 층으로 갈까요?</div>
     <button class="elev-btn" data-lv="F4">4층 · 목양실 · 옥상 정원</button>
     <button class="elev-btn" data-lv="F3">3층 · 식당 · 소그룹실</button>
-    <button class="elev-btn" data-lv="F2">2층 · 소그룹실 · 기도실</button>
+    <button class="elev-btn" data-lv="F2">2층 · 소예배실 · 사무실</button>
     <button class="elev-btn" data-lv="F1">1층 · 로비 · 필로티</button>
     <button class="elev-btn" data-lv="B1">지하 1층 · 본당</button>
     <button class="elev-close" id="elevClose">닫기</button>
@@ -1163,17 +1163,16 @@
       k.box(0.08, 1.3, 0.6, -3.9, 0, -9.2, frame); k.sign('물댄동산교회', -3.85, -9.2, Math.PI / 2, 1.05); k.sign('물댄동산교회', -3.95, -9.2, -Math.PI / 2, 1.05);
     }
 
-    // ---------------- 2층: 가운데 복도 + 소예배실 · 소그룹실(서쪽) / 창가 사무실 · 기도실 · 휴게 홀(동쪽) ----------------
+    // ---------------- 2층: 소예배실 · 사무실(서쪽) / 트인 홀(동쪽) ----------------
     const f2 = new THREE.Group(); f2.name = 'F2_FURNITURE'; scene.add(f2);
     {
       const k = makeKit(F2_Y, f2, 'F2');
       const CW = -7.0, CE = -5.4;                      // 복도 서쪽 벽 x / 동쪽 벽 x
-      // 서쪽: 소예배실(z -15.6~-8.4, 예전 소그룹실 A+B를 합침) · 소그룹실(-8.4~-2.6, 예전 사무실 자리 — 더 넓게)
-      // 동쪽: 사무실(z -15.0~-9.6, 동쪽 창가에 붙임) · 기도실(-9.6~-6.6) · 창가 휴게 홀(-6.6~-2.6)
+      // 서쪽: 소예배실(z -15.6~-8.4, 예전 소그룹실 A+B를 합침) · 사무실(-8.4~-2.6, 넓게)
+      // 동쪽: 방 없이 트인 홀 (창가 소파)
       k.wallDoor(CW, -15.6, CW, -8.4, -9.2, 1.2); k.wallDoor(CW, -8.4, CW, -2.6, -3.4, 1.0);
       k.wall(-12.26, -15.6, CW, -15.6); k.wall(-12.26, -8.4, CW, -8.4); k.wall(-9.73, -2.6, CW, -2.6);
-      k.wallDoor(CE, -15.0, CE, -9.6, -10.3, 1.0); k.wallDoor(CE, -9.6, CE, -6.6, -7.3, 1.0);
-      k.wall(CE, -15.0, -1.04, -15.0); k.wall(CE, -9.6, 0, -9.6); k.wall(CE, -6.6, 0, -6.6);
+      // (동쪽 방들은 없앰 — 복도와 동쪽 창가가 하나의 트인 홀)
       // ---- 소예배실: 북쪽에 낮은 강단·강대상·십자가, 개인 의자 5줄 × 6 (가운데 통로) ----
       {
         const wood = k.M(0x8a6240, 0.6), seatM = k.M(0xb7895a), cx = -9.63;
@@ -1187,35 +1186,25 @@
         });
         k.sign('소예배실', CW + 0.05, -9.2, Math.PI / 2, 2.25); k.light(cx, -12.0, 1.5);
       }
-      // ---- 소그룹실 (넓게): 큰 탁자 + 의자 8 + 화이트보드 ----
+      // ---- 사무실 (소예배실 옆, 예전 소그룹실 자리를 넓게): 책상 4 · 모니터 · 의자 · 책장 2 · 회의 탁자 ----
       {
-        const cx = -9.6, cz = -5.5, col = 0x9db8a0;
-        k.table(cx, cz, 1.0, 2.2, k.M(0xa77b50));
-        [-0.75, -0.25, 0.25, 0.75].forEach((dz) => { k.chair(cx - 0.72, cz + dz, Math.PI / 2, k.M(col)); k.chair(cx + 0.72, cz + dz, -Math.PI / 2, k.M(col)); });
-        k.box(0.04, 0.8, 1.6, -12.2, 1.0, cz, k.M(0xffffff, 0.3)); k.plant(-7.4, -8.0, 1.0);
-        k.sign('소그룹실', CW + 0.05, -3.4, Math.PI / 2, 2.2); k.light(cx, cz, 1.4);
+        const dk = k.M(0xcfc6b8), scr = k.M(0x22303f, 0.3), chairM = k.M(0x4a5563);
+        [[-11.0, -7.7], [-9.2, -7.7]].forEach(([x, z]) => {                        // 북쪽 벽(소예배실 쪽)에 붙인 책상 2
+          k.table(x, z, 1.2, 0.55, dk); k.box(0.42, 0.26, 0.03, x, 0.42, z - 0.18, scr); k.chair(x, z + 0.5, Math.PI, chairM); });
+        [[-12.0, -5.6], [-12.0, -4.2]].forEach(([x, z]) => {                       // 서쪽 벽에 붙인 책상 2
+          k.table(x, z, 0.55, 1.1, dk); k.box(0.03, 0.26, 0.42, x - 0.18, 0.42, z, scr); k.chair(x + 0.5, z, -Math.PI / 2, chairM); });
+        k.table(-9.0, -4.6, 1.0, 1.4, k.M(0xa77b50));                              // 회의 탁자 + 의자 4
+        [[-9.0, -5.55, 0], [-9.0, -3.65, Math.PI], [-9.75, -4.6, Math.PI / 2], [-8.25, -4.6, -Math.PI / 2]].forEach(([x, z, r]) => k.chair(x, z, r, chairM));
+        k.shelf(-7.95, -7.95, 1.0, 0); k.shelf(-11.0, -2.8, 1.8, Math.PI);         // 책장
+        k.plant(-7.4, -6.6, 1.0);
+        k.sign('사무실', CW + 0.05, -3.4, Math.PI / 2, 2.2); k.light(-9.8, -5.4, 1.4);
       }
-      // ---- 사무실 (동쪽 창가에 붙임): 창가 책상 3 + 의자 + 모니터 · 책장 · 작은 회의 탁자 ----
-      {
-        const dk = k.M(0xcfc6b8), scr = k.M(0x22303f, 0.3);
-        [-14.0, -12.7, -11.4].forEach((z) => { k.table(-0.45, z, 0.55, 1.1, dk); k.box(0.03, 0.26, 0.42, -0.62, 0.42, z, scr); k.chair(-0.95, z, Math.PI / 2, k.M(0x4a5563)); });   // 창 쪽(동쪽)을 보고 앉음
-        k.shelf(-3.2, -14.85, 1.8, 0); k.shelf(-5.25, -12.6, 1.4, Math.PI / 2);
-        k.table(-3.4, -11.3, 0.9, 0.9, k.M(0xa77b50)); [[-3.4, -10.75, Math.PI], [-3.4, -11.85, 0]].forEach(([x, z, r]) => k.chair(x, z, r, k.M(0x4a5563)));
-        k.plant(-5.0, -14.6, 1.0);
-        k.sign('사무실', CE - 0.05, -10.3, -Math.PI / 2, 2.2); k.light(-2.4, -12.4, 1.4);
-      }
-      // ---- 기도실: 방석 + 낮은 탁자 + 작은 십자가 ----
-      {
-        const cx = -2.9, cz = -8.1, cush = k.M(0x8c6d9e, 0.95);
-        k.box(3.6, 0.015, 2.4, cx, 0, cz, k.M(0xd8c9b4, 0.95));
-        for (let i = 0; i < 6; i++) { const a = (i / 6) * Math.PI * 2; k.cyl(0.17, 0.06, cx + Math.cos(a) * 0.9, 0.015, cz + Math.sin(a) * 0.7, cush); }
-        k.box(0.5, 0.12, 0.5, cx, 0.015, cz, k.mWood); k.cyl(0.03, 0.08, cx, 0.135, cz, k.M(0xfff2c6));
-        k.box(0.05, 0.8, 0.06, -0.1, 0.9, cz, k.mWood); k.box(0.05, 0.06, 0.4, -0.1, 1.45, cz, k.mWood);
-        k.sign('기도실', CE - 0.05, -7.3, -Math.PI / 2, 2.2); k.light(cx, cz, 0.9);
-      }
-      // ---- 창가 휴게 홀 ----
-      k.sofa(-3.9, -5.6, 1.6, Math.PI, k.M(0xc8b49a)); k.box(0.9, 0.18, 0.5, -3.9, 0, -4.8, k.mWood); k.sofa(-1.2, -4.8, 1.4, -Math.PI / 2, k.M(0xc8b49a));
-      k.plant(-0.4, -6.2); k.plant(-5.0, -3.2); k.light(-3.0, -4.6, 1.2);
+      // ---- 동쪽: 칸막이 없는 홀 (창가 소파 · 화분 · 작은 탁자) ----
+      k.sofa(-1.0, -12.0, 1.6, -Math.PI / 2, k.M(0xc8b49a)); k.box(0.5, 0.18, 0.9, -1.8, 0, -12.0, k.mWood);   // 창을 등지고 앉는 소파
+      k.sofa(-1.0, -8.6, 1.6, -Math.PI / 2, k.M(0xc8b49a)); k.box(0.5, 0.18, 0.9, -1.8, 0, -8.6, k.mWood);
+      k.sofa(-3.9, -5.6, 1.6, Math.PI, k.M(0xc8b49a)); k.box(0.9, 0.18, 0.5, -3.9, 0, -4.8, k.mWood);
+      k.plant(-0.4, -14.3, 1.3); k.plant(-0.4, -6.2); k.plant(-5.0, -3.2); k.plant(-5.0, -14.3, 1.1);
+      k.light(-2.8, -12.0, 1.3); k.light(-2.8, -6.0, 1.3);
     }
 
     // ---------------- 4층 (도면 A-305 기준) ----------------
@@ -1886,7 +1875,7 @@
         isB1: false
       },
       step6: {
-        name: '2층 소그룹실 · 기도실 · 사무실',
+        name: '2층 소예배실 · 사무실',
         level: 'F2',
         charPos: new THREE.Vector3(-2.9, 3.65, -3.1),   // 엘리베이터 문 앞 (창가 휴게 홀 옆)
         charRot: Math.PI,
@@ -2250,7 +2239,7 @@
     { const saved = loadName(); if (saved) setNameTag(saved); else askName(); }
     document.getElementById('btnPrayerWrite').addEventListener('click', () => openPrayers('write'));
     makePrayerBoard(0.6, -6.6 + 1.45, -6.0, -Math.PI / 2);     // 지하 본당 동쪽 벽 (뒤쪽 통로 옆)
-    makePrayerBoard(-1.6, F2_Y + 1.25, -6.65, Math.PI);        // 2층 기도실 남쪽 벽 (방 안쪽을 봄)
+    makePrayerBoard(-6.93, F2_Y + 1.35, -12.0, Math.PI / 2);   // 2층 홀: 소예배실 벽(복도 쪽)에 걸림
     updatePrayerBoards();
     // =========================================================================
     // 친구랑 만나기: 같은 방(기본 'main', 주소 끝에 ?room=이름 으로 바꿀 수 있음)에 들어온 성도님끼리
