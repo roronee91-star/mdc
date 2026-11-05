@@ -211,6 +211,11 @@
       .tour-steps { order: 3; width: 100%; }
       .header-sub { display: none; }
     }
+    #joy { position: absolute; left: 18px; bottom: 70px; width: 116px; height: 116px; border-radius: 50%;
+      background: rgba(15, 23, 42, 0.35); border: 2px solid rgba(255, 255, 255, 0.35); touch-action: none; display: none; z-index: 4; }
+    #joyKnob { position: absolute; left: 50%; top: 50%; width: 50px; height: 50px; margin: -25px 0 0 -25px; border-radius: 50%;
+      background: rgba(255, 255, 255, 0.75); box-shadow: 0 2px 8px rgba(0,0,0,0.3); }
+    @media (pointer: coarse) { #joy { display: block; } }
   </style>
 
   <script type="importmap">{"imports":{"three":"./vendor/three/three.module.js"}}</script>
@@ -242,7 +247,6 @@
       </div>
 
       <div class="header-right">
-        <button class="bgm-btn" id="viewToggle" title="내 시선 / 위에서 보기">🗺 위에서</button>
         <button class="bgm-btn" id="bgmToggle" title="잔잔한 찬양 켜기/끄기">🎵</button>
         <button class="bgm-btn" id="helpToggle" title="조작 안내">❔</button>
         <button class="bgm-btn" id="uiToggle" title="버튼 숨기기">🙈</button>
@@ -251,6 +255,7 @@
 
     <div class="guide-card" id="guideCard" hidden>
       <b>바닥 누르기</b> 캐릭터가 그곳으로 걸어가요<br>
+      <b>W A S D · 방향키</b> 걷기 (폰은 왼쪽 아래 동그라미)<br>
       <b>화면 끌기</b> 돌려 보기 · 두 손가락/휠로 가까이·멀리<br>
       <b>위쪽 번호</b> 장소로 바로 이동
     </div>
@@ -265,6 +270,7 @@
     </div>
   </div>
   <button id="uiShow" class="bgm-btn" hidden title="버튼 보이기">👁 버튼 보이기</button>
+  <div id="joy" aria-label="이동 조이스틱"><div id="joyKnob"></div></div>
 
   <script type="module">
     import * as THREE from 'three';
@@ -279,7 +285,7 @@
     scene.background = new THREE.Color(0xdce7f3);
     scene.fog = new THREE.FogExp2(0xdce7f3, 0.002);
 
-    const camera = new THREE.PerspectiveCamera(52, window.innerWidth / window.innerHeight, 0.1, 1000);
+    const camera = new THREE.PerspectiveCamera(58, window.innerWidth / window.innerHeight, 0.05, 1000);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
     renderer.setSize(window.innerWidth, window.innerHeight);
@@ -304,7 +310,7 @@
     const camRay = new THREE.Raycaster();
     camRay.camera = camera; // 이름표(스프라이트) 판정에 필요
     let camWantDist = null, camPulled = false;
-    function resetCamPull() { camPulled = false; camWantDist = null; }
+    function resetCamPull() { camPulled = false; camWantDist = null; camCurDist = null; }
     function isCamBlocker(o) {
       if (!o.isMesh || o.userData.noCamBlock) return false;
       for (let q = o; q; q = q.parent) { if (!q.visible) return false; if (q.userData && q.userData.noCamBlock) return false; }
@@ -319,24 +325,65 @@
         camera.position.copy(controls.target).addScaledVector(dir, camWantDist);
       }
     }
+    // 카메라 몸통 크기만큼(가운데 + 상하좌우 4줄) 광선을 쏴서, 가장 가까운 벽보다 25cm 앞에 카메라를 둔다.
+    // 벽에 가까워질 때는 바로 당기고(벽 속이 보이지 않게), 멀어질 때는 천천히 원래 거리로 돌아간다.
+    let camCurDist = null, frameDt = 1 / 60;
+    const UP_V = new THREE.Vector3(0, 1, 0);
     function camAfterUpdate() {
       const off = camera.position.clone().sub(controls.target);
       camWantDist = off.length();
       const dir = off.normalize();
-      camPulled = false;
-      const d = blockDist(dir, camWantDist);
-      if (d === null) return;
-      if (d < 1.6 && viewMode !== 'eye') { // 위에서 보기일 때만: 좁은 방에서 위로 비켜 올림
-        // 좁은 방: 너무 붙으면 머리만 보이므로, 카메라를 위쪽으로 비켜 올려 막히지 않는 각도를 찾는다
-        const up = new THREE.Vector3(0, 1, 0);
-        for (let t = 0.15; t <= 0.9; t += 0.15) {
-          const d2 = dir.clone().lerp(up, t).normalize();
-          if (d2.y > Math.cos(controls.minPolarAngle || 0) - 1e-3 && t > 0.9) break;
-          if (blockDist(d2, camWantDist) === null) { camera.position.copy(controls.target).addScaledVector(d2, camWantDist); return; }
+      let side = new THREE.Vector3().crossVectors(dir, UP_V);
+      if (side.lengthSq() < 1e-6) side.set(1, 0, 0);
+      side.normalize();
+      const up2 = new THREE.Vector3().crossVectors(side, dir).normalize();
+      let dmin = camWantDist;
+      [[0, 0], [0.2, 0], [-0.2, 0], [0, 0.16], [0, -0.16]].forEach(([a, b]) => {
+        const o = controls.target.clone().addScaledVector(side, a).addScaledVector(up2, b);
+        const d = blockDistFrom(o, dir, camWantDist + 0.3);
+        if (d !== null) dmin = Math.min(dmin, d - 0.25);
+      });
+      dmin = Math.max(0.35, dmin);
+      if (camCurDist === null || dmin < camCurDist) camCurDist = dmin;
+      else camCurDist += (dmin - camCurDist) * 0.08;
+      camPulled = camCurDist < camWantDist - 1e-3;
+      camera.position.copy(controls.target).addScaledVector(dir, camCurDist);
+      if (camPulled && camCurDist < camWantDist * 0.7 && !userDragging) steerAround(dir);
+      setCharFade(camCurDist < 0.85);
+    }
+    // 카메라 뒤가 벽이면 좌우로 각도를 바꿔 보며 탁 트인 방향을 찾아 그쪽으로 조금씩 돈다
+    function steerAround(dir) {
+      const flat = Math.hypot(dir.x, dir.z); if (flat < 0.2) return;
+      const yaw0 = Math.atan2(dir.x, dir.z);
+      const step = Math.min(0.2, 2.5 * frameDt);                          // 초당 약 140도
+      // 좌우로 돌려 보고(0), 안 되면 조금 위에서 내려다보는 각도(낮은 책상·의자 넘어)로도 찾아본다
+      for (const lift of [0, 0.35]) for (const k of [0.35, -0.35, 0.7, -0.7, 1.05, -1.05, 1.57, -1.57, 2.1, -2.1, 2.6, -2.6, 3.14]) {
+        const y = yaw0 + k, ey = Math.min(0.75, dir.y + lift), fl = Math.sqrt(1 - ey * ey);
+        const d2 = new THREE.Vector3(Math.sin(y) * fl, ey, Math.cos(y) * fl);
+        const hit = blockDistFrom(controls.target, d2, camWantDist + 0.3);
+        if (hit === null || hit > camWantDist * 0.9) {
+          const ny = yaw0 + Math.sign(k) * Math.min(Math.abs(k), step);
+          const nyv = dir.y + Math.sign(ey - dir.y) * Math.min(Math.abs(ey - dir.y), step * 0.5);
+          const nf = Math.sqrt(Math.max(0, 1 - nyv * nyv));
+          const nd = new THREE.Vector3(Math.sin(ny) * nf, nyv, Math.cos(ny) * nf).normalize();
+          camera.position.copy(controls.target).addScaledVector(nd, camCurDist);
+          return;
         }
       }
-      camera.position.copy(controls.target).addScaledVector(dir, Math.max(0.45, d - 0.2));
-      camPulled = true;
+    }
+    let charFaded = false;
+    function setCharFade(on) {
+      if (on === charFaded) return;
+      charFaded = on;
+      characterGroup.traverse((o) => { if (o.isMesh) {
+        const u = o.material.userData;
+        if (u.baseOpacity === undefined) { u.baseOpacity = o.material.opacity; u.wasTransparent = o.material.transparent; }
+        o.material.needsUpdate = true; o.material.transparent = on || o.material.userData.wasTransparent; o.material.opacity = on ? 0.35 * u.baseOpacity : u.baseOpacity; } });
+    }
+    function blockDistFrom(origin, dir, far) {
+      camRay.set(origin, dir); camRay.far = far; camRay.near = 0.05;
+      for (const h of camRay.intersectObjects(scene.children, true)) if (isCamBlocker(h.object)) return h.distance;
+      return null;
     }
     function blockDist(dir, far) {
       camRay.set(controls.target, dir); camRay.far = far; camRay.near = 0.25;
@@ -1097,7 +1144,7 @@
     const currentAreaText = document.getElementById('currentAreaText');
 
     // ---- 카메라: 기본은 '내 시선'(캐릭터 눈높이에서 어깨 뒤로 따라감), 버튼으로 '위에서' 보기 ----
-    let viewMode = 'eye';
+    const viewMode = 'eye'; // 항상 캐릭터 눈높이 시점
     const EYE_H = 0.62;          // 캐릭터 눈높이 (키 0.8m)
     const CAM_BACK = 1.9, CAM_UP = 0.34;
     let userDragging = false;
@@ -1107,14 +1154,10 @@
     function eyeCam(back) {
       const p = characterGroup.position, r = characterGroup.rotation.y;
       const fx = Math.sin(r), fz = Math.cos(r);
-      controls.target.set(p.x + fx * 0.6, p.y + EYE_H, p.z + fz * 0.6);
+      controls.target.set(p.x, p.y + EYE_H, p.z);
       camera.position.set(p.x - fx * (back || CAM_BACK), p.y + EYE_H + CAM_UP, p.z - fz * (back || CAM_BACK));
       lastCharPos.copy(p);
       resetCamPull();
-    }
-    function applyViewMode() {
-      document.getElementById('viewToggle').textContent = viewMode === 'eye' ? '🗺 위에서' : '👀 내 시선';
-      goToTourStep(currentStepKey, true);
     }
 
     function followEye() {
@@ -1123,10 +1166,10 @@
       lastCharPos.copy(p);
       if (d.lengthSq() > 4) { eyeCam(); return; }          // 순간 이동(장소 버튼)
       camera.position.add(d); controls.target.add(d);       // 캐릭터와 같이 이동
-      if (isMoving && !userDragging) {
+      if (isMoving && !userDragging && !keyDriving) {
         // 걷는 방향 뒤쪽 눈높이로 카메라가 부드럽게 돌아감
         const r = characterGroup.rotation.y, fx = Math.sin(r), fz = Math.cos(r);
-        const wantT = new THREE.Vector3(p.x + fx * 0.6, p.y + EYE_H, p.z + fz * 0.6);
+        const wantT = new THREE.Vector3(p.x, p.y + EYE_H, p.z);
         const wantC = new THREE.Vector3(p.x - fx * CAM_BACK, p.y + EYE_H + CAM_UP, p.z - fz * CAM_BACK);
         controls.target.lerp(wantT, 0.12);
         camera.position.lerp(wantC, 0.06);
@@ -1180,13 +1223,29 @@
         controls.maxDistance = eye ? 8 : 55;
       }
 
+      rebuildWalk();
       if (eye) { eyeCam(); return; }
       controls.target.copy(wp.camLook);
       camera.position.copy(wp.camPos);
       resetCamPull();
     }
 
-    document.getElementById('viewToggle').addEventListener('click', () => { viewMode = viewMode === 'eye' ? 'top' : 'eye'; applyViewMode(); });
+    {
+      const pad = document.getElementById('joy'), knob = document.getElementById('joyKnob');
+      let id = null;
+      const setKnob = (e) => {
+        const r = pad.getBoundingClientRect();
+        let dx = e.clientX - (r.left + r.width / 2), dy = e.clientY - (r.top + r.height / 2);
+        const m = Math.hypot(dx, dy), max = r.width / 2 - 18;
+        if (m > max) { dx *= max / m; dy *= max / m; }
+        knob.style.transform = `translate(${dx}px, ${dy}px)`;
+        joy.x = dx / max; joy.y = -dy / max;
+      };
+      pad.addEventListener('pointerdown', (e) => { id = e.pointerId; pad.setPointerCapture(id); setKnob(e); e.preventDefault(); e.stopPropagation(); });
+      pad.addEventListener('pointermove', (e) => { if (e.pointerId === id) setKnob(e); });
+      const end = (e) => { if (e.pointerId !== id) return; id = null; joy.x = joy.y = 0; knob.style.transform = ''; };
+      pad.addEventListener('pointerup', end); pad.addEventListener('pointercancel', end);
+    }
     const guideCard = document.getElementById('guideCard');
     document.getElementById('helpToggle').addEventListener('click', () => { guideCard.hidden = !guideCard.hidden; });
     const uiOverlay = document.getElementById('ui-overlay'), uiShow = document.getElementById('uiShow');
@@ -1222,7 +1281,7 @@
       const diffTime = performance.now() - downTime;
       const dist = Math.hypot(e.clientX - downPos.x, e.clientY - downPos.y);
       if (diffTime > 260 || dist > 6) return;
-      if (e.target.closest('#ui-overlay') || e.target.closest('#uiShow')) return;
+      if (e.target.closest('#ui-overlay') || e.target.closest('#uiShow') || e.target.closest('#joy')) return;
 
       mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
       mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
@@ -1384,12 +1443,87 @@
     // -------------------------------------------------------------------------
     // 7. 메인 루프 (걷기 팔스윙 / 합장 기도 모션 보간)
     // -------------------------------------------------------------------------
-    const walkSpeed = 3.6;
+    const walkSpeed = 2.6;
+    // 걷기 충돌: 지금 층 높이대(바닥+0.2 ~ +1.0m)에 걸치는 벽·가구만 모아 두고, 몸 앞쪽으로 9줄 광선을 쏜다.
+    // 바닥에서 20cm 이하(매트·문턱)는 넘어가고, 강단 단(Stage_Tier)은 올라선다.
+    let walkBlockers = [], groundMeshes = [];
+    const walkRay = new THREE.Raycaster();
+    function rebuildWalk() {
+      const fy = currentFloorY; walkBlockers = []; groundMeshes = [];
+      scene.updateMatrixWorld(true);
+      scene.traverse((o) => {
+        if (!o.isMesh) return;
+        for (let q = o; q; q = q.parent) { if (!q.visible || q === characterGroup || q === ceilingRig) return; }
+        if (o === targetRing) return;
+        if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
+        const bb = o.geometry.boundingBox.clone().applyMatrix4(o.matrixWorld);
+        if (bb.max.y < fy + 0.05 || bb.min.y > fy + 1.0) return;
+        if (/Stage_Tier/.test(o.name)) { groundMeshes.push(o); return; }
+        if ((bb.max.x - bb.min.x) * (bb.max.z - bb.min.z) > 40) return;   // 바닥판·땅
+        if (bb.max.y < fy + 0.2) return;                                    // 낮은 턱
+        walkBlockers.push(o);
+      });
+    }
+    const BODY_R = 0.22;
+    function pathBlocked(pos, d, step) {
+      const perp = new THREE.Vector3(-d.z, 0, d.x);
+      for (const h of [0.25, 0.45, 0.65]) for (const l of [-0.17, 0, 0.17]) {
+        walkRay.set(new THREE.Vector3(pos.x + perp.x * l, pos.y + h, pos.z + perp.z * l), d);
+        walkRay.near = 0; walkRay.far = step + BODY_R;
+        if (walkRay.intersectObjects(walkBlockers, false).length) return true;
+      }
+      return false;
+    }
+    function tryMove(pos, d, step) {
+      if (!pathBlocked(pos, d, step)) { pos.addScaledVector(d, step); return true; }
+      // 벽에 비스듬히 닿으면 벽을 따라 미끄러지듯 이동
+      const axes = Math.abs(d.x) > Math.abs(d.z) ? [[Math.sign(d.x), 0], [0, Math.sign(d.z)]] : [[0, Math.sign(d.z)], [Math.sign(d.x), 0]];
+      for (const [ax, az] of axes) {
+        if (!ax && !az) continue;
+        const dd = new THREE.Vector3(ax, 0, az), st = step * Math.max(0.35, Math.abs(ax ? d.x : d.z));
+        if (!pathBlocked(pos, dd, st)) { pos.addScaledVector(dd, st); return true; }
+      }
+      return false;
+    }
+    function followGround(pos) {
+      let y = currentFloorY;
+      if (groundMeshes.length) {
+        walkRay.set(new THREE.Vector3(pos.x, currentFloorY + 1.2, pos.z), new THREE.Vector3(0, -1, 0));
+        walkRay.near = 0; walkRay.far = 1.3;
+        const h = walkRay.intersectObjects(groundMeshes, false)[0];
+        if (h && h.point.y <= currentFloorY + 0.5) y = h.point.y;
+      }
+      pos.y += (y - pos.y) * 0.35;
+    }
+    // 키보드(WASD·방향키)와 폰 조이스틱: 카메라가 보는 방향 기준으로 걷기
+    const keys = {};
+    window.addEventListener('keydown', (e) => { keys[e.code] = true; });
+    window.addEventListener('keyup', (e) => { keys[e.code] = false; });
+    window.addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
+    const joy = { x: 0, y: 0 };
+    let keyDriving = false;
+    function moveInput() {
+      let f = 0, r = 0;
+      if (keys.KeyW || keys.ArrowUp) f += 1;
+      if (keys.KeyS || keys.ArrowDown) f -= 1;
+      if (keys.KeyD || keys.ArrowRight) r += 1;
+      if (keys.KeyA || keys.ArrowLeft) r -= 1;
+      f += joy.y; r += joy.x;
+      if (Math.abs(f) < 0.08 && Math.abs(r) < 0.08) return null;
+      const cf = controls.target.clone().sub(camera.position); cf.y = 0;
+      if (cf.lengthSq() < 1e-6) cf.set(0, 0, -1);
+      cf.normalize();
+      const cr = new THREE.Vector3(-cf.z, 0, cf.x);
+      const d = cf.multiplyScalar(f).addScaledVector(cr, r);
+      const mag = Math.min(1, d.length());
+      return { d: d.normalize(), mag };
+    }
     const clock = new THREE.Clock();
 
     function animate() {
       requestAnimationFrame(animate);
       const delta = clock.getDelta();
+      frameDt = Math.min(0.1, delta);
       const time = clock.getElapsedTime();
 
       // 클릭 링 마커 펄스
@@ -1400,6 +1534,15 @@
         targetRing.material.opacity = Math.max(0, targetMarkerTimer);
       }
 
+      // 0. 키보드·조이스틱 입력
+      const inp = moveInput();
+      if (inp) {
+        keyDriving = true;
+        targetPos.copy(characterGroup.position).addScaledVector(inp.d, 0.6);
+        isMoving = true; isPraying = false; isSitting = false; isEating = false;
+      } else if (keyDriving) {
+        keyDriving = false; isMoving = false; targetPos.copy(characterGroup.position);
+      }
       // 1. 걷기 상태
       if (isMoving) {
         const currentPos = characterGroup.position;
@@ -1409,9 +1552,13 @@
 
         if (dist > 0.12) {
           dir.normalize();
-          currentPos.addScaledVector(dir, Math.min(dist, walkSpeed * delta));
+          const moved = tryMove(currentPos, dir, Math.min(dist, walkSpeed * (inp ? inp.mag : 1) * delta));
+          followGround(currentPos);
+          if (!moved && !keyDriving) { isMoving = false; }    // 벽·가구에 막히면 그 자리에서 멈춤
           const targetRot = Math.atan2(dir.x, dir.z);
-          characterGroup.rotation.y = THREE.MathUtils.lerp(characterGroup.rotation.y, targetRot, 0.18);
+          let dr = targetRot - characterGroup.rotation.y;                   // 가장 짧은 쪽으로 돌기
+          dr = Math.atan2(Math.sin(dr), Math.cos(dr));
+          characterGroup.rotation.y += dr * 0.2;
 
           // 걷기 바운스 & 양팔 앞뒤 스윙
           const walkPhase = time * 13;
