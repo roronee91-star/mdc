@@ -4,7 +4,7 @@ const { chromium } = require('playwright');
   const out = process.argv[2];
   const b = await chromium.launch({ args: ['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader'] });
   const ctx = await b.newContext({ viewport: { width: 1280, height: 800 } });
-  await ctx.addInitScript(() => { try { localStorage.setItem('mdc_name', '혜연'); } catch (e) {} });
+  await ctx.addInitScript(() => { try { localStorage.setItem('mdc_name', '혜연'); localStorage.setItem('mdc_gender', 'f'); } catch (e) {} });
   const p = await ctx.newPage();
   const errs=[]; p.on('pageerror', e => errs.push(e.message));
   await p.goto('http://127.0.0.1:8008/index.html'); await p.waitForTimeout(6500);

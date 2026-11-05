@@ -357,7 +357,7 @@
       <div class="header-right">
         <button class="bgm-btn" id="prayerBtn" title="기도제목">📝 기도제목</button>
         <button class="bgm-btn" id="nameBtn" title="이름 바꾸기">👤 이름</button>
-        <button class="bgm-btn" id="bgmToggle" title="찬송가 피아노 반주 켜기/끄기">🎵</button>
+        <button class="bgm-btn" id="bgmToggle" title="찬송가 하프 반주 켜기/끄기">🎵</button>
         <button class="bgm-btn" id="helpToggle" title="조작 안내">❔</button>
         <button class="bgm-btn" id="uiToggle" title="버튼 숨기기">🙈</button>
       </div>
@@ -480,6 +480,30 @@
     controls.enablePan = false;
     controls.zoomSpeed = 1.1;
     controls.touches = { ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_ROTATE };
+    const qsTime = new URLSearchParams(location.search).get('time');
+    function nightNow() { if (qsTime === 'night') return true; if (qsTime === 'day') return false; const h = new Date().getHours(); return h >= 19 || h < 6; }
+    let nightLights = null;
+    function applyTimeOfDay(force) {
+      const n = nightNow(); if (n === isNight && !force) return; isNight = n;
+      const sky = n ? 0x1d2640 : 0xdce7f3;
+      scene.background = new THREE.Color(sky); scene.fog.color.set(sky); scene.fog.density = n ? 0.006 : 0.002;
+      hemiLight.color.set(n ? 0x8fa0d8 : 0xfff7ef); hemiLight.groundColor.set(n ? 0x2a2420 : 0x475569); hemiLight.intensity = n ? 0.42 : 0.95;
+      sunLight.color.set(n ? 0x9fb4ff : 0xfff3e0); sunLight.intensity = n ? 0.18 : 1.4;
+      renderer.toneMappingExposure = n ? 1.05 : 1.15;
+      nightGlows.forEach((gm) => { gm.mat.opacity = n ? gm.night : gm.day; });
+      glassMats.forEach((m) => { if (!m.emissive) return; m.emissive.set(n ? 0xffc27a : 0x000000); m.emissiveIntensity = n ? 0.55 : 0; });
+      outdoorCross.forEach((m) => { if (!m.material.emissive) return; m.material.emissive.set(n ? 0xfff2d8 : 0x000000); m.material.emissiveIntensity = n ? 1.6 : 0; });
+      if (!nightLights) {   // 밤에만 켜는 바깥 빛: 건물 앞을 비추는 빛 2개 + 십자가 탑 위로 비추는 빛
+        nightLights = new THREE.Group(); scene.add(nightLights);
+        const wash = (x, z, tx, ty, tz, I) => { const l = new THREE.SpotLight(0xffd6a0, I, 30, 0.55, 0.7, 1.1); l.position.set(x, 0.3, z); l.target.position.set(tx, ty, tz); nightLights.add(l, l.target); };
+        wash(-6.0, 6.5, -6.0, 7.0, 0.0, 22); wash(-0.9, 2.2, -0.9, 13.0, 0.0, 30);
+        glowSpot(nightLights, -0.93, 7.5, 0.6, 2.4, 14, 0xffd6a0, [0, 0, 0], 0, 0.45);                  // 십자가 탑 앞면에 번지는 빛
+        glowSpot(nightLights, -6.0, 7.0, 0.7, 8.5, 12, 0xffcf8a, [0, 0, 0], 0, 0.22);                   // 앞면 유리 쪽
+        [-11.0, -8.6, -6.2, -3.8].forEach((x) => glowSpot(nightLights, x, 0.03, 3.4, 1.6, 1.6, 0xffd9a0, [-Math.PI / 2, 0, 0], 0, 0.6));   // 광장 바닥 조명
+      }
+      nightLights.visible = n;
+    }
+    setInterval(() => applyTimeOfDay(false), 60000);   // 1분마다 확인 → 저녁 7시가 되면 바뀜
     window.__dbg = { get hymns() { return HYMNS; }, chordFor: (k, m) => chordFor(k, m), midiOf: (n) => midiOf(n), camera, controls, scene, get furn() { return furn; }, get b1Seats() { return b1Seats; }, get character() { return characterGroup; }, findPath: (a, b) => findPath(a, b), goTo: (k) => goToTourStep(k), get camWant() { return [camWantDist, camCurDist, camLift]; }, setCam: (c, t) => { controls.target.set(...t); camera.position.set(...c); resetCamPull(); }, get eyesClosed() { return eyeParts.lids[0].visible; }, get moving() { return isMoving; }, get eating() { return isEating; }, seatsHere: () => { const r = []; const seen = new Set(); seatPick.forEach((m) => { const o = m.userData.seatOwner; if (!o || seen.has(o)) return; seen.add(o); (o.userData.seat ? [o.userData.seat] : o.userData.seats).forEach((st) => r.push(st)); }); return r; }, sit: (st) => goSit(st), get ringOpacity() { return +targetRing.material.opacity.toFixed(2); }, rayHits: (a, b) => { const A = new THREE.Vector3(...a), B = new THREE.Vector3(...b), d = B.clone().sub(A), L = d.length(); const rc = new THREE.Raycaster(A, d.normalize(), 0, L); rc.camera = camera; return rc.intersectObjects(scene.children, true).map((h) => { const m = h.object; if (m.geometry && !m.geometry.boundingBox) m.geometry.computeBoundingBox(); const bb = m.geometry && m.geometry.boundingBox ? m.geometry.boundingBox.clone().applyMatrix4(m.matrixWorld) : null; return [m.type, m.name || (m.parent && m.parent.name), +h.distance.toFixed(2), !!(m.material && m.material.transparent), m.material ? +(m.material.opacity || 0).toFixed(2) : null, bb && bb.min.toArray().map((v) => +v.toFixed(2)), bb && bb.max.toArray().map((v) => +v.toFixed(2))]; }); }, get faded() { return [...fadedMeshes.keys()].map(m => { m.geometry.computeBoundingBox(); const b = m.geometry.boundingBox.clone().applyMatrix4(m.matrixWorld); return [m.name || m.parent.name, +m.material.opacity.toFixed(2), b.min.toArray().map(v => +v.toFixed(2)), b.max.toArray().map(v => +v.toFixed(2))]; }); } }; // 화면 확인(자동 검사)용
     controls.maxDistance = 55;
     controls.maxPolarAngle = Math.PI * 0.49; // 바닥 아래로 돌아 들어가 건물 밖/땅 속이 보이지 않게
@@ -788,6 +812,7 @@
     const b1ObstructingMeshes = [];
     const topMeshes = []; // 4층·지붕 (3층 내부를 위에서 볼 때 숨김)
     const outsideMeshes = []; // 본당(B1) 이외의 건물·주변 (본당을 위에서 볼 때 숨김)
+    const glassMats = [], outdoorCross = [];   // 밤에 창이 따뜻하게 빛나고 바깥 십자가가 켜지도록
 
     const loader = new GLTFLoader();
     const loadingScreen = document.getElementById('loading-screen');
@@ -805,7 +830,9 @@
             clickableObjects.push(child);
 
             // 유리창 투명화
+            if (/^CROSS_(VERTICAL|HORIZONTAL)/.test(child.name)) { child.material = child.material.clone(); outdoorCross.push(child); }
             if (child.name.includes('GLASS') || child.name.includes('Glass')) {
+              if (!glassMats.includes(child.material)) glassMats.push(child.material);
               child.material.transparent = true;
               child.material.opacity = 0.35;
               child.material.depthWrite = false;
@@ -834,6 +861,7 @@
         });
 
         loadedModel.position.set(0, 0, 0);
+        setTimeout(() => applyTimeOfDay(true), 0);   // 모델이 들어온 뒤 낮·밤 적용
         scene.add(loadedModel);
         try { applyB1Fixes(loadedModel); } catch (e) { console.warn('본당 보정 실패', e); }
         try { applyF4Fixes(loadedModel); } catch (e) { console.warn('4층 보정 실패', e); }
@@ -866,6 +894,36 @@
     const planX = (m) => -12.4 + m * 0.4986; // 도면 서쪽 끝에서 잰 거리(m) → 모델 x
     const planZ = (m) => -17.5 + m * 0.949;  // 도면 북쪽 끝에서 잰 거리(m) → 모델 z
 
+    // =========================================================================
+    // 낮·밤과 간접 조명: 저녁 7시~새벽 6시는 밤 (주소 끝 ?time=night / ?time=day 로 미리 보기)
+    //   간접 조명은 '숨은 조명줄(빛나는 얇은 선) + 벽에 번지는 빛(더해지는 그라데이션 판)'으로 만들고,
+    //   실제 빛(PointLight·SpotLight)은 몇 개만 써서 휴대폰에서도 느려지지 않게 함.
+    // =========================================================================
+    const nightGlows = [];                // { mat, day, night } — 낮/밤에 따라 밝기를 바꿀 재질
+    let isNight = false, crossSpot = null;
+    const GLOW_TEX = (() => { const c = document.createElement('canvas'); c.width = c.height = 128; const g = c.getContext('2d');
+      const r = g.createRadialGradient(64, 64, 0, 64, 64, 64); r.addColorStop(0, 'rgba(255,255,255,1)'); r.addColorStop(0.35, 'rgba(255,255,255,0.45)'); r.addColorStop(1, 'rgba(255,255,255,0)');
+      g.fillStyle = r; g.fillRect(0, 0, 128, 128); const t = new THREE.CanvasTexture(c); return t; })();
+    const WASH_TEX = (() => { const c = document.createElement('canvas'); c.width = 4; c.height = 128; const g = c.getContext('2d');
+      const r = g.createLinearGradient(0, 128, 0, 0); r.addColorStop(0, 'rgba(255,255,255,1)'); r.addColorStop(0.4, 'rgba(255,255,255,0.35)'); r.addColorStop(1, 'rgba(255,255,255,0)');
+      g.fillStyle = r; g.fillRect(0, 0, 4, 128); return new THREE.CanvasTexture(c); })();
+    const glowMat = (color, day, night, tex) => { const m = new THREE.MeshBasicMaterial({ map: tex || GLOW_TEX, color, transparent: true, opacity: day, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, toneMapped: false });
+      nightGlows.push({ mat: m, day, night }); return m; };
+    const noHit = (o) => { o.raycast = () => {}; o.userData.noCamBlock = true; o.userData.pickOnly = true; return o; };   // 누르기·걷기·카메라 판정 제외
+    // 둥근 빛 번짐 (벽·바닥에 붙는 판). rotY/rotX로 방향
+    function glowSpot(parent, x, y, z, w, h, color, rot, day = 0.25, night = 0.75) {
+      const m = noHit(new THREE.Mesh(new THREE.PlaneGeometry(w, h), glowMat(color, day, night)));
+      m.position.set(x, y, z); if (rot) m.rotation.set(rot[0] || 0, rot[1] || 0, rot[2] || 0); m.renderOrder = 3; parent.add(m); return m;
+    }
+    // 숨은 조명줄: 벽을 따라 빛나는 얇은 선 + 위(또는 아래)로 번지는 빛. (x0,z0)→(x1,z1), 높이 y, 번짐 길이 spread (음수면 아래로)
+    function cove(parent, x0, z0, x1, z1, y, color, spread = 0.9, day = 0.35, night = 0.95) {
+      const L = Math.hypot(x1 - x0, z1 - z0), ang = Math.atan2(z1 - z0, x1 - x0);
+      const line = noHit(new THREE.Mesh(new THREE.BoxGeometry(L, 0.025, 0.025), new THREE.MeshBasicMaterial({ color, toneMapped: false })));   // 빛나는 선
+      line.position.set((x0 + x1) / 2, y, (z0 + z1) / 2); line.rotation.y = -ang; parent.add(line);
+      const wash = noHit(new THREE.Mesh(new THREE.PlaneGeometry(L, Math.abs(spread)), glowMat(color, day, night, WASH_TEX)));
+      wash.position.set((x0 + x1) / 2, y + spread / 2, (z0 + z1) / 2); wash.rotation.y = -ang; if (spread < 0) wash.rotation.z = Math.PI; parent.add(wash);
+      return { line, wash };
+    }
     // 방 이름 표지판: 공중에 뜬 이름표 대신, 문 위 벽에 붙은 얇은 판 (rotY: 판 앞면이 보는 방향, 0 = +z)
     function makeSign(parent, text, x, y, z, rotY) {
       const c = document.createElement('canvas'); const g0 = c.getContext('2d'); g0.font = 'bold 44px sans-serif';
@@ -1209,6 +1267,10 @@
       k.box(1.6, 0.5, 0.5, -4.4, 0, -12.2, k.M(0xc9b08a)); k.box(1.7, 0.04, 0.6, -4.4, 0.5, -12.2, k.M(0x7d5a3a)); // 안내 데스크
       k.sofa(-1.0, -12.6, 1.4, -Math.PI / 2, k.M(0x8a9bb0));                    // 대기 소파 (서쪽을 봄)
       k.plant(-5.0, -14.5, 1.2); k.plant(-0.6, -14.5, 1.2); k.plant(-4.0, -10.8, 0.9); k.plant(-1.6, -10.8, 0.9);   // 자동문(x -3.4~-2.2) 양옆
+      cove(f1, LX0 + 0.06, LZ0 + 0.06, LX1 - 0.06, LZ0 + 0.06, H - 0.2, 0xffd9a8, -0.9);        // 로비 천장 둘레 숨은 조명 (벽 아래로 번짐)
+      cove(f1, LX0 + 0.06, LZ0 + 0.1, LX0 + 0.06, LZ1 - 0.1, H - 0.2, 0xffd9a8, -0.9);
+      glowSpot(f1, -4.4, 0.06, -11.92, 1.6, 0.3, 0xffcf8a, [0, 0, 0], 0.35, 0.9);                  // 안내 데스크 아래 빛
+      glowSpot(f1, -2.8, 0.03, -10.0, 2.6, 1.6, 0xffe0b0, [-Math.PI / 2, 0, 0], 0.15, 0.65);       // 자동문 앞 바닥 빛
       k.sign('1층 로비', -2.8, LZ1 + 0.05, 0, 3.0); k.sign('🛗 엘리베이터는 앞쪽 오른편', -3.75, LZ0 + 0.09, 0, 1.6); k.sign('계단', -1.3, LZ0 + 0.09, 0, 2.3);
       k.light(-2.8, -12.7, 1.8);
       // 입구 안내판
@@ -1390,6 +1452,18 @@
         k.box(CORE2_W - CORE1_E - 0.4, 0.25, 0.4, (CORE1_E + CORE2_W) / 2, 0, -0.2, planter);
         for (let xx = CORE1_E + 0.5; xx < CORE2_W - 0.4; xx += 0.5) { const fl = new THREE.Mesh(new THREE.SphereGeometry(0.13, 8, 6), k.M([0xf08aa8, 0xf6d55c, 0xffffff][Math.round(xx * 2) % 3 + (Math.round(xx * 2) % 3 < 0 ? 3 : 0)] || 0xf08aa8)); fl.position.set(xx, F4_Y + 0.34, -0.2); f4.add(fl); }
         k.sign('옥상 정원', -11.4, F4_CORE_N - 0.05, Math.PI, 1.8);
+        // 밤 조명: 돌 길 옆 작은 기둥 조명 + 바닥 빛, 화단 나무 아래 위로 비추는 빛, 앞 난간 아래 조명줄
+        const capM = new THREE.MeshBasicMaterial({ color: 0xfff1d0, toneMapped: false });
+        [[-4.6, -10.6], [-4.6, -7.6], [-3.4, -6.0], [-6.6, -9.2], [-9.2, -9.2], [-11.4, -8.0]].forEach(([x, z]) => {
+          k.cyl(0.04, 0.42, x, 0, z, k.M(0x3b3b3b, 0.5)); const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.06, 12), capM); cap.position.set(x, F4_Y + 0.42, z); f4.add(cap);
+          glowSpot(f4, x, F4_Y + 0.035, z, 1.3, 1.3, 0xffd9a0, [-Math.PI / 2, 0, 0], 0.08, 0.7);
+        });
+        [[-10.6, -10.3], [-7.2, -6.6], [-1.2, -10.2], [-1.2, -6.6]].forEach(([x, z]) => {
+          glowSpot(f4, x, F4_Y + 0.9, z + 0.47, 0.9, 1.4, 0xffd9a0, [0, 0, 0], 0.05, 0.55);          // 나무에 번지는 빛
+          glowSpot(f4, x, F4_Y + 0.33, z, 1.0, 1.0, 0xffe2b0, [-Math.PI / 2, 0, 0], 0.05, 0.6);
+        });
+        cove(f4, CORE1_E + 0.2, 0.0, CORE2_W - 0.2, 0.0, F4_Y + 0.1, 0xffd9a0, 0.5, 0.1, 0.85);   // 앞 난간 아래
+        cove(f4, -0.05, F4_IN_S + 0.2, -0.05, F4_CORE_N - 0.2, F4_Y + 0.1, 0xffd9a0, 0.5, 0.1, 0.85);
       }
     }
     // 실내 바닥·벽 안쪽을 베이지로: 건물 바깥에 보이는 GLB 재질은 바꾸지 않고, 안쪽에 얇은 판을 덧댐
@@ -1805,6 +1879,21 @@
         const glow = new THREE.PointLight(0xffd9a0, 1.6, 4.5, 1.5);
         glow.position.set(CORNER.x + 0.6, bottom + vH * 0.6, cz);
         g.add(glow);
+        // 간접 조명: 십자가 뒤 벽에 번지는 따뜻한 빛 + 위에서 십자가를 비추는 빛
+        glowSpot(g, CORNER.x + 0.05, bottom + vH * 0.6, cz, 4.6, 5.6, 0xffc777, [0, Math.PI / 2, 0], 0.45, 1.0);   // 넓고 부드러운 후광
+        glowSpot(g, CORNER.x + 0.06, bottom + vH * 0.62, cz, 1.4, 4.6, 0xffe6b8, [0, Math.PI / 2, 0], 0.4, 0.95);  // 십자가 바로 뒤 밝은 빛
+        const cs = crossSpot = new THREE.SpotLight(0xffe2b0, 3.2, 9, 0.38, 0.6, 1.2); cs.position.set(CORNER.x + 2.2, FLOOR + 5.6, cz); cs.target.position.set(CORNER.x + 0.1, bottom + vH * 0.6, cz); g.add(cs, cs.target);
+        // 스크린 나무 벽 윗선 · 서쪽 벽 · 남쪽(뒤) 벽 위를 따라 숨은 조명줄 (천장으로 번짐)
+        const d0 = WALL_S;   // 스크린 벽: (CORNER.x + d0, CORNER.z) ~ (CORNER.x, CORNER.z + d0)
+        cove(g, CORNER.x + d0 + 0.12, CORNER.z + 0.08, CORNER.x + 0.08, CORNER.z + d0 + 0.12, FLOOR + 5.75, 0xffd6a0, 0.7);
+        // 옆·뒤 벽: 천장 쪽으로 번지는 조명 + 벽을 타고 내려오는 은은한 빛 (사진의 따뜻한 벽 조명)
+        [[-12.98, -12.8, -12.98, -0.3], [-12.9, -17.48, -9.2, -17.48], [0.55, -16.4, 0.55, -0.6], [-12.6, 0.05, -9.2, 0.05], [-3.4, 0.05, 0.4, 0.05]].forEach(([a0, b0, a1, b1]) => {
+          cove(g, a0, b0, a1, b1, FLOOR + 5.55, 0xffd6a0, 1.0, 0.4, 1.0);
+          cove(g, a0, b0, a1, b1, FLOOR + 5.5, 0xffcf8a, -2.6, 0.18, 0.55);
+        });
+        // 강단 앞 모서리 아래 숨은 조명 (바닥 쪽으로 번짐)
+        for (let a = 8; a <= 82; a += 10) { const r = 7.0 * 0.995, x = CORNER.x + r * Math.cos(a * Math.PI / 180), z = CORNER.z + r * Math.sin(a * Math.PI / 180);
+          glowSpot(g, x, FLOOR + 0.02, z, 1.4, 0.5, 0xffd6a0, [-Math.PI / 2, 0, -(a * Math.PI / 180) - Math.PI / 2], 0.2, 0.55); }
       }
 
       // 5) 자모실: 칸막이를 홀 쪽으로 옮겨 방을 넓히고, 유리창 · 문 · 매트 · 아기침대 넣기
@@ -2043,7 +2132,7 @@
       furn.visible = !hideOut; // 3층 가구는 본당을 위에서 볼 때 숨김
       levelLabels.forEach(l => { l.visible = l.userData.lv === wp.level; });   // 지금 층 이름표만
       Object.entries(floorLights).forEach(([lv, ls]) => ls.forEach((l) => { l.visible = lv === wp.level; }));
-      f3Light.visible = wp.level === 'F3'; ceilingRig.visible = wp.level === 'B1';
+      f3Light.visible = wp.level === 'F3'; ceilingRig.visible = wp.level === 'B1'; if (crossSpot) crossSpot.visible = wp.level === 'B1';
 
       // 지하 1층 모드일 때 외벽/천장 반투명 단면 모드 가동
       if (wp.isB1 && !eye) {
@@ -2804,48 +2893,53 @@
       const wet = audioCtx.createGain(); wet.gain.value = 0.28;
       bgmBus.connect(lp); lp.connect(audioCtx.destination); lp.connect(verb); verb.connect(wet); wet.connect(audioCtx.destination);
     }
-    // 피아노 비슷한 소리: 기본음 + 배음 몇 개, 처음에 '땅' 하고 점점 줄어듦
-    function pianoNote(midi, t, dur, vel) {
-      const f = freqOf(midi), out = audioCtx.createGain();
-      const decay = Math.min(3.5, 0.6 + 260 / f);                 // 낮은 음일수록 길게 울림
-      out.gain.setValueAtTime(0, t);
-      out.gain.linearRampToValueAtTime(vel, t + 0.008);
-      out.gain.exponentialRampToValueAtTime(vel * 0.35, t + 0.25);
-      out.gain.exponentialRampToValueAtTime(0.0008, t + Math.max(dur + 0.35, Math.min(decay, dur + 1.2)));
-      out.connect(bgmBus);
-      [[1, 1, 'sine'], [2, 0.32, 'sine'], [3, 0.12, 'triangle'], [4, 0.05, 'sine']].forEach(([h, a, type]) => {
-        const o = audioCtx.createOscillator(), g = audioCtx.createGain();
-        o.type = type; o.frequency.value = f * h * (1 + (h - 1) * 0.0007);   // 피아노 줄처럼 배음이 아주 살짝 높음
-        g.gain.value = a; o.connect(g); g.connect(out);
-        o.start(t); o.stop(t + dur + 1.6);
+    // 하프 소리: 줄을 손가락으로 퉁긴 소리 — 아주 빠르게 울리고, 높은 배음일수록 빨리 사라지며 길게 여운이 남음
+    function harpNote(midi, t, vel, ring) {
+      const f = freqOf(midi), base = Math.min(5.5, 2.2 + 260 / f) * (ring || 1);    // 낮은 줄일수록 오래 울림
+      const out = audioCtx.createGain(); out.gain.value = vel; out.connect(bgmBus);
+      [[1, 1.0], [2, 0.42], [3, 0.2], [4, 0.09], [5, 0.045]].forEach(([h, a]) => {
+        const o = audioCtx.createOscillator(), g = audioCtx.createGain(), d = base / Math.pow(h, 0.8);
+        o.type = 'sine'; o.frequency.value = f * h * (1 + (h - 1) * 0.0004);
+        g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(a, t + 0.004);             // 퉁기는 순간
+        g.gain.exponentialRampToValueAtTime(a * 0.5, t + 0.08); g.gain.exponentialRampToValueAtTime(0.0005, t + d);
+        o.connect(g); g.connect(out); o.start(t); o.stop(t + d + 0.05);
       });
+      // 줄을 튕길 때 나는 아주 짧은 '틱' 소리
+      const n = audioCtx.createBufferSource(), nb = audioCtx.createBuffer(1, Math.floor(audioCtx.sampleRate * 0.02), audioCtx.sampleRate), nd = nb.getChannelData(0);
+      for (let i = 0; i < nd.length; i++) nd[i] = (Math.random() * 2 - 1) * (1 - i / nd.length);
+      const bp = audioCtx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = Math.min(6000, f * 3); bp.Q.value = 2;
+      const ng = audioCtx.createGain(); ng.gain.value = 0.18; n.buffer = nb; n.connect(bp); bp.connect(ng); ng.connect(out); n.start(t);
+    }
+    // 하프 반주: 마디마다 화음을 아래에서 위로 흘러내리듯(아르페지오) 펼쳐 연주
+    function harpBar(bassPc, tones, t, bar, beat) {
+      const k = (pc) => 48 + pc;                                                     // C3~B3
+      const order = [k(tones[0]), k(tones[1]), k(tones[2]), k(tones[0]) + 12, k(tones[1]) + 12];
+      harpNote(36 + bassPc, t, 0.11, 1.2);                                           // 베이스 줄
+      if (bar === 6) [1, 2, 3, 4, 5].forEach((i) => harpNote(order[(i - 1) % 5], t + i * beat, 0.05));                 // 6/8: 8분음표마다
+      else if (bar === 3) { harpNote(order[0], t + beat, 0.05); harpNote(order[1], t + beat + 0.07, 0.05); harpNote(order[2], t + 2 * beat, 0.05); harpNote(order[3], t + 2 * beat + 0.07, 0.045); }   // 3/4
+      else order.forEach((m, i) => harpNote(m, t + beat * 0.5 + i * (beat * 0.75), 0.045));                          // 4/4: 반 박 뒤부터 고르게
     }
     function playHymn() {
       if (!isBgmPlaying) return;
       const h = HYMNS[hymnIdx % HYMNS.length]; hymnIdx++;
       const beat = 60 / h.bpm; let t = audioCtx.currentTime + 0.15, pos = 0;
-      showToast(`🎹 ${h.title}`);
+      showToast(`🎶 ${h.title} · 하프`);
       h.notes.forEach(([n, d]) => {
+        const bp = pos - (h.pickup || 0);
         if (n !== 'R') {
           const m = midiOf(n);
-          pianoNote(m, t, d * beat, 0.16);                                          // 멜로디
-          const bp = pos - (h.pickup || 0);
-          if (h.chords) {                                                          // 적힌 화음: 마디 첫 박에
-            if (bp >= 0 && Math.abs(bp % h.bar) < 1e-6) {
-              const ch = parseChord(h.chords[Math.round(bp / h.bar)] || h.key), barLen = h.bar * beat;
-              pianoNote(36 + ch.bass, t, barLen, 0.09);
-              ch.tones.forEach((pc) => pianoNote(48 + pc, t + 0.02, barLen, 0.045));
-            }
-          } else if (pos % h.bar === 0 || (h.bar === 4 && pos % 2 === 0 && d >= 2)) {      // 마디 첫 박: 왼손 화음
+          harpNote(m, t, 0.15);                                                      // 멜로디
+          if (d >= 3) harpNote(m, t + d * beat * 0.5, 0.07);                          // 긴 음은 한 번 더 살짝 퉁김 (하프는 소리가 줄어서)
+          if (h.chords) {
+            if (bp >= 0 && Math.abs(bp % h.bar) < 1e-6) { const ch = parseChord(h.chords[Math.round(bp / h.bar)] || h.key); harpBar(ch.bass, ch.tones, t, h.bar, beat); }
+          } else if (Math.abs(pos % h.bar) < 1e-6) {
             const c = chordFor(h.key, m), k = NOTE_IDX[h.key];
-            const barLen = Math.min(h.bar, d >= h.bar ? d : h.bar) * beat;
-            pianoNote(36 + ((k + c.root) % 12), t, barLen, 0.09);                      // 베이스 (C2~B2)
-            c.t.forEach((iv) => pianoNote(48 + ((k + iv) % 12), t + 0.02, barLen, 0.045));   // 화음 (C3~B3, 멜로디보다 낮게)
+            harpBar((k + c.root) % 12, c.t.map((iv) => (k + iv) % 12), t, h.bar, beat);
           }
         }
         t += d * beat; pos += d;
       });
-      audioTimer = setTimeout(playHymn, (t - audioCtx.currentTime + 2.5) * 1000);     // 곡 사이 2.5초 쉼
+      audioTimer = setTimeout(playHymn, (t - audioCtx.currentTime + 3.0) * 1000);     // 곡 사이 3초 쉼
     }
     function showToast(text) {
       let el = document.getElementById('toast');
