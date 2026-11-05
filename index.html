@@ -454,6 +454,7 @@
     import * as THREE from 'three'; window.__RC = THREE.Raycaster;
     import {GLTFLoader} from './vendor/three/loaders/GLTFLoader.js';
     import {OrbitControls} from './vendor/three/controls/OrbitControls.js';
+    import {mergeGeometries} from './vendor/three/utils/BufferGeometryUtils.js';
 
     // -------------------------------------------------------------------------
     // 1. 씬, 카메라, 렌더러 초기화
@@ -779,18 +780,18 @@
       x.fillStyle = gr; x.fillRect(0, 0, 4, 128);
       const tex = new THREE.CanvasTexture(c); if ('colorSpace' in tex) tex.colorSpace = THREE.SRGBColorSpace;
       const beamMat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending });
-      const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.5, 2.6, 28, 1, true), beamMat); beam.position.y = 1.3; g.add(beam);
-      const inner = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.24, 2.6, 20, 1, true), beamMat.clone()); inner.position.y = 1.3; g.add(inner);
+      const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.3, 1.7, 28, 1, true), beamMat); beam.position.y = 0.85;   // 크기 줄임(예전 높이 2.6m·폭 1m) g.add(beam);
+      const inner = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.15, 1.7, 20, 1, true), beamMat.clone()); inner.position.y = 0.85; g.add(inner);
       const dc = document.createElement('canvas'); dc.width = dc.height = 64; const dx = dc.getContext('2d');
       const rg = dx.createRadialGradient(32, 32, 0, 32, 32, 32); rg.addColorStop(0, 'rgba(255,236,190,0.9)'); rg.addColorStop(1, 'rgba(255,236,190,0)');
       dx.fillStyle = rg; dx.fillRect(0, 0, 64, 64);
       const dtex = new THREE.CanvasTexture(dc);
-      const disc = new THREE.Mesh(new THREE.PlaneGeometry(1.3, 1.3), new THREE.MeshBasicMaterial({ map: dtex, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending }));
+      const disc = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 0.8), new THREE.MeshBasicMaterial({ map: dtex, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending }));
       disc.rotation.x = -Math.PI / 2; disc.position.y = 0.02; g.add(disc);
-      const N = 22, pos = new Float32Array(N * 3), seed = [];
-      for (let i = 0; i < N; i++) { const a = Math.random() * Math.PI * 2, r = Math.random() * 0.35; seed.push([a, r, Math.random()]); pos[i * 3] = Math.cos(a) * r; pos[i * 3 + 2] = Math.sin(a) * r; pos[i * 3 + 1] = Math.random() * 2.4; }
+      const N = 14, pos = new Float32Array(N * 3), seed = [];
+      for (let i = 0; i < N; i++) { const a = Math.random() * Math.PI * 2, r = Math.random() * 0.22; seed.push([a, r, Math.random()]); pos[i * 3] = Math.cos(a) * r; pos[i * 3 + 2] = Math.sin(a) * r; pos[i * 3 + 1] = Math.random() * 1.6; }
       const pg = new THREE.BufferGeometry(); pg.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-      const sparks = new THREE.Points(pg, new THREE.PointsMaterial({ map: dtex, size: 0.09, color: 0xfff2cc, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending }));
+      const sparks = new THREE.Points(pg, new THREE.PointsMaterial({ map: dtex, size: 0.06, color: 0xfff2cc, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending }));
       g.add(sparks);
       g.userData = { level: 0, beam, inner, disc, sparks, seed, noCamBlock: true };
       g.traverse((o) => { o.userData.noCamBlock = true; o.raycast = () => {}; });   // 누르기·걷기·카메라 판정에서 빠짐
@@ -805,8 +806,8 @@
       u.disc.material.opacity = 0.75 * u.level; u.sparks.material.opacity = 0.9 * u.level;
       u.beam.rotation.y += dt * 0.15; u.inner.rotation.y -= dt * 0.25;
       const a = u.sparks.geometry.attributes.position;
-      for (let i = 0; i < a.count; i++) { let y = a.getY(i) - dt * (0.25 + u.seed[i][2] * 0.25); if (y < 0.1) y = 2.4; a.setY(i, y);
-        const [ang, r] = u.seed[i]; const w = ang + time * 0.4; a.setX(i, Math.cos(w) * r * (0.6 + y / 4)); a.setZ(i, Math.sin(w) * r * (0.6 + y / 4)); }
+      for (let i = 0; i < a.count; i++) { let y = a.getY(i) - dt * (0.25 + u.seed[i][2] * 0.25); if (y < 0.1) y = 1.6; a.setY(i, y);
+        const [ang, r] = u.seed[i]; const w = ang + time * 0.4; a.setX(i, Math.cos(w) * r * (0.6 + y / 2.7)); a.setZ(i, Math.sin(w) * r * (0.6 + y / 2.7)); }
       a.needsUpdate = true;
     }
     const myPrayLight = makePrayLight(); characterGroup.add(myPrayLight);
@@ -1024,6 +1025,79 @@
       s.userData.lv = 'F3'; s.visible = false; levelLabels.push(s);
     }
 
+    // ---- 식당 소품: 식판(밥·국·반찬 3칸)·수저·물컵, 식탁 가운데 냅킨·물병, 배식대 반찬통·밥솥·식판 더미 ----
+    //   작은 조각이 많아서 재질별로 모아 한 덩어리로 합침. 누르기·걷기·카메라 판정에서는 빠짐(식탁·배식대가 대신 막음)
+    const dMat = {
+      tray: mat(0xcfd5da), steel: new THREE.MeshStandardMaterial({ color: 0xc9ced4, roughness: 0.35, metalness: 0.25 }),
+      bowl: mat(0xf6f3ec), rice: mat(0xfdfbf4), soup: mat(0xc8452d), doenjang: mat(0xa8743f), miyeok: mat(0x4a5e2e),
+      kimchi: mat(0xc0392b), namul: mat(0x5c8a3a), egg: mat(0xf2c14e), meat: mat(0x8a4b2a), bean: mat(0x6b4a2b),
+      cup: new THREE.MeshStandardMaterial({ color: 0xdceff7, roughness: 0.1, transparent: true, opacity: 0.55 }),
+      water: new THREE.MeshStandardMaterial({ color: 0xa9d6ec, roughness: 0.1, transparent: true, opacity: 0.6 }),
+      napkin: mat(0xffffff), wood: mat(0x7a5434), glass: new THREE.MeshStandardMaterial({ color: 0xe8f4f8, roughness: 0.05, transparent: true, opacity: 0.3 }),
+      cooker: mat(0xf1ede6), dark: mat(0x3a3a3a)
+    };
+    const dBucket = new Map();
+    const dPut = (geo, m, x, y, z, ry, sy) => { geo.rotateY(ry || 0); if (sy) geo.scale(1, sy, 1); geo.translate(x, F3_Y + y, z); if (!dBucket.has(m)) dBucket.set(m, []); dBucket.get(m).push(geo); };
+    const dBox = (w, h, d, x, y0, z, m, ry) => dPut(new THREE.BoxGeometry(w, h, d), m, x, y0 + h / 2, z, ry);
+    const dCyl = (rt, rb, h, x, y0, z, m, seg) => dPut(new THREE.CylinderGeometry(rt, rb, h, seg || 14), m, x, y0 + h / 2, z);
+    const dDome = (r, x, y0, z, m, sy) => dPut(new THREE.SphereGeometry(r, 12, 6, 0, Math.PI * 2, 0, Math.PI / 2), m, x, y0, z, 0, sy);
+    function dineFlush() {
+      dBucket.forEach((geos, m) => {
+        const mesh = new THREE.Mesh(mergeGeometries(geos), m); geos.forEach((g) => g.dispose());
+        mesh.receiveShadow = true; mesh.userData.pickOnly = true; mesh.userData.noCamBlock = true; mesh.raycast = () => {};
+        furn.add(mesh);
+      });
+      dBucket.clear();
+    }
+    let dineSeed = 0;
+    const SOUPS = ['soup', 'doenjang', 'miyeok'], SIDES = ['kimchi', 'namul', 'egg', 'meat', 'bean'];
+    // 한 사람 몫: side = 앉은 쪽(-1 서쪽 / +1 동쪽). 식판은 앉은 사람 앞, 물컵은 식탁 가운데 쪽
+    function dinePlace(tx, z, side, n) {
+      const T = 0.38, ax = (d) => tx + side * d;
+      dBox(0.15, 0.008, 0.26, ax(0.095), T, z, dMat.tray);                         // 식판
+      dCyl(0.032, 0.022, 0.024, ax(0.125), T + 0.008, z - 0.07, dMat.bowl);         // 밥그릇 + 밥
+      dDome(0.029, ax(0.125), T + 0.03, z - 0.07, dMat.rice, 0.55);
+      dCyl(0.034, 0.024, 0.026, ax(0.125), T + 0.008, z + 0.07, dMat.steel);        // 국그릇 + 국
+      dCyl(0.03, 0.03, 0.002, ax(0.125), T + 0.028, z + 0.07, dMat[SOUPS[n % 3]]);
+      [-0.08, 0, 0.08].forEach((dz, i) => {                                         // 반찬 3칸
+        dBox(0.04, 0.006, 0.055, ax(0.055), T + 0.008, z + dz, dMat.tray);
+        const f = dMat[SIDES[(n + i * 2) % 5]];
+        if (SIDES[(n + i * 2) % 5] === 'egg') dDome(0.016, ax(0.055), T + 0.012, z + dz, f, 0.5);
+        else dBox(0.032, 0.01, 0.042, ax(0.055), T + 0.012, z + dz, f);
+      });
+      dBox(0.006, 0.004, 0.11, ax(0.158), T + 0.008, z - 0.02, dMat.steel);         // 숟가락 자루 + 머리
+      dPut(new THREE.CylinderGeometry(0.011, 0.011, 0.004, 10).scale(1, 1, 1.4), dMat.steel, ax(0.158), T + 0.012, z + 0.045);
+      dBox(0.003, 0.003, 0.12, ax(0.150), T + 0.008, z - 0.01, dMat.steel);        // 젓가락 한 쌍
+      dBox(0.003, 0.003, 0.12, ax(0.145), T + 0.008, z - 0.01, dMat.steel);
+      dCyl(0.017, 0.014, 0.042, ax(0.03), T, z + 0.17, dMat.cup);                   // 물컵 + 물
+      dCyl(0.015, 0.0135, 0.03, ax(0.03), T + 0.002, z + 0.17, dMat.water);
+    }
+    // 식탁 가운데: 냅킨 통 / 물병
+    function dineCenter(tx, z, kind) {
+      const T = 0.38;
+      if (kind === 0) { dBox(0.07, 0.035, 0.05, tx, T, z, dMat.wood); dBox(0.06, 0.012, 0.045, tx, T + 0.035, z, dMat.napkin); }
+      else { dCyl(0.024, 0.026, 0.075, tx, T, z, dMat.steel); dCyl(0.012, 0.022, 0.015, tx, T + 0.075, z, dMat.steel); dBox(0.006, 0.04, 0.012, tx + 0.03, T + 0.02, z, dMat.steel); }
+    }
+    // 배식대 위: 식판 더미 · 반찬통 4개(유리 가림막) · 밥솥 · 수저통
+    function dineCounter() {
+      const X = -8.45, T = 0.54;
+      for (let i = 0; i < 6; i++) dBox(0.15, 0.008, 0.26, X + 0.06, T + i * 0.012, -15.98, dMat.tray);
+      const foods = ['kimchi', 'namul', 'meat', 'egg'];
+      [-15.55, -15.12, -14.69, -14.26].forEach((z, i) => {
+        dBox(0.3, 0.035, 0.38, X, T, z, dMat.steel);
+        if (foods[i] === 'egg') [-0.1, 0, 0.1].forEach((dz) => dDome(0.03, X, T + 0.03, z + dz, dMat.egg, 0.5));
+        else dBox(0.27, 0.012, 0.35, X, T + 0.028, z, dMat[foods[i]]);
+        dBox(0.02, 0.004, 0.15, X + 0.1, T + 0.045, z + 0.05, dMat.steel);         // 집게
+      });
+      [-15.8, -14.0].forEach((z) => dBox(0.015, 0.26, 0.015, X + 0.16, T, z, dMat.steel));   // 가림막 기둥
+      dBox(0.2, 0.008, 1.84, X + 0.08, T + 0.26, -14.9, dMat.glass);                // 유리 가림막
+      dCyl(0.1, 0.095, 0.15, X, T, -13.78, dMat.cooker, 20);                         // 밥솥
+      dDome(0.1, X, T + 0.15, -13.78, dMat.cooker, 0.35);
+      dBox(0.06, 0.02, 0.03, X + 0.1, T + 0.07, -13.78, dMat.dark);
+      dCyl(0.035, 0.03, 0.08, X + 0.15, T, -14.0, dMat.steel);                       // 수저통 + 수저
+      for (let i = 0; i < 6; i++) dBox(0.004, 0.1, 0.004, X + 0.14 + (i % 3) * 0.01, T + 0.04, -14.01 + (i < 3 ? 0 : 0.012), dMat.steel);
+    }
+
     // ---- 식당: 4열 x 3줄 식탁 (한 식탁에 양쪽 3명씩) ----
     const DINING_COLS = [-7.0, -5.4, -3.8];   // 3열: 열 사이 통로 0.7m 이상
     const DINING_ROWS = [planZ(1.7), planZ(5.5), planZ(9.3)];
@@ -1033,18 +1107,21 @@
         [-0.85, 0, 0.85].forEach((k) => {
           chair(tx - 0.30, tz + k, +1);
           chair(tx + 0.30, tz + k, -1);
-          [-1, 1].forEach((side) => {                      // 식판: 밥그릇 + 국그릇
-            const px = tx + side * 0.09;
-            cyl(0.07, 0.012, px, 0.38, tz + k, mPlate);
-            cyl(0.035, 0.03, px, 0.392, tz + k - 0.1, mPlate);
-            cyl(0.035, 0.03, px, 0.392, tz + k + 0.1, mSoup);
-          });
+          [-1, 1].forEach((side) => dinePlace(tx, tz + k, side, ++dineSeed));
         });
+        dineCenter(tx, tz - 0.42, 0); dineCenter(tx, tz + 0.42, 1);
+        dineFlush();                                       // 식탁마다 한 덩어리로 (식탁 밖으로 막힘이 번지지 않게)
       });
     });
     // 배식대: 주방 벽에 붙여서 (주방 통로 앞)
     box(0.4, 0.5, 2.5, -8.45, 0, -14.85, mCounter);
     box(0.46, 0.04, 2.56, -8.45, 0.5, -14.85, mTop);
+    dineCounter(); dineFlush();
+    // 정수기와 종이컵 (배식대 남쪽, 주방 벽에 붙임)
+    box(0.2, 0.5, 0.2, -8.58, 0, -13.25, mat(0xf4f4f2));
+    box(0.21, 0.08, 0.21, -8.58, 0.5, -13.25, mat(0x9fb6c8));
+    box(0.12, 0.1, 0.04, -8.5, 0.3, -13.25, mat(0x2f3338));
+    cyl(0.025, 0.12, -8.58, 0.58, -13.25, mat(0xe9e4da));
 
     // ---- 주방 (서쪽 위) ----
     const kitchenE = planX(7.4);          // 주방 동쪽 벽 x
