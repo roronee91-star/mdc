@@ -1816,7 +1816,7 @@
     }
     // ---- 투명 아크릴 강대상 (사용자 요청, 앞이 둥근 모양): 원래 강대상 상자는 보이지 않게만 하고(걷기 막힘은 그대로) 같은 자리에 새로 그림 ----
     function acrylicPulpit(g, pulpit) {
-      const W = 1.1, D = 0.5, H = 0.6;                           // 화면에 보일 크기: 폭 1.1 · 깊이 0.5 · 높이 0.6 (캐릭터 0.8m)
+      const W = 1.4, D = 0.5, H = 0.6;                           // 화면에 보일 크기 (가로로 키움, 사용자 요청): 폭 1.4 · 깊이 0.5 · 높이 0.6 (캐릭터 0.8m)
       pulpit.scale.x = W / 1.4; pulpit.scale.z = D / 0.65;        // 막힘 상자도 같은 크기로
       pulpit.material = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false, colorWrite: false });
       pulpit.castShadow = false; pulpit.userData.noCamBlock = true;
