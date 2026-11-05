@@ -240,15 +240,14 @@
 
       <div class="tour-steps">
         <button class="step-btn active" id="step1">1 횡단보도</button>
-        <button class="step-btn" id="step2">2 1층 필로티</button>
-        <button class="step-btn" id="step3">3 1층 로비</button>
-        <button class="step-btn" id="step4">4 지하 본당</button>
-        <button class="step-btn" id="step6">5 2층 소그룹실</button>
-        <button class="step-btn" id="step5">6 3층 식당</button>
-        <button class="step-btn" id="step7">7 4층 목양실·옥상정원</button>
+        <button class="step-btn" id="step4">2 지하 본당</button>
+        <button class="step-btn" id="step6">3 2층 소그룹실</button>
+        <button class="step-btn" id="step5">4 3층 식당</button>
+        <button class="step-btn" id="step7">5 4층 목양실·옥상정원</button>
       </div>
 
       <div class="header-right">
+        <button class="bgm-btn" id="zoomToggle" title="넓게 보기 / 가까이 보기">👀 가까이</button>
         <button class="bgm-btn" id="bgmToggle" title="잔잔한 찬양 켜기/끄기">🎵</button>
         <button class="bgm-btn" id="helpToggle" title="조작 안내">❔</button>
         <button class="bgm-btn" id="uiToggle" title="버튼 숨기기">🙈</button>
@@ -317,8 +316,8 @@
       if (!o.isMesh || o.userData.noCamBlock) return false;
       for (let q = o; q; q = q.parent) { if (!q.visible) return false; if (q.userData && q.userData.noCamBlock) return false; }
       const m = Array.isArray(o.material) ? o.material[0] : o.material;
-      if (!m || (m.transparent && m.opacity < 0.6)) return false;
-      if (/GLASS|Glass|glass|ENV_|TREE|Leaf/.test(o.name)) return false;   // 유리·나무는 비쳐 보이므로 막지 않음
+      if (!m || (m.transparent && m.opacity < 0.15)) return false;
+      if (/ENV_|TREE|Leaf/.test(o.name)) return false;   // 바깥 나무는 막지 않음 (유리는 막아서 카메라가 건물 밖으로 안 나감)
       return true;
     }
     function camBeforeUpdate() {
@@ -1444,7 +1443,7 @@
       step7: {
         name: '4층 목양실 · 옥상 정원',
         level: 'F4',
-        charPos: new THREE.Vector3(-4.0, 10.75, -6.4),  // 엘리베이터 계단실에서 나와 정원 너머 목양실 쪽을 바라봄
+        charPos: new THREE.Vector3(-6.5, 10.75, -9.3),  // 옥상 정원 가운데에서 목양실·교육관 쪽을 바라봄 (카메라는 정원 앞쪽)
         charRot: Math.PI,
         camPos: new THREE.Vector3(-6.2, 15.0, 2.0), camLook: new THREE.Vector3(-6.2, 10.8, -9.0),
         floorY: 10.75,
@@ -1459,12 +1458,16 @@
     // ---- 카메라: 기본은 '내 시선'(캐릭터 눈높이에서 어깨 뒤로 따라감), 버튼으로 '위에서' 보기 ----
     const viewMode = 'eye'; // 항상 캐릭터 눈높이 시점
     const EYE_H = 0.62;          // 캐릭터 눈높이 (키 0.8m)
-    const CAM_BACK = 1.9, CAM_UP = 0.34;
+    // 넓게 보기(기본): 캐릭터 뒤 4.4m, 눈높이보다 1.9m 위에서 공간 전체를 비스듬히 / 가까이: 어깨 너머
+    const CAM_PRESETS = { wide: { back: 4.4, up: 1.9 }, near: { back: 1.9, up: 0.34 } };
+    let camPreset = 'wide';
+    let CAM_BACK = CAM_PRESETS.wide.back, CAM_UP = CAM_PRESETS.wide.up;
     let userDragging = false;
     controls.addEventListener('start', () => { userDragging = true; });
     controls.addEventListener('end', () => { userDragging = false; });
     const lastCharPos = new THREE.Vector3();
     function eyeCam(back) {
+      if (camPreset === 'wide' && back) back = back * 2.2;     // 앉기 시점도 넓게 볼 때는 더 뒤에서
       const p = characterGroup.position, r = characterGroup.rotation.y;
       const fx = Math.sin(r), fz = Math.cos(r);
       controls.target.set(p.x, p.y + EYE_H, p.z);
@@ -1535,7 +1538,7 @@
           mesh.material.depthWrite = true;
         });
         terrain.visible = !wp.isB1;
-        controls.maxDistance = eye ? 8 : 55;
+        controls.maxDistance = eye ? 14 : 55;   // 휠·두 손가락으로 더 멀리 볼 수 있게
       }
 
       rebuildWalk(); buildNav(); walkPath = [];
@@ -1561,14 +1564,18 @@
       const end = (e) => { if (e.pointerId !== id) return; id = null; joy.x = joy.y = 0; knob.style.transform = ''; };
       pad.addEventListener('pointerup', end); pad.addEventListener('pointercancel', end);
     }
+    document.getElementById('zoomToggle').addEventListener('click', (e) => {
+      camPreset = camPreset === 'wide' ? 'near' : 'wide';
+      CAM_BACK = CAM_PRESETS[camPreset].back; CAM_UP = CAM_PRESETS[camPreset].up;
+      e.currentTarget.textContent = camPreset === 'wide' ? '👀 가까이' : '🔭 넓게';
+      eyeCam();
+    });
     const guideCard = document.getElementById('guideCard');
     document.getElementById('helpToggle').addEventListener('click', () => { guideCard.hidden = !guideCard.hidden; });
     const uiOverlay = document.getElementById('ui-overlay'), uiShow = document.getElementById('uiShow');
     document.getElementById('uiToggle').addEventListener('click', () => { uiOverlay.classList.add('ui-hidden'); uiShow.hidden = false; });
     uiShow.addEventListener('click', () => { uiOverlay.classList.remove('ui-hidden'); uiShow.hidden = true; });
     document.getElementById('step1').addEventListener('click', () => goToTourStep('step1'));
-    document.getElementById('step2').addEventListener('click', () => goToTourStep('step2'));
-    document.getElementById('step3').addEventListener('click', () => goToTourStep('step3'));
     document.getElementById('step4').addEventListener('click', () => goToTourStep('step4'));
     document.getElementById('step5').addEventListener('click', () => goToTourStep('step5'));
     document.getElementById('step6').addEventListener('click', () => goToTourStep('step6'));
@@ -2015,7 +2022,7 @@
       camBeforeUpdate();
       controls.update();
       camAfterUpdate();
-      levelLabels.forEach(l => { if (l.visible) l.material.opacity = THREE.MathUtils.clamp((l.position.distanceTo(camera.position) - 2.0) / 2.0, 0, 1); }); // 너무 가까운 이름표는 흐리게
+      levelLabels.forEach(l => { if (l.visible) l.material.opacity = THREE.MathUtils.clamp((l.position.distanceTo(camera.position) - 2.5) / 2.5, 0, 1); }); // 너무 가까운 이름표는 흐리게
       ceilingRig.visible = camera.position.y < -1.0; // 천장 위에서 내려다보면 조명 줄이 객석을 가리므로 숨김
       renderer.render(scene, camera);
     }
