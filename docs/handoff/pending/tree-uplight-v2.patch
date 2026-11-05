@@ -1,0 +1,47 @@
+diff --git a/index.html b/index.html
+index 51dbd4e..911fcfd 100644
+--- a/index.html
++++ b/index.html
+@@ -494,7 +494,7 @@
+       renderer.toneMappingExposure = n ? 1.05 : 1.15;
+       nightGlows.forEach((gm) => { gm.mat.opacity = n ? gm.night : gm.day; });
+       glassMats.forEach((m) => { if (!m.emissive) return; m.emissive.set(n ? 0xffc27a : 0x000000); m.emissiveIntensity = n ? 0.55 : 0; });
+-      treeLeaves.forEach((m) => { if (!m.emissive) return; m.emissive.set(n ? 0x4f6a2e : 0x000000); m.emissiveIntensity = n ? 0.32 : 0; });   // 밤: 나무 아래 조명이 잎을 따뜻하게 비춤
++      treeLeaves.forEach((m) => { if (!m.emissive) return; m.emissive.set(n ? 0x4f6a2e : 0x000000); m.emissiveIntensity = n ? 0.2 : 0; });   // 밤: 나무 아래 조명이 잎을 따뜻하게 비춤
+       outdoorCross.forEach((m) => { if (!m.material.emissive) return; m.material.emissive.set(n ? 0xfff2d8 : 0x000000); m.material.emissiveIntensity = n ? 1.6 : 0; });
+       if (!nightLights) {   // 밤에만 켜는 바깥 빛: 건물 앞을 비추는 빛 2개 + 십자가 탑 위로 비추는 빛
+         nightLights = new THREE.Group(); scene.add(nightLights);
+@@ -505,15 +505,26 @@
+         [-11.0, -8.6, -6.2, -3.8].forEach((x) => glowSpot(nightLights, x, 0.03, 3.4, 1.6, 1.6, 0xffd9a0, [-Math.PI / 2, 0, 0], 0, 0.6));   // 광장 바닥 조명
+         // 바깥 나무: 밑동에서 위로 비추는 조명 — 바닥의 둥근 빛 + 작은 조명 기구 + 잎 아래쪽이 따뜻하게 물드는 빛
+         const fixtureM = new THREE.MeshBasicMaterial({ color: 0xfff1d0, toneMapped: false });
++        // 나무 밑 바닥 조명(업라이트): 땅에 묻힌 작은 등 + 등 주변 바닥 빛 + 줄기를 타고 올라가는 은은한 빛줄기
++        const housingM = new THREE.MeshStandardMaterial({ color: 0x2b2b2b, roughness: 0.5, metalness: 0.4 });
++        const beamM = new THREE.ShaderMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
++          uniforms: { c: { value: new THREE.Color(0xffd9a0) } },
++          vertexShader: 'varying float vy; void main(){ vy = uv.y; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
++          fragmentShader: 'uniform vec3 c; varying float vy; void main(){ float a = pow(1.0 - vy, 1.6) * 0.22; gl_FragColor = vec4(c * a, a); }' });
+         treeTrunks.forEach((tr) => {
+           tr.geometry.computeBoundingBox(); const bb = tr.geometry.boundingBox.clone().applyMatrix4(tr.matrixWorld);
+-          const x = (bb.min.x + bb.max.x) / 2, z = (bb.min.z + bb.max.z) / 2, y0 = bb.min.y, top = bb.max.y;
+-          glowSpot(nightLights, x, y0 + 0.03, z, 2.6, 2.6, 0xffd29a, [-Math.PI / 2, 0, 0], 0, 0.55);
+-          const fx = noHit(new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 0.08, 10), fixtureM)); fx.position.set(x + 0.35, y0 + 0.04, z + 0.35); nightLights.add(fx);
+-          const sp = noHit(new THREE.Sprite(new THREE.SpriteMaterial({ map: GLOW_TEX, color: 0xffc77a, transparent: true, opacity: 0.38, depthWrite: false, blending: THREE.AdditiveBlending })));
+-          sp.position.set(x, top + 0.6, z); sp.scale.set(5.2, 5.6, 1); nightLights.add(sp);
+-          const tw = noHit(new THREE.Sprite(new THREE.SpriteMaterial({ map: GLOW_TEX, color: 0xffe0a8, transparent: true, opacity: 0.35, depthWrite: false, blending: THREE.AdditiveBlending })));
+-          tw.position.set(x, (y0 + top) / 2, z); tw.scale.set(1.2, top - y0 + 0.6, 1); nightLights.add(tw);   // 줄기를 따라 올라가는 빛
++          const x = (bb.min.x + bb.max.x) / 2, z = (bb.min.z + bb.max.z) / 2, y0 = bb.min.y, top = bb.max.y, h = top - y0 + 0.8;
++          [[0.42, 0.25], [-0.42, -0.25]].forEach(([ox, oz]) => {
++            const fx = x + ox, fz = z + oz;
++            const hs = noHit(new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.12, 0.06, 14), housingM)); hs.position.set(fx, y0 + 0.03, fz); nightLights.add(hs);
++            const lens = noHit(new THREE.Mesh(new THREE.CircleGeometry(0.08, 14), fixtureM)); lens.rotation.x = -Math.PI / 2; lens.position.set(fx, y0 + 0.065, fz); nightLights.add(lens);
++            glowSpot(nightLights, fx, y0 + 0.02, fz, 1.6, 1.6, 0xffcf8a, [-Math.PI / 2, 0, 0], 0, 0.95);   // 등 둘레 바닥이 동그랗게 밝음
++            const beam = noHit(new THREE.Mesh(new THREE.CylinderGeometry(0.75, 0.09, h, 18, 1, true), beamM));
++            beam.position.set(fx - ox * 0.5, y0 + h / 2, fz - oz * 0.5); beam.rotation.set(-oz * 0.12, 0, ox * 0.12); beam.renderOrder = 4; nightLights.add(beam);   // 줄기 쪽으로 살짝 기울어 위로
++          });
++          glowSpot(nightLights, x, y0 + 0.015, z, 3.0, 3.0, 0xffd29a, [-Math.PI / 2, 0, 0], 0, 0.45);   // 나무 밑 전체 은은한 빛
++          const tw = noHit(new THREE.Sprite(new THREE.SpriteMaterial({ map: GLOW_TEX, color: 0xffe0a8, transparent: true, opacity: 0.3, depthWrite: false, blending: THREE.AdditiveBlending })));
++          tw.position.set(x, (y0 + top) / 2, z); tw.scale.set(1.1, top - y0 + 0.6, 1); nightLights.add(tw);   // 줄기에 비친 빛
+         });
+       }
+       nightLights.visible = n;
