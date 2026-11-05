@@ -1772,15 +1772,16 @@
 
     // ---- 베이지 대리석 무늬 (본당 바닥): 1024px 한 장에 타일 4×4, 이어 붙여도 이음새가 안 보이게 가장자리를 감아서 그림 ----
     const MARBLE_SPAN = 1.6;                     // 그림 한 장이 덮는 바닥 너비(m) → 타일 한 장 0.4m
-    function marbleTexture(seed) {
+    function marbleTexture(seed, smooth) {                   // smooth: 얼룩·굵은 결을 줄인 매끈한 판 (강단)
       const N = 1024, c = document.createElement('canvas'); c.width = c.height = N; const x = c.getContext('2d');
       let sd = seed || 7; const rnd = () => { sd = (sd * 16807) % 2147483647; return sd / 2147483647; };
       const wrap = (fn) => { for (const ox of [-N, 0, N]) for (const oy of [-N, 0, N]) fn(ox, oy); };
       x.fillStyle = '#f4e6d0'; x.fillRect(0, 0, N, N);
-      for (let i = 0; i < 70; i++) {                                    // 은은한 얼룩 (밝은 크림 / 조금 진한 베이지)
+      const K = smooth ? 0.3 : 1;
+      for (let i = 0; i < (smooth ? 30 : 70); i++) {                    // 은은한 얼룩 (밝은 크림 / 조금 진한 베이지)
         const cx = rnd() * N, cy = rnd() * N, r = 40 + rnd() * 170, dark = rnd() < 0.55;
         wrap((ox, oy) => { const gr = x.createRadialGradient(cx + ox, cy + oy, 0, cx + ox, cy + oy, r);
-          gr.addColorStop(0, dark ? 'rgba(226,198,160,0.16)' : 'rgba(252,244,232,0.35)'); gr.addColorStop(1, 'rgba(0,0,0,0)');
+          gr.addColorStop(0, dark ? `rgba(226,198,160,${0.16 * K})` : `rgba(252,244,232,${0.35 * K})`); gr.addColorStop(1, 'rgba(0,0,0,0)');
           x.fillStyle = gr; x.fillRect(cx + ox - r, cy + oy - r, r * 2, r * 2); });
       }
       const vein = (col, w, steps, len) => {                            // 갈라지는 결 (마구 걷는 선)
@@ -1788,12 +1789,12 @@
         for (let i = 0; i < steps; i++) { a += (rnd() - 0.5) * 0.9; px += Math.cos(a) * len; py += Math.sin(a) * len; pts.push([px, py]); }
         wrap((ox, oy) => { x.beginPath(); pts.forEach(([u, v], i) => i ? x.lineTo(u + ox, v + oy) : x.moveTo(u + ox, v + oy)); x.strokeStyle = col; x.lineWidth = w; x.lineJoin = 'round'; x.stroke(); });
       };
-      x.filter = 'blur(2px)'; for (let i = 0; i < 16; i++) vein('rgba(214,182,140,0.22)', 4 + rnd() * 5, 30 + rnd() * 30, 9 + rnd() * 8);
+      x.filter = 'blur(2px)'; for (let i = 0; i < (smooth ? 5 : 16); i++) vein(smooth ? 'rgba(214,182,140,0.1)' : 'rgba(214,182,140,0.22)', 4 + rnd() * 5, 30 + rnd() * 30, 9 + rnd() * 8);
       x.filter = 'none';
-      for (let i = 0; i < 26; i++) vein('rgba(196,160,118,0.32)', 0.8 + rnd() * 1.4, 20 + rnd() * 40, 6 + rnd() * 8);
-      for (let i = 0; i < 18; i++) vein('rgba(255,250,240,0.7)', 0.8 + rnd() * 1.2, 15 + rnd() * 30, 6 + rnd() * 8);
+      for (let i = 0; i < (smooth ? 10 : 26); i++) vein(smooth ? 'rgba(196,160,118,0.22)' : 'rgba(196,160,118,0.32)', 0.8 + rnd() * 1.4, 20 + rnd() * 40, 6 + rnd() * 8);
+      for (let i = 0; i < (smooth ? 8 : 18); i++) vein(smooth ? 'rgba(255,250,240,0.45)' : 'rgba(255,250,240,0.7)', 0.8 + rnd() * 1.2, 15 + rnd() * 30, 6 + rnd() * 8);
       const T = N / 4;                                                  // 타일마다 밝기를 살짝 다르게 + 줄눈
-      for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) { x.fillStyle = rnd() < 0.5 ? 'rgba(255,248,236,0.08)' : 'rgba(200,170,130,0.06)'; x.fillRect(i * T, j * T, T, T); }
+      for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) { x.fillStyle = rnd() < 0.5 ? `rgba(255,248,236,${0.08 * K})` : `rgba(200,170,130,${0.06 * K})`; x.fillRect(i * T, j * T, T, T); }
       x.strokeStyle = 'rgba(214,192,162,0.55)'; x.lineWidth = 1.5;
       for (let i = 0; i <= 4; i++) { x.beginPath(); x.moveTo(i * T, 0); x.lineTo(i * T, N); x.moveTo(0, i * T); x.lineTo(N, i * T); x.stroke(); }
       const tex = new THREE.CanvasTexture(c); tex.wrapS = tex.wrapT = THREE.RepeatWrapping; tex.anisotropy = 8;
@@ -2050,10 +2051,10 @@
       });
       // 강단 두 단: 바닥 대리석보다 조금 짙은 베이지 대리석 (사용자 요청). 윗단을 아랫단보다 아주 조금 더 짙게
       {
-        const st = marbleTexture(23);
-        [['B1_FINAL_Stage_Tier_0', 0xeedcc6], ['B1_FINAL_Stage_Tier_1', 0xe8d4bb]].forEach(([n, col]) => {
+        const st = marbleTexture(23, true);   // 매끈하게 (사용자 요청)
+        [['B1_FINAL_Stage_Tier_0', 0xe2c9a8], ['B1_FINAL_Stage_Tier_1', 0xdbc09c]].forEach(([n, col]) => {
           const m = byName[n]; if (!m) return;
-          m.material = new THREE.MeshStandardMaterial({ map: st, color: col, emissiveMap: st, emissive: 0xf2e2cc, emissiveIntensity: 0.2, roughness: 0.25, metalness: 0.0 });
+          m.material = new THREE.MeshStandardMaterial({ map: st, color: col, emissiveMap: st, emissive: 0xe8d2b4, emissiveIntensity: 0.16, roughness: 0.16, metalness: 0.0 });
           m.geometry = planarUV(m, MARBLE_SPAN); m.receiveShadow = true;
         });
       }
