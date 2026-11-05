@@ -226,6 +226,13 @@
     #elevFade { position: absolute; inset: 0; background: #0b1220; opacity: 0; pointer-events: none; transition: opacity 0.45s; z-index: 7;
       display: flex; align-items: center; justify-content: center; color: #fff; font-size: 18px; font-weight: 700; }
     #elevFade.on { opacity: 1; }
+    #nameModal { position: absolute; inset: 0; z-index: 8; background: rgba(15, 23, 42, 0.55); display: flex; align-items: center; justify-content: center; }
+    .name-card { width: min(320px, 88vw); background: #fffaf2; color: #3b2f22; border-radius: 18px; padding: 20px; display: flex; flex-direction: column; gap: 10px; box-shadow: 0 10px 40px rgba(0,0,0,0.35); }
+    .name-title { font-size: 17px; font-weight: 800; }
+    .name-sub { font-size: 13px; color: #7a6a58; }
+    #nameInput { font-size: 17px; padding: 11px 12px; border-radius: 10px; border: 1.5px solid #d8c7ab; outline: none; user-select: text; }
+    #nameInput:focus { border-color: #b08a5a; }
+    #nameOk { font-size: 15px; font-weight: 700; padding: 11px; border-radius: 10px; border: none; background: #8a6a42; color: #fff; cursor: pointer; }
   </style>
 
   <script type="importmap">{"imports":{"three":"./vendor/three/three.module.js"}}</script>
@@ -257,6 +264,7 @@
       </div>
 
       <div class="header-right">
+        <button class="bgm-btn" id="nameBtn" title="이름 바꾸기">👤 이름</button>
         <button class="bgm-btn" id="zoomToggle" title="넓게 보기 / 가까이 보기">👀 가까이</button>
         <button class="bgm-btn" id="bgmToggle" title="잔잔한 찬양 켜기/끄기">🎵</button>
         <button class="bgm-btn" id="helpToggle" title="조작 안내">❔</button>
@@ -293,6 +301,14 @@
     <button class="elev-close" id="elevClose">닫기</button>
   </div>
   <div id="elevFade"><span id="elevFadeText"></span></div>
+  <div id="nameModal" hidden>
+    <div class="name-card">
+      <div class="name-title">물댄동산교회에 오신 것을 환영해요 🙌</div>
+      <div class="name-sub">캐릭터 머리 위에 보일 이름을 적어 주세요</div>
+      <input id="nameInput" maxlength="12" placeholder="예: 혜연" autocomplete="nickname">
+      <button id="nameOk">들어가기</button>
+    </div>
+  </div>
 
   <script type="module">
     import * as THREE from 'three';
@@ -673,7 +689,7 @@
     const mat = (c) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.8 });
     const mWood = mat(0x9a6b3f), mSeat = mat(0xe0c08f), mBack = mat(0xc4975f);
     const mPlate = mat(0xf7f7f7), mSoup = mat(0xc8452d);
-    const mWall = mat(0xf1ece4), mCounter = mat(0xe6dfd2), mTop = mat(0xb98a5a), mDark = mat(0x3a3a3a);
+    const mWall = mat(0xeadcc6), mCounter = mat(0xe6dfd2), mTop = mat(0xb98a5a), mDark = mat(0x3a3a3a);
 
     function box(w, h, d, x, y0, z, material) {
       const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), material);
@@ -818,6 +834,7 @@
     //   북서 BACK_STONE_FIN(x -12.15~-10.15, z -16.8~-15.8), 북동 RIGHT_STONE_END_PIER(x -1.04~0.21, z -17.1~-15.1),
     //   남서 WEST_STONE_PIER(x -12.27~-9.73, z -1.49~0.16), 남동 CROSS_TOWER(x -2.24~0.38, z -2.45~0.55, 2층 이상)
     const F1_Y = 0.0, F2_Y = 3.65, F4_Y = 10.75;
+    const BEIGE_WALL = 0xeadcc6, BEIGE_FLOOR = 0xd4bf9c;   // 실내 벽·바닥 베이지 톤
     const floorLights = {};
     function makeKit(Y, group, lv) {
       const M = (c, r) => new THREE.MeshStandardMaterial({ color: c, roughness: r === undefined ? 0.8 : r });
@@ -871,7 +888,7 @@
             b.position.set(-w / 2 + 0.07 + i * 0.09, 0.18 + r * 0.34, 0.04); g.add(b);
           }
         },
-        label(text, x, z, y) {
+        label(text, x, z, y, sc) {
           const c = document.createElement('canvas'); c.width = 320; c.height = 96;
           const gx = c.getContext('2d');
           gx.fillStyle = 'rgba(15,23,42,0.78)';
@@ -879,7 +896,7 @@
           gx.fillStyle = '#fff'; gx.font = 'bold 40px sans-serif'; gx.textAlign = 'center'; gx.textBaseline = 'middle'; gx.fillText(text, 160, 50);
           const tex = new THREE.CanvasTexture(c); if ('colorSpace' in tex) tex.colorSpace = THREE.SRGBColorSpace;
           const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false }));
-          sp.scale.set(1.5, 0.45, 1); sp.position.set(x, Y + (y || 2.6), z); sp.renderOrder = 10;
+          sp.scale.set(1.5 * (sc || 1), 0.45 * (sc || 1), 1); sp.position.set(x, Y + (y || 2.6), z); sp.renderOrder = 10;
           sp.userData.lv = lv; sp.visible = false; levelLabels.push(sp); group.add(sp);
         },
         light(x, z, I) {
@@ -889,7 +906,7 @@
           const l = new THREE.PointLight(0xfff0d8, (I || 1.6) * 1.4, 16, 1.0); l.position.set(x, Y + 2.7, z); l.visible = false; group.add(l); list.push(l);
         },
       };
-      k.mWall = M(0xf1ece4); k.mWood = M(0x9a6b3f); k.mSeat = M(0xe0c08f); k.mPot = M(0xd9d4cc); k.mLeaf = M(0x4f8a4b);
+      k.mWall = M(BEIGE_WALL); k.mWood = M(0x9a6b3f); k.mSeat = M(0xe0c08f); k.mPot = M(0xd9d4cc); k.mLeaf = M(0x4f8a4b);
       k.mGlass = new THREE.MeshStandardMaterial({ color: 0xbfe3f2, transparent: true, opacity: 0.28, roughness: 0.1 });
       return k;
     }
@@ -917,11 +934,11 @@
         });
       });
       k.box(1.3, 0.12, 0.1, -2.8, H - 0.5, LZ1, frame);                       // 자동문 위 틀
-      k.wall(LX0, LZ0, LX1, LZ0, H, k.M(0xe8e1d6));                            // 뒷벽 (엘리베이터·계단)
+      k.wall(LX0, LZ0, LX1, LZ0, H, k.M(BEIGE_WALL));                            // 뒷벽 (엘리베이터·계단)
       const steel = k.M(0xb8bcc2, 0.3);
       [-4.3, -3.2].forEach((x) => { k.box(0.9, 2.1, 0.05, x, 0, LZ0 + 0.05, steel); k.box(0.02, 2.1, 0.06, x, 0, LZ0 + 0.06, k.M(0x6b7078)); k.box(0.12, 0.2, 0.04, x + 0.6, 1.0, LZ0 + 0.06, k.M(0x222831)); });
       k.box(0.95, 2.1, 0.05, -1.3, 0, LZ0 + 0.05, k.M(0x8a6a4a));               // 계단실 문
-      k.box(4.9, 0.02, 4.4, -2.8, 0.0, -12.7, k.M(0xd8cfc2, 0.6));               // 로비 바닥 석재
+      k.box(4.9, 0.02, 4.4, -2.8, 0.0, -12.7, k.M(BEIGE_FLOOR, 0.6));               // 로비 바닥 석재
       k.box(1.8, 0.02, 1.0, -2.8, 0.02, -10.95, k.M(0x5b4a3a));                  // 현관 매트
       k.box(1.6, 0.5, 0.5, -4.4, 0, -12.2, k.M(0xc9b08a)); k.box(1.7, 0.04, 0.6, -4.4, 0.5, -12.2, k.M(0x7d5a3a)); // 안내 데스크
       k.sofa(-1.0, -12.6, 1.4, -Math.PI / 2, k.M(0x8a9bb0));                    // 대기 소파 (서쪽을 봄)
@@ -1042,7 +1059,7 @@
         k.label('그룹실', -1.25, -13.0);
       }
       // 계단실 #1(서쪽 앞)·#2(동쪽 앞, 엘리베이터): 지붕 있는 상자
-      const coreWall = k.M(0xe8e1d6);
+      const coreWall = k.M(BEIGE_WALL);
       k.wall(-12.26, F4_CORE_N, CORE1_E, F4_CORE_N, H, coreWall); k.wallDoor(CORE1_E, F4_CORE_N, CORE1_E, -1.5, -3.6, 1.0, H, coreWall);
       k.wallDoor(CORE2_W, F4_CORE_N, 0, F4_CORE_N, -4.0, 1.1, H, coreWall); k.wall(CORE2_W, F4_CORE_N, CORE2_W, 0.1, H, coreWall); k.wall(0.0, F4_CORE_N, 0.0, -2.45, H, coreWall);
       k.wall(CORE2_W, 0.1, -2.24, 0.1, H, coreWall);
@@ -1074,6 +1091,21 @@
         for (let xx = CORE1_E + 0.5; xx < CORE2_W - 0.4; xx += 0.5) { const fl = new THREE.Mesh(new THREE.SphereGeometry(0.13, 8, 6), k.M([0xf08aa8, 0xf6d55c, 0xffffff][Math.round(xx * 2) % 3 + (Math.round(xx * 2) % 3 < 0 ? 3 : 0)] || 0xf08aa8)); fl.position.set(xx, F4_Y + 0.34, -0.2); f4.add(fl); }
         k.label('옥상 정원', -6.4, -8.6, 2.2);
       }
+    }
+    // 실내 바닥·벽 안쪽을 베이지로: 건물 바깥에 보이는 GLB 재질은 바꾸지 않고, 안쪽에 얇은 판을 덧댐
+    {
+      const floorM = new THREE.MeshStandardMaterial({ color: BEIGE_FLOOR, roughness: 0.75 });
+      const wallM = new THREE.MeshStandardMaterial({ color: BEIGE_WALL, roughness: 0.85 });
+      const lin = new THREE.Group(); lin.name = 'BEIGE_LINING'; scene.add(lin);
+      const plate = (x0, x1, z0, z1, y, m, h) => { const g = new THREE.Mesh(new THREE.BoxGeometry(x1 - x0, h || 0.006, z1 - z0), m); g.position.set((x0 + x1) / 2, y + (h || 0.006) / 2, (z0 + z1) / 2); g.receiveShadow = true; lin.add(g); };
+      [[F2_Y, 3.3], [F3_Y, 3.2]].forEach(([Y, H]) => {
+        plate(-12.26, 0.05, -17.36, 0.08, Y + 0.002, floorM);                      // 바닥
+        plate(-12.26, 0.0, -17.36, -17.33, Y, wallM, H);                             // 북쪽 벽 안쪽
+        plate(-12.26, -12.23, -17.33, 0.0, Y, wallM, H);                             // 서쪽 벽 안쪽
+      });
+      plate(-12.26, 0.05, -17.36, -11.5, F4_Y + 0.002, floorM);                     // 4층 실내
+      plate(-12.26, -10.5, -5.6, 0.08, F4_Y + 0.002, floorM); plate(-5.4, 0.05, -5.6, 0.08, F4_Y + 0.002, floorM);   // 4층 계단실
+      plate(-12.26, 0.0, -17.36, -17.33, F4_Y, wallM, 3.15); plate(-12.23, -12.2, -17.33, -11.5, F4_Y, wallM, 3.15);
     }
     // 4층 GLB 보정: 파일은 그대로 두고, 화면이 열릴 때 도면처럼 옥상 정원 위 지붕과 유리를 없앤다
     function applyF4Fixes(root) {
@@ -1108,7 +1140,7 @@
     const CALL_POINTS = { F1: [[ELEV.x, -2.85], [-3.75, -14.4]], F4: [[ELEV.x, -2.85], [-4.0, -6.3]] };   // 1층은 로비 안, 4층은 계단실 문 앞에서도 탈 수 있음
     function addElevator(Y, group, lv, shaft) {
       const k = makeKit(Y, group, lv);
-      const steel = k.M(0xb8bcc2, 0.3), frameM = k.M(0x5d6470, 0.4), wallM = k.M(0xe8e1d6);
+      const steel = k.M(0xb8bcc2, 0.3), frameM = k.M(0x5d6470, 0.4), wallM = k.M(BEIGE_WALL);
       if (shaft) {
         k.wallDoor(-3.5, ELEV.doorZ, -2.3, ELEV.doorZ, ELEV.x, 0.8, 2.8, wallM);
         k.wall(-3.5, ELEV.doorZ, -3.5, 0.0, 2.8, wallM); k.wall(-2.3, ELEV.doorZ, -2.3, 0.0, 2.8, wallM); k.wall(-3.5, 0.0, -2.3, 0.0, 2.8, wallM);
@@ -1116,7 +1148,7 @@
       [-1, 1].forEach((sd) => k.box(0.39, 2.0, 0.04, ELEV.x + sd * 0.2, 0, ELEV.doorZ - 0.03, steel));   // 닫힌 문 두 짝
       k.box(0.9, 0.08, 0.06, ELEV.x, 2.0, ELEV.doorZ - 0.04, frameM);
       k.box(0.08, 0.14, 0.03, ELEV.x + 0.55, 0.95, ELEV.doorZ - 0.04, k.M(0x222831));                    // 호출 버튼
-      k.label('🛗 엘리베이터', ELEV.x, ELEV.doorZ - 0.3, 2.35);
+      k.label('🛗 엘리베이터', ELEV.x, ELEV.doorZ - 0.3, 2.35, 0.6);
     }
     {
       const b1g = new THREE.Group(); b1g.name = 'B1_ELEVATOR'; scene.add(b1g); addElevator(-6.6, b1g, 'B1', true);
@@ -1212,7 +1244,7 @@
         if (i >= 0) clickableObjects.splice(i, 1);
       };
       const M = (c, extra) => new THREE.MeshStandardMaterial(Object.assign({ color: c, roughness: 0.85 }, extra || {}));
-      const wm = M(0xebe6db), gm = M(0xcfe6f2, { transparent: true, opacity: 0.28, roughness: 0.1, depthWrite: false });
+      const wm = M(0xeadcc6), gm = M(0xcfe6f2, { transparent: true, opacity: 0.28, roughness: 0.1, depthWrite: false });
       const bx = (x0, x1, y0, y1, z0, z1, material) => {
         const m = new THREE.Mesh(new THREE.BoxGeometry(x1 - x0, y1 - y0, z1 - z0), material);
         m.position.set((x0 + x1) / 2, FLOOR + (y0 + y1) / 2, (z0 + z1) / 2);
@@ -1223,6 +1255,9 @@
       };
       const H = 3.0; // 칸막이 높이
 
+      // 0) 본당 바닥·벽 베이지 톤 (재질을 복사해서 다른 부재에 번지지 않게)
+      ['B1_FINAL_Floor_Main'].forEach((n) => { const m = byName[n]; if (m && m.material) { m.material = m.material.clone(); m.material.color.setHex(BEIGE_FLOOR); } });
+      ['B1_FINAL_Wall_North', 'B1_FINAL_Wall_West', 'B1_FINAL_Wall_East', 'B1_FINAL_Wall_South_L', 'B1_FINAL_Wall_South_R'].forEach((n) => { const m = byName[n]; if (m && m.material) { m.material = m.material.clone(); m.material.color.setHex(BEIGE_WALL); } });
       // 1) 의자: 줄과 간격을 새로 계산해서 다시 놓기 (겹침 · 벽 침범 없음)
       const fT = byName['B1_FINAL_Pew_Frame_0_0'], pT = byName['B1_FINAL_Pew_Pad_0_0'];
       if (fT && pT) {
@@ -1701,6 +1736,40 @@
     btnElevator.addEventListener('click', openElevPanel);
     document.getElementById('elevClose').addEventListener('click', () => { elevPanel.hidden = true; });
     elevPanel.querySelectorAll('.elev-btn').forEach((b) => b.addEventListener('click', () => ride(b.dataset.lv)));
+    // ---- 이름: 이 기기(브라우저)에 기억해 두고, 캐릭터 머리 위에 작게 띄움 ----
+    const NAME_KEY = 'mdc_name';
+    const loadName = () => { try { return localStorage.getItem(NAME_KEY) || ''; } catch (e) { return ''; } };
+    const saveName = (v) => { try { localStorage.setItem(NAME_KEY, v); } catch (e) { /* 저장이 막힌 브라우저면 이번 방문 동안만 */ } };
+    let nameSprite = null;
+    function setNameTag(name) {
+      if (nameSprite) { characterGroup.remove(nameSprite); nameSprite.material.map.dispose(); nameSprite = null; }
+      document.getElementById('nameBtn').textContent = name ? `👤 ${name}` : '👤 이름';
+      if (!name) return;
+      const c = document.createElement('canvas'); c.width = 256; c.height = 72;
+      const g = c.getContext('2d'); g.font = 'bold 34px sans-serif';
+      const w = Math.min(248, g.measureText(name).width + 34);
+      g.fillStyle = 'rgba(255,250,242,0.92)';
+      if (g.roundRect) { g.beginPath(); g.roundRect(128 - w / 2, 10, w, 52, 26); g.fill(); } else g.fillRect(128 - w / 2, 10, w, 52);
+      g.fillStyle = '#5a4126'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(name, 128, 37);
+      const tex = new THREE.CanvasTexture(c); if ('colorSpace' in tex) tex.colorSpace = THREE.SRGBColorSpace;
+      nameSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false }));
+      nameSprite.scale.set(0.9, 0.25, 1);                 // 캐릭터 그룹(0.8배) 안: 실제 폭 약 0.7m
+      nameSprite.position.set(0, 1.28, 0);                // 머리 위
+      nameSprite.renderOrder = 12;
+      characterGroup.add(nameSprite);
+    }
+    const nameModal = document.getElementById('nameModal'), nameInput = document.getElementById('nameInput');
+    function askName() { nameInput.value = loadName(); nameModal.hidden = false; setTimeout(() => nameInput.focus(), 50); }
+    function confirmName() {
+      const v = nameInput.value.trim().slice(0, 12);
+      if (!v) { nameInput.focus(); return; }
+      saveName(v); setNameTag(v); nameModal.hidden = true;
+    }
+    document.getElementById('nameOk').addEventListener('click', confirmName);
+    nameInput.addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Enter') confirmName(); });
+    nameInput.addEventListener('keyup', (e) => e.stopPropagation());
+    document.getElementById('nameBtn').addEventListener('click', askName);
+    { const saved = loadName(); if (saved) setNameTag(saved); else askName(); }
     const guideCard = document.getElementById('guideCard');
     document.getElementById('helpToggle').addEventListener('click', () => { guideCard.hidden = !guideCard.hidden; });
     const uiOverlay = document.getElementById('ui-overlay'), uiShow = document.getElementById('uiShow');
@@ -1736,7 +1805,7 @@
       const diffTime = performance.now() - downTime;
       const dist = Math.hypot(e.clientX - downPos.x, e.clientY - downPos.y);
       if (diffTime > 260 || dist > 6) return;
-      if (e.target.closest('#ui-overlay') || e.target.closest('#uiShow') || e.target.closest('#joy') || e.target.closest('#elevPanel')) return;
+      if (e.target.closest('#ui-overlay') || e.target.closest('#uiShow') || e.target.closest('#joy') || e.target.closest('#elevPanel') || e.target.closest('#nameModal')) return;
 
       mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
       mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
