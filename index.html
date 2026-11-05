@@ -263,6 +263,28 @@
     .pp-sub.anon { background: #fff; color: #6b4f33; border: 1.5px solid #c9a97a; }
     .pp-sub:disabled { opacity: 0.45; }
     .pp-note { font-size: 12px; color: #9a8a76; padding: 8px 14px 12px; border-top: 1px solid #f0e4d2; }
+    /* ---- 나타나기·사라지기 애니메이션 ---- */
+    @keyframes uiIn { from { opacity: 0; transform: translateY(10px) scale(0.94); } to { opacity: 1; transform: none; } }
+    @keyframes uiOut { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateY(8px) scale(0.96); } }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
+    @keyframes popIn { from { opacity: 0; transform: translateY(14px) scale(0.95); } to { opacity: 1; transform: none; } }
+    @keyframes elevIn { from { opacity: 0; transform: translate(-50%, -46%) scale(0.95); } to { opacity: 1; transform: translate(-50%, -50%); } }
+    @keyframes elevOut { from { opacity: 1; transform: translate(-50%, -50%); } to { opacity: 0; transform: translate(-50%, -46%) scale(0.96); } }
+    .action-btn:not([hidden]) { animation: uiIn 0.32s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+    .action-btn:not([hidden]):nth-child(2) { animation-delay: 0.04s; }
+    .action-btn:not([hidden]):nth-child(3) { animation-delay: 0.08s; }
+    .action-btn:not([hidden]):nth-child(4) { animation-delay: 0.12s; }
+    .action-btn.leaving { animation: uiOut 0.22s ease-in both; pointer-events: none; }
+    #elevPanel:not([hidden]) { animation: elevIn 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+    #elevPanel.leaving { animation: elevOut 0.22s ease-in both; pointer-events: none; }
+    #prayerPanel:not([hidden]), #nameModal:not([hidden]) { animation: fadeIn 0.25s ease-out both; }
+    #prayerPanel:not([hidden]) .pp-card, #nameModal:not([hidden]) .name-card { animation: popIn 0.34s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+    #prayerPanel.leaving, #nameModal.leaving { animation: fadeOut 0.22s ease-in both; pointer-events: none; }
+    #prayerPanel.leaving .pp-card, #nameModal.leaving .name-card { animation: uiOut 0.22s ease-in both; }
+    .guide-card:not([hidden]), #uiShow:not([hidden]) { animation: uiIn 0.28s ease-out both; }
+    .guide-card.leaving { animation: uiOut 0.2s ease-in both; }
+    @media (prefers-reduced-motion: reduce) { .action-btn, #elevPanel, #prayerPanel, #nameModal, .pp-card, .name-card, .guide-card { animation: none !important; } }
   </style>
 
   <script type="importmap">{"imports":{"three":"./vendor/three/three.module.js"}}</script>
@@ -1917,6 +1939,17 @@
       const end = (e) => { if (e.pointerId !== id) return; id = null; joy.x = joy.y = 0; knob.style.transform = ''; };
       pad.addEventListener('pointerup', end); pad.addEventListener('pointercancel', end);
     }
+    // 나타나기·사라지기: 사라질 땐 'leaving' 애니메이션(0.22초)이 끝난 뒤 숨김
+    function showEl(el, on) {
+      const want = on ? '1' : '0';
+      if (el.dataset.want === want) return;
+      el.dataset.want = want; clearTimeout(el._hideT);
+      if (on) { el.classList.remove('leaving'); el.hidden = false; return; }
+      if (el.hidden) return;
+      el.classList.add('leaving');
+      el._hideT = setTimeout(() => { el.hidden = true; el.classList.remove('leaving'); }, 220);
+    }
+    const isShown = (el) => el.dataset.want ? el.dataset.want === '1' : !el.hidden;
     // ---- 엘리베이터로만 층 이동, 행동 버튼은 그 층에 도착했을 때만 ----
     const btnElevator = document.getElementById('btnElevator'), elevPanel = document.getElementById('elevPanel');
     const elevFade = document.getElementById('elevFade'), elevFadeText = document.getElementById('elevFadeText');
@@ -1929,21 +1962,21 @@
     }
     function updateActions() {
       const lv = curLevel();
-      document.getElementById('btnActionPew').hidden = lv !== 'B1';
-      document.getElementById('btnActionPray').hidden = !(lv === 'B1' || lv === 'F2');
-      document.getElementById('btnActionEat').hidden = lv !== 'F3';
-      document.getElementById('btnActionGroup').hidden = lv !== 'F3';
+      showEl(document.getElementById('btnActionPew'), lv === 'B1');
+      showEl(document.getElementById('btnActionPray'), lv === 'B1' || lv === 'F2');
+      showEl(document.getElementById('btnActionEat'), lv === 'F3');
+      showEl(document.getElementById('btnActionGroup'), lv === 'F3');
       // 위쪽 장소 버튼: 지금 층 표시
       const map = { F1: 'step1', B1: 'step4', F2: 'step6', F3: 'step5', F4: 'step7' };
       document.querySelectorAll('.step-btn').forEach((b) => b.classList.toggle('active', b.id === map[lv]));
     }
     function openElevPanel() {
       elevPanel.querySelectorAll('.elev-btn').forEach((b) => { b.disabled = b.dataset.lv === curLevel(); });
-      elevPanel.hidden = false;
+      showEl(elevPanel, true);
     }
     function ride(lv) {
       if (riding) return;
-      riding = true; elevPanel.hidden = true; pendingRide = null; walkedSinceRide = false;
+      riding = true; showEl(elevPanel, false); pendingRide = null; walkedSinceRide = false;
       elevFadeText.textContent = `🛗 ${LEVEL_NAME[lv]}(으)로 이동 중…`;
       elevFade.classList.add('on');
       setTimeout(() => {
@@ -1954,7 +1987,7 @@
     }
     // 장소 버튼: 엘리베이터까지 걸어간 뒤 타고 이동 (같은 층이면 그 층 엘리베이터 앞으로 걸어감)
     function goByElevator(lv) {
-      elevPanel.hidden = true;
+      showEl(elevPanel, false);
       standUp();
       if (lv === curLevel()) return;
       if (nearElevator()) { ride(lv); return; }
@@ -1970,7 +2003,7 @@
       pendingRide = lv;
     }
     btnElevator.addEventListener('click', openElevPanel);
-    document.getElementById('elevClose').addEventListener('click', () => { elevPanel.hidden = true; });
+    document.getElementById('elevClose').addEventListener('click', () => { showEl(elevPanel, false); });
     elevPanel.querySelectorAll('.elev-btn').forEach((b) => b.addEventListener('click', () => ride(b.dataset.lv)));
     // ---- 기도제목: 쓰기 · 함께 기도하기 · 지우기 ----
     // 저장소를 한 곳(PrayerStore)으로 모아 두어, 나중에 Supabase를 연결하면 이 부분만 바꾸면 되게 함.
@@ -2021,12 +2054,12 @@
       document.getElementById('ppList').hidden = tab !== 'list'; document.getElementById('ppWrite').hidden = tab !== 'write';
       if (tab === 'write') { ppSync(); setTimeout(() => document.getElementById('ppText').focus(), 50); }
     }
-    function openPrayers(tab) { renderPrayers(); showPrayerTab(tab || 'list'); pp.panel.hidden = false; }
+    function openPrayers(tab) { renderPrayers(); showPrayerTab(tab || 'list'); showEl(pp.panel, true); }
     document.getElementById('prayerBtn').addEventListener('click', () => openPrayers('list'));
-    document.getElementById('ppClose').addEventListener('click', () => { pp.panel.hidden = true; });
+    document.getElementById('ppClose').addEventListener('click', () => { showEl(pp.panel, false); });
     pp.panel.addEventListener('click', (e) => {
       const t = e.target;
-      if (t === pp.panel) { pp.panel.hidden = true; return; }
+      if (t === pp.panel) { showEl(pp.panel, false); return; }
       if (t.dataset.tab) showPrayerTab(t.dataset.tab);
       if (t.dataset.f) { pp.filter = t.dataset.f; renderPrayers(); }
       if (t.dataset.c) { pp.cat = t.dataset.c; renderPrayers(); }
@@ -2100,11 +2133,11 @@
       characterGroup.add(nameSprite);
     }
     const nameModal = document.getElementById('nameModal'), nameInput = document.getElementById('nameInput');
-    function askName() { nameInput.value = loadName(); nameModal.hidden = false; setTimeout(() => nameInput.focus(), 50); }
+    function askName() { nameInput.value = loadName(); showEl(nameModal, true); setTimeout(() => nameInput.focus(), 50); }
     function confirmName() {
       const v = nameInput.value.trim().slice(0, 12);
       if (!v) { nameInput.focus(); return; }
-      saveName(v); setNameTag(v); nameModal.hidden = true;
+      saveName(v); setNameTag(v); showEl(nameModal, false);
     }
     document.getElementById('nameOk').addEventListener('click', confirmName);
     nameInput.addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Enter') confirmName(); });
@@ -2116,7 +2149,7 @@
     makePrayerBoard(-1.6, F2_Y + 1.25, -7.47, Math.PI);        // 2층 기도실 남쪽 벽
     updatePrayerBoards();
     const guideCard = document.getElementById('guideCard');
-    document.getElementById('helpToggle').addEventListener('click', () => { guideCard.hidden = !guideCard.hidden; });
+    document.getElementById('helpToggle').addEventListener('click', () => { showEl(guideCard, !isShown(guideCard)); });
     const uiOverlay = document.getElementById('ui-overlay'), uiShow = document.getElementById('uiShow');
     document.getElementById('uiToggle').addEventListener('click', () => { uiOverlay.classList.add('ui-hidden'); uiShow.hidden = false; });
     uiShow.addEventListener('click', () => { uiOverlay.classList.remove('ui-hidden'); uiShow.hidden = true; });
@@ -2622,11 +2655,11 @@
         eyeParts.lids.forEach((e) => { e.visible = closed; });
       }
       const nearPulpit = curLevel() === 'B1' && Math.hypot(characterGroup.position.x - PULPIT_AT.x, characterGroup.position.z - PULPIT_AT.z) < 1.9;
-      const bpw = document.getElementById('btnPrayerWrite'); if (bpw.hidden === nearPulpit) bpw.hidden = !nearPulpit;
+      showEl(document.getElementById('btnPrayerWrite'), nearPulpit);
       const nearEl = nearElevator();
-      if (btnElevator.hidden === nearEl) btnElevator.hidden = !nearEl;
+      showEl(btnElevator, nearEl);
       if (nearEl && !wasNearEl && walkedSinceRide && !pendingRide && !riding) openElevPanel();   // 걸어서 다가오면 층 선택 창
-      if (!nearEl && wasNearEl) elevPanel.hidden = true;                                            // 멀어지면 닫음
+      if (!nearEl && wasNearEl) showEl(elevPanel, false);                                            // 멀어지면 닫음
       if (isMoving) walkedSinceRide = true;
       wasNearEl = nearEl;
       if (pendingRide && !isMoving) { if (nearEl) ride(pendingRide); else pendingRide = null; }
