@@ -1770,6 +1770,44 @@
       s.userData.lv = 'B1'; s.visible = false; levelLabels.push(s);
     }
 
+    // ---- 베이지 대리석 무늬 (본당 바닥): 1024px 한 장에 타일 4×4, 이어 붙여도 이음새가 안 보이게 가장자리를 감아서 그림 ----
+    const MARBLE_SPAN = 1.6;                     // 그림 한 장이 덮는 바닥 너비(m) → 타일 한 장 0.4m
+    function marbleTexture() {
+      const N = 1024, c = document.createElement('canvas'); c.width = c.height = N; const x = c.getContext('2d');
+      let sd = 7; const rnd = () => { sd = (sd * 16807) % 2147483647; return sd / 2147483647; };
+      const wrap = (fn) => { for (const ox of [-N, 0, N]) for (const oy of [-N, 0, N]) fn(ox, oy); };
+      x.fillStyle = '#f4e6d0'; x.fillRect(0, 0, N, N);
+      for (let i = 0; i < 70; i++) {                                    // 은은한 얼룩 (밝은 크림 / 조금 진한 베이지)
+        const cx = rnd() * N, cy = rnd() * N, r = 40 + rnd() * 170, dark = rnd() < 0.55;
+        wrap((ox, oy) => { const gr = x.createRadialGradient(cx + ox, cy + oy, 0, cx + ox, cy + oy, r);
+          gr.addColorStop(0, dark ? 'rgba(226,198,160,0.16)' : 'rgba(252,244,232,0.35)'); gr.addColorStop(1, 'rgba(0,0,0,0)');
+          x.fillStyle = gr; x.fillRect(cx + ox - r, cy + oy - r, r * 2, r * 2); });
+      }
+      const vein = (col, w, steps, len) => {                            // 갈라지는 결 (마구 걷는 선)
+        let px = rnd() * N, py = rnd() * N, a = rnd() * Math.PI * 2; const pts = [[px, py]];
+        for (let i = 0; i < steps; i++) { a += (rnd() - 0.5) * 0.9; px += Math.cos(a) * len; py += Math.sin(a) * len; pts.push([px, py]); }
+        wrap((ox, oy) => { x.beginPath(); pts.forEach(([u, v], i) => i ? x.lineTo(u + ox, v + oy) : x.moveTo(u + ox, v + oy)); x.strokeStyle = col; x.lineWidth = w; x.lineJoin = 'round'; x.stroke(); });
+      };
+      x.filter = 'blur(2px)'; for (let i = 0; i < 16; i++) vein('rgba(214,182,140,0.22)', 4 + rnd() * 5, 30 + rnd() * 30, 9 + rnd() * 8);
+      x.filter = 'none';
+      for (let i = 0; i < 26; i++) vein('rgba(196,160,118,0.32)', 0.8 + rnd() * 1.4, 20 + rnd() * 40, 6 + rnd() * 8);
+      for (let i = 0; i < 18; i++) vein('rgba(255,250,240,0.7)', 0.8 + rnd() * 1.2, 15 + rnd() * 30, 6 + rnd() * 8);
+      const T = N / 4;                                                  // 타일마다 밝기를 살짝 다르게 + 줄눈
+      for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) { x.fillStyle = rnd() < 0.5 ? 'rgba(255,248,236,0.08)' : 'rgba(200,170,130,0.06)'; x.fillRect(i * T, j * T, T, T); }
+      x.strokeStyle = 'rgba(214,192,162,0.55)'; x.lineWidth = 1.5;
+      for (let i = 0; i <= 4; i++) { x.beginPath(); x.moveTo(i * T, 0); x.lineTo(i * T, N); x.moveTo(0, i * T); x.lineTo(N, i * T); x.stroke(); }
+      const tex = new THREE.CanvasTexture(c); tex.wrapS = tex.wrapT = THREE.RepeatWrapping; tex.anisotropy = 8;
+      if ('colorSpace' in tex) tex.colorSpace = THREE.SRGBColorSpace;
+      return tex;
+    }
+    // 화면에 그릴 복사본 바닥에 위에서 내려다본 무늬 좌표(x, z)를 붙임 (원본 모양·위치는 그대로)
+    function planarUV(mesh, span) {
+      mesh.updateWorldMatrix(true, false);
+      const geo = mesh.geometry.clone(), P = geo.attributes.position, uv = new Float32Array(P.count * 2), v = new THREE.Vector3();
+      for (let i = 0; i < P.count; i++) { v.fromBufferAttribute(P, i).applyMatrix4(mesh.matrixWorld); uv[i * 2] = v.x / span; uv[i * 2 + 1] = v.z / span; }
+      geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+      return geo;
+    }
     function applyB1Fixes(root) {
       const FLOOR = -6.6;
       const byName = {};
@@ -1797,6 +1835,8 @@
 
       // 0) 본당 바닥·벽 베이지 톤 (재질을 복사해서 다른 부재에 번지지 않게)
       ['B1_FINAL_Floor_Main'].forEach((n) => { const m = byName[n]; if (m && m.material) { m.material = m.material.clone(); m.material.color.setHex(BEIGE_FLOOR); } });
+      // 본당 바닥: 베이지 대리석 (사용자 요청 · 참고 사진 기준). 그림은 코드로 그리고, 바닥 판의 모양은 그대로 두고 무늬 좌표만 화면용 복사본에 붙임
+      { const fm = byName['B1_FINAL_Floor_Main']; if (fm) { const mt = marbleTexture(); fm.material = new THREE.MeshStandardMaterial({ map: mt, color: 0xfff4e4, emissiveMap: mt, emissive: 0xfff0dc, emissiveIntensity: 0.24, roughness: 0.22, metalness: 0.0 });   /* 윤이 나는 따뜻한 크림색 */ fm.geometry = planarUV(fm, MARBLE_SPAN); fm.receiveShadow = true; } }
       ['B1_FINAL_Wall_North', 'B1_FINAL_Wall_West', 'B1_FINAL_Wall_East', 'B1_FINAL_Wall_South_L', 'B1_FINAL_Wall_South_R'].forEach((n) => { const m = byName[n]; if (m && m.material) { m.material = m.material.clone(); m.material.color.setHex(BEIGE_WALL); } });
       // 1) 의자: 줄과 간격을 새로 계산해서 다시 놓기 (겹침 · 벽 침범 없음)
       const fT = byName['B1_FINAL_Pew_Frame_0_0'], pT = byName['B1_FINAL_Pew_Pad_0_0'];
