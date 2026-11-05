@@ -1855,6 +1855,9 @@
         x.font = '32px sans-serif'; x.fillText('요한일서 4:8', 512, 222);
         const tex = new THREE.CanvasTexture(c);
         if ('colorSpace' in tex) tex.colorSpace = THREE.SRGBColorSpace;
+        // 사용자가 준 스크린 그림(하나님은 사랑이시라 · 물댄동산교회)으로 바꿈. 못 불러오면 위 그림을 그대로 씀
+        const scrImg = new Image();
+        scrImg.src = 'assets/screen/god-is-love.jpg';
         // 원래 스크린 상자는 검은 테두리로 두고, 회중 쪽 앞면에 그림 판을 붙임
         led.material = new THREE.MeshStandardMaterial({ color: 0x15171c, roughness: 0.6 });
         const face = new THREE.Mesh(new THREE.PlaneGeometry(LED_W - 0.12, LED_H - 0.12),
@@ -1862,6 +1865,12 @@
         face.position.set(led.position.x + 0.075 * Math.SQRT1_2, led.position.y, led.position.z + 0.075 * Math.SQRT1_2);
         face.rotation.set(0, Math.PI / 4, 0);
         g.add(face);
+        scrImg.onload = () => {
+          const t2 = new THREE.Texture(scrImg); if ('colorSpace' in t2) t2.colorSpace = THREE.SRGBColorSpace;
+          t2.anisotropy = 4; t2.needsUpdate = true;
+          face.material.map = t2; face.material.needsUpdate = true; tex.dispose();
+        };
+        if (scrImg.complete && scrImg.naturalWidth) scrImg.onload();
       }
 
       // 3) 강대상: 바닥에서 9cm 뜬 것 내려놓기
