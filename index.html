@@ -289,8 +289,26 @@
       padding: 7px 14px; border-radius: 999px; font-size: 13px; font-weight: 700; opacity: 0; pointer-events: none; white-space: nowrap; }
     #toast.show { animation: toastIn 3.2s ease both; }
     @keyframes toastIn { 0% { opacity: 0; transform: translate(-50%, -6px); } 10%, 80% { opacity: 1; transform: translate(-50%, 0); } 100% { opacity: 0; transform: translate(-50%, -4px); } }
+    .online { display: inline-block; background: rgba(34, 197, 94, 0.18); color: #bbf7d0; border-radius: 999px; padding: 0 7px; margin-right: 4px; font-weight: 700; }
+    .online.off { background: rgba(148, 163, 184, 0.2); color: #cbd5e1; }
+    #chatOpen { position: absolute; right: 14px; bottom: 64px; z-index: 5; width: 48px; height: 48px; border-radius: 50%; border: none; font-size: 22px;
+      background: #8a6a42; color: #fff; box-shadow: 0 4px 14px rgba(0,0,0,0.3); cursor: pointer; }
+    #chatBar { position: absolute; left: 50%; bottom: 58px; transform: translateX(-50%); z-index: 6; width: min(520px, 94vw); display: flex; gap: 6px;
+      background: rgba(15, 23, 42, 0.88); padding: 8px; border-radius: 14px; }
+    #chatBar:not([hidden]) { animation: uiIn 0.25s ease-out both; }
+    #chatBar.leaving { animation: uiOut 0.2s ease-in both; }
+    #chatInput { flex: 1; min-width: 0; font-size: 15px; padding: 9px 11px; border-radius: 10px; border: none; outline: none; user-select: text; }
+    #chatSend { border: none; border-radius: 10px; padding: 0 14px; background: #8a6a42; color: #fff; font-weight: 800; font-size: 14px; cursor: pointer; }
+    #chatClose { border: none; background: none; color: #cbd5e1; font-size: 16px; cursor: pointer; padding: 0 6px; }
+    #chatLog { position: absolute; left: 12px; bottom: 190px; z-index: 4; width: min(300px, 70vw); display: flex; flex-direction: column; gap: 4px; pointer-events: none; }
+    .chat-line { background: rgba(15, 23, 42, 0.62); color: #fff; font-size: 13px; padding: 5px 9px; border-radius: 10px; width: fit-content; max-width: 100%;
+      animation: uiIn 0.25s ease-out both; transition: opacity 1s; word-break: break-word; }
+    .chat-line b { color: #fde68a; margin-right: 5px; }
+    .chat-line.sys { color: #cbd5e1; font-style: italic; }
+    .chat-line.fade { opacity: 0; }
   </style>
 
+  <script src="./vendor/supabase/supabase.js"></script>
   <script type="importmap">{"imports":{"three":"./vendor/three/three.module.js"}}</script>
 </head>
 <body>
@@ -308,7 +326,7 @@
     <div class="header-bar">
       <div class="header-left">
         <span class="header-title">물댄동산교회</span>
-        <span class="header-sub" id="currentAreaText">현재 위치: 외관 횡단보도 (출발점)</span>
+        <span class="header-sub"><span id="onlineCount" class="online">👥 연결 중…</span> <span id="currentAreaText">현재 위치: 외관 횡단보도 (출발점)</span></span>
       </div>
 
       <div class="tour-steps">
@@ -331,6 +349,7 @@
     <div class="guide-card" id="guideCard" hidden>
       <b>바닥 누르기</b> 캐릭터가 그곳으로 걸어가요<br>
       <b>의자 누르기</b> 그 자리에 가서 앉아요 (장의자는 기도, 식당은 밥먹기)<br>
+      <b>💬 대화</b> 오른쪽 아래 말풍선 버튼 · 같은 층 성도님께 말풍선이 떠요<br>
       <b>📝 기도제목</b> 기도제목 쓰기·함께 기도하기 (본당·2층 기도실 게시판을 눌러도 돼요)<br>
       <b>W A S D · 방향키</b> 걷기 (폰은 왼쪽 아래 동그라미)<br>
       <b>화면 끌기</b> 돌려 보기<br>
@@ -359,6 +378,13 @@
     <button class="elev-btn" data-lv="F1">1층 · 로비 · 필로티</button>
     <button class="elev-btn" data-lv="B1">지하 1층 · 본당</button>
     <button class="elev-close" id="elevClose">닫기</button>
+  </div>
+  <div id="chatLog" aria-live="polite"></div>
+  <button id="chatOpen" title="대화하기">💬</button>
+  <div id="chatBar" hidden>
+    <input id="chatInput" maxlength="80" placeholder="같은 층 성도님께 인사해 보세요 (80자)" autocomplete="off">
+    <button id="chatSend">보내기</button>
+    <button id="chatClose" aria-label="닫기">✕</button>
   </div>
   <div id="elevFade"><span id="elevFadeText"></span></div>
   <div id="prayerPanel" hidden>
@@ -2016,7 +2042,7 @@
       KEY: 'mdc_prayers', PRAYED: 'mdc_prayed', DEVICE: 'mdc_device',
       _get(k, d) { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch (e) { return d; } },
       _set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* 저장 막힘 */ } },
-      device() { let d = this._get(this.DEVICE, null); if (!d) { d = 'd' + Math.random().toString(36).slice(2, 10); this._set(this.DEVICE, d); } return d; },
+      device() { if (this._dev) return this._dev; let d = this._get(this.DEVICE, null); if (!d) { d = 'd' + Math.random().toString(36).slice(2, 10); this._set(this.DEVICE, d); } return (this._dev = d); },
       list() { return this._get(this.KEY, []).sort((a, b) => b.at - a.at); },
       add(text, cat, anon) {
         const all = this._get(this.KEY, []);
@@ -2116,13 +2142,19 @@
     }
     // ---- 이름: 이 기기(브라우저)에 기억해 두고, 캐릭터 머리 위에 작게 띄움 ----
     const NAME_KEY = 'mdc_name';
-    const loadName = () => { try { return localStorage.getItem(NAME_KEY) || ''; } catch (e) { return ''; } };
-    const saveName = (v) => { try { localStorage.setItem(NAME_KEY, v); } catch (e) { /* 저장이 막힌 브라우저면 이번 방문 동안만 */ } };
+    let nameCache = null;   // 이 창에서 처음 한 번만 읽어 기억 (다른 창에서 바꿔도 이 창 이름은 그대로)
+    const loadName = () => { if (nameCache !== null) return nameCache; try { nameCache = localStorage.getItem(NAME_KEY) || ''; } catch (e) { nameCache = ''; } return nameCache; };
+    const saveName = (v) => { nameCache = v; try { localStorage.setItem(NAME_KEY, v); } catch (e) { /* 저장이 막힌 브라우저면 이번 방문 동안만 */ } };
     let nameSprite = null;
     function setNameTag(name) {
       if (nameSprite) { characterGroup.remove(nameSprite); nameSprite.material.map.dispose(); nameSprite = null; }
       document.getElementById('nameBtn').textContent = name ? `👤 ${name}` : '👤 이름';
       if (!name) return;
+      nameSprite = makeNameSprite(name);
+      characterGroup.add(nameSprite);
+      if (window.mdcNet) window.mdcNet.updateMe();   // 이름을 바꾸면 다른 성도님 화면에도
+    }
+    function makeNameSprite(name) {
       const c = document.createElement('canvas'); c.width = 256; c.height = 72;
       const g = c.getContext('2d'); g.font = 'bold 34px sans-serif';
       const w = Math.min(248, g.measureText(name).width + 34);
@@ -2130,11 +2162,11 @@
       if (g.roundRect) { g.beginPath(); g.roundRect(128 - w / 2, 10, w, 52, 26); g.fill(); } else g.fillRect(128 - w / 2, 10, w, 52);
       g.fillStyle = '#5a4126'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(name, 128, 37);
       const tex = new THREE.CanvasTexture(c); if ('colorSpace' in tex) tex.colorSpace = THREE.SRGBColorSpace;
-      nameSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false }));
-      nameSprite.scale.set(0.9, 0.25, 1);                 // 캐릭터 그룹(0.8배) 안: 실제 폭 약 0.7m
-      nameSprite.position.set(0, 1.28, 0);                // 머리 위
-      nameSprite.renderOrder = 12;
-      characterGroup.add(nameSprite);
+      const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false }));
+      sp.scale.set(0.9, 0.25, 1);                         // 캐릭터 그룹(0.8배) 안: 실제 폭 약 0.7m
+      sp.position.set(0, 1.28, 0);                        // 머리 위
+      sp.renderOrder = 12; sp.userData.nameTag = true;
+      return sp;
     }
     const nameModal = document.getElementById('nameModal'), nameInput = document.getElementById('nameInput');
     function askName() { nameInput.value = loadName(); showEl(nameModal, true); setTimeout(() => nameInput.focus(), 50); }
@@ -2152,6 +2184,188 @@
     makePrayerBoard(0.6, -6.6 + 1.45, -6.0, -Math.PI / 2);     // 지하 본당 동쪽 벽 (뒤쪽 통로 옆)
     makePrayerBoard(-1.6, F2_Y + 1.25, -7.47, Math.PI);        // 2층 기도실 남쪽 벽
     updatePrayerBoards();
+    // =========================================================================
+    // 친구랑 만나기: 같은 방(기본 'main', 주소 끝에 ?room=이름 으로 바꿀 수 있음)에 들어온 성도님끼리
+    // 캐릭터·이름표가 보이고, 말풍선으로 대화. Supabase Realtime(Presence + Broadcast) 사용.
+    // 주소에 ?net=local 을 붙이면 같은 브라우저 창끼리만 연결되는 연습 모드(검사용).
+    // =========================================================================
+    const SUPABASE_URL = 'https://slpqownhiafmiuyisxuo.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_hOEENGzXwQnZcQSKwbeusQ_k9BHFjdZ';   // 공개용 키 (비밀 키 아님)
+    const qs = new URLSearchParams(location.search);
+    const ROOM = (qs.get('room') || 'main').replace(/[^\w가-힣-]/g, '').slice(0, 30) || 'main';
+    const remotes = new Map();
+    const onlineEl = document.getElementById('onlineCount');
+    function myState() {
+      const p = characterGroup.position;
+      return { id: PrayerStore.device(), n: loadName() || '성도', lv: curLevel(), x: +p.x.toFixed(2), y: +p.y.toFixed(2), z: +p.z.toFixed(2),
+        r: +characterGroup.rotation.y.toFixed(2), s: isSitting ? 1 : 0, p: isPraying ? 1 : 0, e: isEating ? 1 : 0, m: isMoving ? 1 : 0 };
+    }
+    const Net = {
+      mode: qs.get('net') === 'local' ? 'local' : 'supabase', ready: false, ch: null, peers: new Map(), lastSent: 0, lastKey: '',
+      start() {
+        try {
+          if (this.mode === 'local') this.startLocal(); else this.startSupabase();
+        } catch (e) { console.warn('연결 실패', e); this.setStatus(false); }
+      },
+      setStatus(ok) {
+        const n = 1 + [...this.peers.keys()].filter((k) => k !== PrayerStore.device()).length;
+        onlineEl.classList.toggle('off', !ok);
+        onlineEl.textContent = ok ? `👥 접속 ${n}명` : '👥 혼자 둘러보는 중';
+      },
+      startSupabase() {
+        if (!window.supabase) { this.setStatus(false); return; }
+        const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { realtime: { params: { eventsPerSecond: 20 } } });
+        const ch = client.channel('mdc-' + ROOM, { config: { presence: { key: PrayerStore.device() }, broadcast: { self: false } } });
+        this.ch = ch;
+        ch.on('presence', { event: 'sync' }, () => {
+          const st = ch.presenceState(); this.peers.clear();
+          Object.entries(st).forEach(([k, metas]) => { if (metas && metas[0]) this.peers.set(k, metas[metas.length - 1]); });
+          this.syncPeers();
+        });
+        ch.on('presence', { event: 'join' }, ({ key, newPresences }) => { if (key !== PrayerStore.device() && newPresences[0]) sysLine(`${newPresences[0].n || '성도'}님이 들어오셨어요 🙌`); });
+        ch.on('presence', { event: 'leave' }, ({ key, leftPresences }) => { if (key !== PrayerStore.device() && leftPresences[0]) sysLine(`${leftPresences[0].n || '성도'}님이 나가셨어요`); });
+        ch.on('broadcast', { event: 'pos' }, ({ payload }) => this.onPos(payload));
+        ch.on('broadcast', { event: 'chat' }, ({ payload }) => this.onChat(payload));
+        ch.subscribe(async (status) => {
+          if (status === 'SUBSCRIBED') { this.ready = true; await ch.track(myState()); this.setStatus(true); }
+          else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') { this.ready = false; this.setStatus(false); }
+        });
+      },
+      startLocal() {                                     // 연습 모드: BroadcastChannel + 2초마다 '나 여기 있어요'
+        const bc = new BroadcastChannel('mdc-' + ROOM); this.bc = bc; this.ready = true;
+        const seen = new Map();
+        bc.onmessage = ({ data }) => {
+          if (data.t === 'pos') { seen.set(data.p.id, performance.now()); if (!this.peers.has(data.p.id)) { this.peers.set(data.p.id, data.p); sysLine(`${data.p.n}님이 들어오셨어요 🙌`); this.syncPeers(); } else this.peers.set(data.p.id, data.p); this.onPos(data.p); }
+          if (data.t === 'chat') this.onChat(data.p);
+        };
+        setInterval(() => { const now = performance.now(); seen.forEach((t, id) => { if (now - t > 6000) { seen.delete(id); const p = this.peers.get(id); this.peers.delete(id); if (p) sysLine(`${p.n}님이 나가셨어요`); this.syncPeers(); } }); }, 2000);
+        this.setStatus(true);
+      },
+      send(event, payload) {
+        if (!this.ready) return;
+        if (this.mode === 'local') this.bc.postMessage({ t: event, p: payload });
+        else this.ch.send({ type: 'broadcast', event, payload });
+      },
+      updateMe() { if (this.ready && this.mode !== 'local' && this.ch) this.ch.track(myState()); this.lastKey = ''; },
+      tick(now) {                                        // 움직일 때 초당 약 6번, 가만히 있을 땐 2초마다 한 번
+        if (!this.ready) return;
+        const st = myState(), key = JSON.stringify(st);
+        const gap = now - this.lastSent;
+        if ((key !== this.lastKey && gap > 160) || gap > 2000) { this.send('pos', st); this.lastSent = now; if (st.lv !== (JSON.parse(this.lastKey || '{}').lv)) this.updateMe(); this.lastKey = key; }
+      },
+      onPos(p) { if (!p || p.id === PrayerStore.device()) return; const r = getRemote(p.id, p.n); r.target = p; if (r.name !== p.n) setRemoteName(r, p.n); },
+      onChat(c) { if (!c || !c.text) return; const r = remotes.get(c.id); chatLine(c.n, c.text); if (r) showBubble(r.group, c.text, r); },
+      syncPeers() {
+        const ids = new Set(this.peers.keys());
+        remotes.forEach((r, id) => { if (!ids.has(id)) { scene.remove(r.group); remotes.delete(id); } });
+        this.peers.forEach((p, id) => { if (id !== PrayerStore.device() && p.x !== undefined) this.onPos(p); });
+        this.setStatus(true);
+      },
+    };
+    // 다른 성도님 캐릭터: 내 캐릭터 모양을 복사해서 씀 (이름표만 따로)
+    const charIdx = () => ({ body: characterGroup.children.indexOf(body), head: characterGroup.children.indexOf(headGroup),
+      la: characterGroup.children.indexOf(leftArmGroup), ra: characterGroup.children.indexOf(rightArmGroup),
+      ll: characterGroup.children.indexOf(leftLeg), rl: characterGroup.children.indexOf(rightLeg) });
+    const HOODIE_COLORS = [0x5b84c4, 0xc46b6b, 0x6bab7a, 0xb48ac9, 0xd9a54a, 0x5aa6a6, 0xc98a5a];
+    function getRemote(id, name) {
+      let r = remotes.get(id); if (r) return r;
+      const ix = charIdx(), g = characterGroup.clone(true);
+      g.children.filter((c) => c.isSprite).forEach((c) => g.remove(c));
+      // 옷 색만 사람마다 다르게 (재질을 복사해서 내 캐릭터에 번지지 않게)
+      const hue = HOODIE_COLORS[[...id].reduce((a, ch) => a + ch.charCodeAt(0), 0) % HOODIE_COLORS.length];
+      const recolor = new Map();
+      g.traverse((o) => { if (o.isMesh && (o.material === hoodieMat || o.material === hoodieDark)) {
+        if (!recolor.has(o.material)) { const m = o.material.clone(); m.color.setHex(o.material === hoodieMat ? hue : new THREE.Color(hue).multiplyScalar(0.82).getHex()); recolor.set(o.material, m); }
+        o.material = recolor.get(o.material); } });
+      g.userData.noCamBlock = true; scene.add(g);
+      const k = g.children;
+      r = { group: g, parts: { body: k[ix.body], head: k[ix.head], la: k[ix.la], ra: k[ix.ra], ll: k[ix.ll], rl: k[ix.rl] }, target: null, name: '' };
+      remotes.set(id, r); setRemoteName(r, name);
+      return r;
+    }
+    function setRemoteName(r, name) {
+      if (r.tag) { r.group.remove(r.tag); r.tag.material.map.dispose(); }
+      r.name = name; r.tag = makeNameSprite(name || '성도'); r.group.add(r.tag);
+    }
+    function poseRemote(r, t, time, dt) {
+      const g = r.group, P = r.parts, k = 1 - Math.exp(-10 * dt);
+      g.visible = t.lv === curLevel();
+      if (!g.visible) return;
+      const goal = new THREE.Vector3(t.x, t.y, t.z);
+      if (g.position.distanceTo(goal) > 3) g.position.copy(goal); else g.position.lerp(goal, k);
+      let dr = t.r - g.rotation.y; dr = Math.atan2(Math.sin(dr), Math.cos(dr)); g.rotation.y += dr * k;
+      const by = t.s ? SIT_BODY : 0.35 + (t.m ? Math.abs(Math.sin(time * 13)) * 0.04 : 0);
+      P.body.position.y = by; P.head.position.y = t.s ? SIT_HEAD : 0.78 + (t.m ? Math.abs(Math.sin(time * 13)) * 0.04 : 0);
+      P.head.rotation.x = t.p ? 0.22 : 0;
+      P.la.position.y = P.ra.position.y = by + 0.17; P.ll.position.y = P.rl.position.y = by - 0.1;
+      if (t.p) { P.la.quaternion.slerp(PRAY_Q.left, 0.2); P.ra.quaternion.slerp(PRAY_Q.right, 0.2); }
+      else if (t.e) { const lift = (Math.sin(time * 2.6) + 1) / 2; P.la.rotation.set(-0.5, 0, 0.15); P.ra.rotation.set(-0.5 - lift * 0.9, 0, -0.15); }
+      else if (t.m) { P.la.rotation.set(Math.sin(time * 13) * 0.65, 0, 0.15); P.ra.rotation.set(-Math.sin(time * 13) * 0.65, 0, -0.15); }
+      else { P.la.rotation.set(0, 0, 0.15); P.ra.rotation.set(0, 0, -0.15); }
+      let lt = 0, rt = 0, lk = 0, rk = 0;
+      if (t.s) { lt = rt = -Math.PI / 2; lk = rk = Math.PI / 2; }
+      else if (t.m) { const sw = Math.sin(time * 13) * 0.55; lt = -sw; rt = sw; lk = Math.max(0, Math.sin(time * 13 + 1.2)) * 0.6; rk = Math.max(0, -Math.sin(time * 13 + 1.2)) * 0.6; }
+      P.ll.rotation.x += (lt - P.ll.rotation.x) * 0.35; P.rl.rotation.x += (rt - P.rl.rotation.x) * 0.35;
+      P.ll.children.forEach((c) => { if (c.isGroup) c.rotation.x += (lk - c.rotation.x) * 0.35; });
+      P.rl.children.forEach((c) => { if (c.isGroup) c.rotation.x += (rk - c.rotation.x) * 0.35; });
+      // 눈: 기도 중엔 감기 (내 캐릭터와 같은 순서의 부품)
+      eyeIdx.forEach(([a, b, c]) => { const ch = P.head.children; if (ch[a]) ch[a].visible = !t.p; if (ch[b]) ch[b].visible = !t.p; if (ch[c]) ch[c].visible = !!t.p; });
+    }
+    const eyeIdx = eyeParts.eyes.map((e, i) => [headGroup.children.indexOf(e), headGroup.children.indexOf(eyeParts.shines[i * 2]), headGroup.children.indexOf(eyeParts.lids[i])]);
+    // 말풍선 (6초 동안 보였다가 사라짐)
+    function showBubble(group, text, owner) {
+      const holder = owner || myBubble;   // (userData에 넣으면 캐릭터 복사할 때 오류가 나서 따로 보관)
+      if (holder.bubble) { group.remove(holder.bubble); holder.bubble.material.map.dispose(); }
+      const c = document.createElement('canvas'); c.width = 512; c.height = 200; const g = c.getContext('2d');
+      g.font = 'bold 34px sans-serif';
+      const words = [...text]; const lines = []; let line = '';
+      words.forEach((ch) => { if (g.measureText(line + ch).width > 440) { lines.push(line); line = ch; } else line += ch; }); if (line) lines.push(line);
+      const L = lines.slice(0, 3), w = Math.min(480, Math.max(...L.map((l) => g.measureText(l).width)) + 44), h = 26 + L.length * 42;
+      const x0 = 256 - w / 2;
+      g.fillStyle = 'rgba(255,255,255,0.96)'; g.strokeStyle = '#d9c7a8'; g.lineWidth = 3;
+      g.beginPath(); if (g.roundRect) g.roundRect(x0, 6, w, h, 22); else g.rect(x0, 6, w, h); g.fill(); g.stroke();
+      g.beginPath(); g.moveTo(240, 6 + h - 1); g.lineTo(256, 6 + h + 18); g.lineTo(272, 6 + h - 1); g.fill();
+      g.fillStyle = '#3b2f22'; g.textAlign = 'center'; g.textBaseline = 'middle';
+      L.forEach((l, i) => g.fillText(l + (i === 2 && lines.length > 3 ? '…' : ''), 256, 6 + 34 + i * 42));
+      const tex = new THREE.CanvasTexture(c); if ('colorSpace' in tex) tex.colorSpace = THREE.SRGBColorSpace;
+      const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false }));
+      sp.scale.set(1.9, 0.74, 1); sp.position.set(0, 1.78, 0); sp.renderOrder = 13; sp.userData.born = performance.now();
+      group.add(sp); holder.bubble = sp;
+    }
+    const myBubble = {};
+    function fadeBubbles() {
+      const now = performance.now();
+      [myBubble, ...[...remotes.values()]].forEach((h) => {
+        const b = h.bubble; if (!b) return; const age = (now - b.userData.born) / 1000;
+        b.material.opacity = age < 5.5 ? 1 : Math.max(0, 1 - (age - 5.5) / 0.6);
+        if (age > 6.2) { b.parent && b.parent.remove(b); b.material.map.dispose(); h.bubble = null; }
+      });
+    }
+    // 대화 기록 (왼쪽 아래, 최근 5줄, 15초 뒤 흐려짐)
+    const chatLogEl = document.getElementById('chatLog');
+    function addLine(el) {
+      chatLogEl.appendChild(el); while (chatLogEl.children.length > 5) chatLogEl.firstChild.remove();
+      setTimeout(() => el.classList.add('fade'), 15000); setTimeout(() => el.remove(), 16200);
+    }
+    function chatLine(name, text) { const d = document.createElement('div'); d.className = 'chat-line'; const b = document.createElement('b'); b.textContent = name || '성도'; d.append(b, document.createTextNode(text)); addLine(d); }
+    function sysLine(text) { const d = document.createElement('div'); d.className = 'chat-line sys'; d.textContent = text; addLine(d); }
+    // 대화 입력
+    const chatBar = document.getElementById('chatBar'), chatInput = document.getElementById('chatInput');
+    const openChat = () => { showEl(chatBar, true); showEl(document.getElementById('chatOpen'), false); setTimeout(() => chatInput.focus(), 50); };
+    const closeChat = () => { showEl(chatBar, false); showEl(document.getElementById('chatOpen'), true); chatInput.blur(); };
+    function sendChat() {
+      const text = chatInput.value.replace(/\s+/g, ' ').trim().slice(0, 80); if (!text) return;
+      const me = myState(); chatInput.value = '';
+      Net.send('chat', { id: me.id, n: me.n, lv: me.lv, text });
+      chatLine(me.n, text); showBubble(characterGroup, text);
+    }
+    document.getElementById('chatOpen').addEventListener('click', openChat);
+    document.getElementById('chatClose').addEventListener('click', closeChat);
+    document.getElementById('chatSend').addEventListener('click', sendChat);
+    chatInput.addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Enter' && !e.isComposing) sendChat(); if (e.key === 'Escape') closeChat(); });
+    chatInput.addEventListener('keyup', (e) => e.stopPropagation());
+    window.mdcNet = Net; window.__remotes = remotes;
+    Net.start();
     const guideCard = document.getElementById('guideCard');
     document.getElementById('helpToggle').addEventListener('click', () => { showEl(guideCard, !isShown(guideCard)); });
     const uiOverlay = document.getElementById('ui-overlay'), uiShow = document.getElementById('uiShow');
@@ -2205,7 +2419,7 @@
       const diffTime = performance.now() - downTime;
       const dist = Math.hypot(e.clientX - downPos.x, e.clientY - downPos.y);
       if (diffTime > 260 || dist > 6) return;
-      if (e.target.closest('#ui-overlay') || e.target.closest('#uiShow') || e.target.closest('#joy') || e.target.closest('#elevPanel') || e.target.closest('#nameModal') || e.target.closest('#prayerPanel')) return;
+      if (e.target.closest('#ui-overlay') || e.target.closest('#uiShow') || e.target.closest('#joy') || e.target.closest('#elevPanel') || e.target.closest('#nameModal') || e.target.closest('#prayerPanel') || e.target.closest('#chatBar') || e.target.closest('#chatOpen')) return;
 
       mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
       mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
@@ -2758,6 +2972,9 @@
       camAfterUpdate();
       levelLabels.forEach(l => { if (l.visible) l.material.opacity = THREE.MathUtils.clamp((l.position.distanceTo(camera.position) - 2.5) / 2.5, 0, 1); }); // 너무 가까운 이름표는 흐리게
       ceilingRig.visible = camera.position.y < -1.0; // 천장 위에서 내려다보면 조명 줄이 객석을 가리므로 숨김
+      Net.tick(performance.now());
+      remotes.forEach((r) => { if (r.target) poseRemote(r, r.target, time, frameDt); });
+      fadeBubbles();
       renderer.render(scene, camera);
     }
 
