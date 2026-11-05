@@ -310,6 +310,13 @@
     .chat-line b { color: #fde68a; margin-right: 5px; }
     .chat-line.sys { color: #cbd5e1; font-style: italic; }
     .chat-line.fade { opacity: 0; }
+    #voiceBtn { position: absolute; right: 14px; bottom: 120px; z-index: 5; width: 48px; height: 48px; border-radius: 50%; border: none; font-size: 21px;
+      background: #fffaf2; color: #6b4f33; box-shadow: 0 4px 14px rgba(0,0,0,0.3); cursor: pointer; touch-action: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+    #voiceBtn.rec { background: #e85d5d; color: #fff; animation: recPulse 1s ease-in-out infinite; }
+    @keyframes recPulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(232, 93, 93, 0.55); } 50% { box-shadow: 0 0 0 12px rgba(232, 93, 93, 0); } }
+    #voiceRec { position: absolute; right: 72px; bottom: 128px; z-index: 6; background: rgba(15, 23, 42, 0.88); color: #fff; font-size: 13px; padding: 7px 12px; border-radius: 999px; white-space: nowrap; }
+    #voiceRec:not([hidden]) { animation: uiIn 0.2s ease-out both; }
+    #voiceRec .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #ff6b6b; margin-right: 4px; animation: recPulse 1s infinite; }
   </style>
 
   <script src="./vendor/supabase/supabase.js"></script>
@@ -354,6 +361,7 @@
       <b>바닥 누르기</b> 캐릭터가 그곳으로 걸어가요<br>
       <b>의자 누르기</b> 그 자리에 가서 앉아요 (장의자는 기도, 식당은 밥먹기)<br>
       <b>💬 대화</b> 오른쪽 아래 말풍선 버튼 · 같은 층 성도님께 말풍선이 떠요<br>
+      <b>🎤 음성</b> 누르고 있는 동안 녹음(10초까지), 떼면 같은 층 성도님께 들려요<br>
       <b>📝 기도제목</b> 기도제목 쓰기·함께 기도하기 (본당·2층 기도실 게시판을 눌러도 돼요)<br>
       <b>W A S D · 방향키</b> 걷기 (폰은 왼쪽 아래 동그라미)<br>
       <b>화면 끌기</b> 돌려 보기<br>
@@ -385,6 +393,8 @@
   </div>
   <div id="chatLog" aria-live="polite"></div>
   <button id="chatOpen" title="대화하기">💬</button>
+  <button id="voiceBtn" title="누르고 있는 동안 녹음 (최대 10초)">🎤</button>
+  <div id="voiceRec" hidden><span class="dot"></span> 녹음 중 <b id="voiceSec">0</b>초 · 손을 떼면 보내져요</div>
   <div id="chatBar" hidden>
     <input id="chatInput" maxlength="80" placeholder="같은 층 성도님께 인사해 보세요 (80자)" autocomplete="off">
     <button id="chatSend">보내기</button>
@@ -1109,6 +1119,23 @@
           sp.userData.lv = lv; sp.visible = false; levelLabels.push(sp); group.add(sp);
         },
         sign(text, x, z, rotY, y) { return makeSign(group, text, x, Y + (y || 2.2), z, rotY); },
+        // 귀여운 정수기: 하얀 몸통 + 파란 물통 + 빨강·파랑 꼭지 + 작은 컵 받침
+        waterCooler(x, z, rotY) {
+          const g = new THREE.Group(); g.position.set(x, Y, z); g.rotation.y = rotY || 0; group.add(g);
+          const add = (geo, m, px, py, pz) => { const o = new THREE.Mesh(geo, m); o.position.set(px, py, pz); o.castShadow = true; g.add(o); return o; };
+          const white = k.M(0xf8f8f6, 0.35);
+          add(new THREE.BoxGeometry(0.3, 0.62, 0.28), white, 0, 0.31, 0);
+          add(new THREE.CylinderGeometry(0.11, 0.11, 0.26, 20), new THREE.MeshStandardMaterial({ color: 0x7cc4f2, transparent: true, opacity: 0.75, roughness: 0.1 }), 0, 0.75, 0);
+          add(new THREE.SphereGeometry(0.11, 18, 10, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0x7cc4f2, transparent: true, opacity: 0.75, roughness: 0.1 }), 0, 0.88, 0);
+          add(new THREE.BoxGeometry(0.2, 0.12, 0.04), k.M(0xdfe4e8, 0.4), 0, 0.46, 0.15);
+          add(new THREE.CylinderGeometry(0.018, 0.018, 0.04, 10), k.M(0xe85d5d, 0.4), -0.05, 0.44, 0.18).rotation.x = Math.PI / 2;
+          add(new THREE.CylinderGeometry(0.018, 0.018, 0.04, 10), k.M(0x4a8fe0, 0.4), 0.05, 0.44, 0.18).rotation.x = Math.PI / 2;
+          add(new THREE.BoxGeometry(0.18, 0.015, 0.08), k.M(0xc9ced3, 0.4), 0, 0.3, 0.17);
+          add(new THREE.CylinderGeometry(0.022, 0.018, 0.05, 12), k.M(0xfff2b3, 0.5), 0.04, 0.33, 0.17);   // 종이컵
+          add(new THREE.SphereGeometry(0.02, 10, 8), k.M(0x222222, 0.3), -0.05, 0.55, 0.142); add(new THREE.SphereGeometry(0.02, 10, 8), k.M(0x222222, 0.3), 0.05, 0.55, 0.142);   // 눈 (귀엽게)
+          const smile = add(new THREE.TorusGeometry(0.025, 0.006, 6, 12, Math.PI), k.M(0x222222, 0.3), 0, 0.525, 0.142); smile.rotation.z = Math.PI;
+          return g;
+        },
         light(x, z, I) {
           // 조명이 많으면 폰에서 느려지므로 층마다 3개까지만, 그 층에 있을 때만 켠다
           const list = (floorLights[lv] = floorLights[lv] || []);
@@ -1156,6 +1183,9 @@
       k.box(1.8, 0.02, 1.0, -2.8, 0.02, -10.95, k.M(0x5b4a3a));                  // 현관 매트
       k.box(1.6, 0.5, 0.5, -4.4, 0, -12.2, k.M(0xc9b08a)); k.box(1.7, 0.04, 0.6, -4.4, 0.5, -12.2, k.M(0x7d5a3a)); // 안내 데스크
       k.sofa(-1.0, -12.6, 1.4, -Math.PI / 2, k.M(0x8a9bb0));                    // 대기 소파 (서쪽을 봄)
+      k.box(0.5, 0.18, 0.8, -1.75, 0, -12.6, k.M(0x7d5a3a));                       // 소파 앞 낮은 탁자
+      k.sofa(-1.75, -11.55, 0.6, Math.PI, k.M(0xc9a98a)); k.sofa(-1.75, -13.65, 0.6, 0, k.M(0xc9a98a));   // 1인 소파 2 (탁자를 봄)
+      k.waterCooler(-5.15, -14.62, 0);                                               // 정수기 (엘리베이터 옆)
       k.plant(-5.0, -14.5, 1.2); k.plant(-0.6, -14.5, 1.2); k.plant(-4.0, -10.8, 0.9); k.plant(-1.6, -10.8, 0.9);   // 자동문(x -3.4~-2.2) 양옆
       k.sign('1층 로비', -2.8, LZ1 + 0.05, 0, 3.0); k.sign('엘리베이터', -3.75, LZ0 + 0.09, 0, 2.3); k.sign('계단', -1.3, LZ0 + 0.09, 0, 2.3);
       k.light(-2.8, -12.7, 1.8);
@@ -1203,7 +1233,11 @@
       k.sofa(-1.0, -12.0, 1.6, -Math.PI / 2, k.M(0xc8b49a)); k.box(0.5, 0.18, 0.9, -1.8, 0, -12.0, k.mWood);   // 창을 등지고 앉는 소파
       k.sofa(-1.0, -8.6, 1.6, -Math.PI / 2, k.M(0xc8b49a)); k.box(0.5, 0.18, 0.9, -1.8, 0, -8.6, k.mWood);
       k.sofa(-3.9, -5.6, 1.6, Math.PI, k.M(0xc8b49a)); k.box(0.9, 0.18, 0.5, -3.9, 0, -4.8, k.mWood);
-      k.plant(-0.4, -14.3, 1.3); k.plant(-0.4, -6.2); k.plant(-5.0, -3.2); k.plant(-5.0, -14.3, 1.1);
+      k.cyl(0.35, 0.03, -3.4, 0.36, -12.0, k.M(0xf1e7d8)); k.cyl(0.05, 0.36, -3.4, 0, -12.0, k.M(0x8a6a4a));   // 둥근 탁자 + 1인 소파 2
+      k.sofa(-3.4, -12.75, 0.6, 0, k.M(0x9db8a0)); k.sofa(-3.4, -11.25, 0.6, Math.PI, k.M(0x9db8a0));
+      k.sofa(-3.0, -8.6, 1.4, Math.PI / 2, k.M(0xc8b49a));                          // 창가 소파와 마주 보는 소파
+      k.waterCooler(-5.1, -14.55, 0);                                                // 정수기
+      k.plant(-0.4, -14.3, 1.3); k.plant(-0.4, -6.2); k.plant(-5.0, -3.2); k.plant(-4.4, -14.55, 1.1);
       k.light(-2.8, -12.0, 1.3); k.light(-2.8, -6.0, 1.3);
     }
 
@@ -2295,6 +2329,7 @@
         });
         ch.on('broadcast', { event: 'pos' }, ({ payload }) => this.onPos(payload));
         ch.on('broadcast', { event: 'chat' }, ({ payload }) => this.onChat(payload));
+        ch.on('broadcast', { event: 'voice' }, ({ payload }) => Voice.onChunk(payload));
         ch.subscribe(async (status) => {
           if (status === 'SUBSCRIBED') { this.ready = true; this.subAt = performance.now(); await ch.track(myState()); this.setStatus(true); }
           else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') { this.ready = false; this.setStatus(false); }
@@ -2306,6 +2341,7 @@
         bc.onmessage = ({ data }) => {
           if (data.t === 'pos') { seen.set(data.p.id, performance.now()); if (!this.peers.has(data.p.id)) { this.peers.set(data.p.id, data.p); sysLine(`${data.p.n}님이 들어오셨어요 🙌`); this.syncPeers(); } else this.peers.set(data.p.id, data.p); this.onPos(data.p); }
           if (data.t === 'chat') this.onChat(data.p);
+          if (data.t === 'voice') Voice.onChunk(data.p);
         };
         setInterval(() => { const now = performance.now(); seen.forEach((t, id) => { if (now - t > 12000) { seen.delete(id); const p = this.peers.get(id); this.peers.delete(id); if (p) sysLine(`${p.n}님이 나가셨어요`); this.syncPeers(); } }); }, 2000);
         this.setStatus(true);
@@ -2437,6 +2473,82 @@
     document.getElementById('chatSend').addEventListener('click', sendChat);
     chatInput.addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Enter' && !e.isComposing) sendChat(); if (e.key === 'Escape') closeChat(); });
     chatInput.addEventListener('keyup', (e) => e.stopPropagation());
+    // ---- 음성 메시지: 누르고 있는 동안 녹음(최대 10초) → 같은 층 성도님께 바로 재생 (서버에 저장하지 않음) ----
+    // 기기마다 녹음 형식이 달라(안드로이드 webm, 아이폰 mp4) 서로 못 트는 문제를 피하려고,
+    // 소리를 직접 8kHz μ-law(전화 음질)로 바꿔 작은 조각(약 24KB)으로 나눠 보낸다. 받는 쪽은 Web Audio로 바로 재생.
+    const VOICE_RATE = 8000, VOICE_MAX = 10, VOICE_CHUNK = 18000;
+    let sharedAudio = null;
+    function getAudio() {
+      if (!sharedAudio) { sharedAudio = audioCtx || new (window.AudioContext || window.webkitAudioContext)(); if (!audioCtx) audioCtx = sharedAudio; }
+      if (sharedAudio.state === 'suspended') sharedAudio.resume();
+      return sharedAudio;
+    }
+    // 휴대폰은 사용자가 화면을 한 번 눌러야 소리를 낼 수 있어서, 처음 누를 때 소리 장치를 깨워 둠 (받은 음성이 바로 나오게)
+    window.addEventListener('pointerdown', () => { try { getAudio(); } catch (e) {} }, { once: true });
+    const muEnc = (x) => { const s = Math.max(-1, Math.min(1, x)); const m = Math.sign(s) * Math.log1p(255 * Math.abs(s)) / Math.log1p(255); return Math.round((m + 1) * 127.5); };
+    const muDec = (b) => { const m = b / 127.5 - 1; return Math.sign(m) * (Math.pow(256, Math.abs(m)) - 1) / 255; };
+    const b64 = (u8) => { let s = ''; for (let i = 0; i < u8.length; i += 8192) s += String.fromCharCode.apply(null, u8.subarray(i, i + 8192)); return btoa(s); };
+    const unb64 = (str) => { const s = atob(str), u = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) u[i] = s.charCodeAt(i); return u; };
+    const Voice = {
+      stream: null, rec: null, buf: [], acc: 0, accN: 0, t0: 0, timer: null, recv: new Map(),
+      async start() {
+        if (this.rec) return;
+        const ctx = getAudio();
+        try { this.stream = this.stream || await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } }); }
+        catch (e) { sysLine('🎤 마이크를 쓸 수 없어요. 브라우저에서 마이크 권한을 허용해 주세요.'); return; }
+        if (!this.holding) return;                                      // 권한 창이 떠 있는 동안 손을 뗀 경우
+        const src = ctx.createMediaStreamSource(this.stream), proc = ctx.createScriptProcessor(4096, 1, 1), mute = ctx.createGain(); mute.gain.value = 0;
+        const step = ctx.sampleRate / VOICE_RATE; this.buf = []; this.acc = 0; this.accN = 0; let phase = 0;
+        proc.onaudioprocess = (e) => {
+          const d = e.inputBuffer.getChannelData(0);
+          for (let i = 0; i < d.length; i++) { this.acc += d[i]; this.accN++; phase += 1; if (phase >= step) { phase -= step; this.buf.push(muEnc(this.acc / this.accN)); this.acc = 0; this.accN = 0; } }   // 평균 내며 8kHz로 줄임
+          if (this.buf.length >= VOICE_RATE * VOICE_MAX || performance.now() - this.t0 > VOICE_MAX * 1000) this.stop();   // 소리 길이·실제 시간 둘 다 10초에서 멈춤
+        };
+        src.connect(proc); proc.connect(mute); mute.connect(ctx.destination);
+        this.rec = { src, proc, mute }; this.t0 = performance.now();
+        document.getElementById('voiceBtn').classList.add('rec'); showEl(document.getElementById('voiceRec'), true);
+        this.timer = setInterval(() => { document.getElementById('voiceSec').textContent = Math.min(VOICE_MAX, Math.floor((performance.now() - this.t0) / 1000)); }, 200);
+      },
+      stop() {
+        if (!this.rec) return;
+        const { src, proc, mute } = this.rec; this.rec = null; clearInterval(this.timer);
+        try { src.disconnect(); proc.disconnect(); mute.disconnect(); } catch (e) {}
+        document.getElementById('voiceBtn').classList.remove('rec'); showEl(document.getElementById('voiceRec'), false);
+        const pcm = Uint8Array.from(this.buf); this.buf = [];
+        const dur = pcm.length / VOICE_RATE;
+        if (dur < 0.4) { sysLine('🎤 조금 더 길게 눌러 주세요'); return; }
+        this.send(pcm, dur);
+      },
+      send(pcm, dur) {
+        const me = myState(), mid = me.id + '-' + Date.now().toString(36), data = b64(pcm), total = Math.ceil(data.length / VOICE_CHUNK);
+        for (let i = 0; i < total; i++) setTimeout(() => Net.send('voice', { id: me.id, n: me.n, lv: me.lv, mid, i, total, dur: +dur.toFixed(1), d: data.slice(i * VOICE_CHUNK, (i + 1) * VOICE_CHUNK) }), i * 120);
+        chatLine(me.n, `🎤 음성 메시지 (${dur.toFixed(0)}초)`); showBubble(characterGroup, `🔊 ${dur.toFixed(0)}초`); this.lastSent = { pcm, dur };
+      },
+      onChunk(v) {
+        if (!v || !v.mid || v.id === PrayerStore.device()) return;
+        let m = this.recv.get(v.mid); if (!m) { m = { parts: [], got: 0, at: performance.now() }; this.recv.set(v.mid, m); }
+        if (m.parts[v.i] === undefined) { m.parts[v.i] = v.d; m.got++; }
+        if (m.got === v.total) { this.recv.delete(v.mid); this.play(v, unb64(m.parts.join(''))); }
+        this.recv.forEach((x, k) => { if (performance.now() - x.at > 20000) this.recv.delete(k); });   // 못 받은 조각은 20초 뒤 버림
+      },
+      play(v, pcm) {
+        chatLine(v.n, `🎤 음성 메시지 (${Math.round(v.dur)}초)`);
+        const r = remotes.get(v.id); if (r) showBubble(r.group, `🔊 ${Math.round(v.dur)}초`, r);
+        if (v.lv !== curLevel()) return;                                    // 같은 층에 있을 때만 소리
+        const ctx = getAudio(), buf = ctx.createBuffer(1, pcm.length, VOICE_RATE), ch = buf.getChannelData(0);
+        for (let i = 0; i < pcm.length; i++) ch[i] = muDec(pcm[i]);
+        const s = ctx.createBufferSource(), g = ctx.createGain(); g.gain.value = 1.4; s.buffer = buf; s.connect(g); g.connect(ctx.destination);
+        s.start(); this.playCount = (this.playCount || 0) + 1; this.playing = (this.playing || 0) + 1; s.onended = () => { this.playing--; };
+      },
+    };
+    {
+      const vb = document.getElementById('voiceBtn');
+      const down = (e) => { e.preventDefault(); e.stopPropagation(); Voice.holding = true; try { vb.setPointerCapture(e.pointerId); } catch (x) {} Voice.start(); };
+      const up = (e) => { e.preventDefault(); Voice.holding = false; Voice.stop(); };
+      vb.addEventListener('pointerdown', down); vb.addEventListener('pointerup', up); vb.addEventListener('pointercancel', up); vb.addEventListener('lostpointercapture', up);
+      vb.addEventListener('contextmenu', (e) => e.preventDefault());
+    }
+    window.__voice = Voice;
     window.mdcNet = Net; window.__remotes = remotes;
     Net.start();
     const guideCard = document.getElementById('guideCard');
@@ -2492,7 +2604,7 @@
       const diffTime = performance.now() - downTime;
       const dist = Math.hypot(e.clientX - downPos.x, e.clientY - downPos.y);
       if (diffTime > 260 || dist > 6) return;
-      if (e.target.closest('#ui-overlay') || e.target.closest('#uiShow') || e.target.closest('#joy') || e.target.closest('#elevPanel') || e.target.closest('#nameModal') || e.target.closest('#prayerPanel') || e.target.closest('#chatBar') || e.target.closest('#chatOpen')) return;
+      if (e.target.closest('#ui-overlay') || e.target.closest('#uiShow') || e.target.closest('#joy') || e.target.closest('#elevPanel') || e.target.closest('#nameModal') || e.target.closest('#prayerPanel') || e.target.closest('#chatBar') || e.target.closest('#chatOpen') || e.target.closest('#voiceBtn')) return;
 
       mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
       mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
@@ -2633,7 +2745,7 @@
     }
     let audioCtx = null, isBgmPlaying = false, audioTimer = null, hymnIdx = 0, bgmBus = null;
     function audioSetup() {
-      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();   // 음성 메시지와 같은 소리 장치를 씀
       bgmBus = audioCtx.createGain(); bgmBus.gain.value = 0.55;
       const lp = audioCtx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 3200;
       // 작은 예배당 같은 잔향 (소음으로 만든 짧은 울림)
@@ -2692,7 +2804,7 @@
       el.textContent = text; el.classList.remove('show'); void el.offsetWidth; el.classList.add('show');
     }
     document.getElementById('bgmToggle').addEventListener('click', () => {
-      if (!audioCtx) audioSetup();
+      if (!bgmBus) audioSetup();
       isBgmPlaying = !isBgmPlaying;
       const btn = document.getElementById('bgmToggle');
       if (isBgmPlaying) {
