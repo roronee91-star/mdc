@@ -18,7 +18,6 @@ const { chromium } = require('playwright');
   await p.click('.elev-btn[data-lv="F3"]'); await p.waitForTimeout(2500);
   console.log('after panel 3F', JSON.stringify(await st())); await p.screenshot({ path: `${out}/3_f3_arrive.png` });
   await p.click('#btnActionEat'); await p.waitForTimeout(2500); await p.screenshot({ path: `${out}/4_eat.png` });
-  await p.click('#zoomToggle'); await p.waitForTimeout(500);
   await p.evaluate(() => { const { camera, controls, character: c } = window.__dbg; controls.target.set(c.position.x, c.position.y + 0.35, c.position.z); camera.position.set(c.position.x + 0.2, c.position.y + 0.55, c.position.z + 1.1); });
   await p.waitForTimeout(1500); await p.screenshot({ path: `${out}/5_eat_side.png` });
   await p.click('#step6'); for (let i = 0; i < 30; i++) { await p.waitForTimeout(1000); const s = await st(); if (s.area.includes('2층')) break; }
