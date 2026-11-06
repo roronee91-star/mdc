@@ -1314,8 +1314,8 @@
       // 창가 쉼터: 창을 바라보는 안락의자 둘 + 작은 탁자
       cafeChair(-0.55, -7.2, Math.PI / 2); cafeChair(-0.55, -6.2, Math.PI / 2); roundTable(-0.55, -6.7, 0.14);
       // 화분: 카페 자리 둘레, 창가, 배식대 양옆, 식당 가장자리
-      [[-12.0, -7.4], [-12.0, -1.8], [-7.2, -1.4], [-1.9, -7.6], [-1.9, -4.6], [0.25, -7.7], [-8.45, -12.55]].forEach(([x, z], i) => plant(x, z, 1.05 + (i % 3) * 0.15, i % 2));
-      [[-8.45, -16.4], [-8.4, -11.0], [-8.4, -9.0], [-4.6, -7.05], [-8.4, -7.3]].forEach(([x, z]) => topiary(x, z));
+      [[-12.0, -7.4], [-12.0, -1.8], [-7.2, -1.4], [-1.9, -4.6], [0.25, -7.7]].forEach(([x, z], i) => plant(x, z, 1.05 + (i % 3) * 0.15, i % 2));   // 복도·주방 앞 화분은 치움(사용자 요청): 카페 자리 둘레·창가만
+      // (식당 복도·배식대 앞 작은 나무들은 사용자 요청으로 치움)
 
       // 배식대 뒤 주방 벽: 따뜻한 원목 판 (배식구는 비움) + 위에서 내려오는 간접 조명
       const wood = (len, h) => { const t = woodPanelTexture().clone(); t.needsUpdate = true; t.repeat.set(len / 2.4, h / 2.4); return new THREE.MeshStandardMaterial({ map: t, roughness: 0.6 }); };
@@ -1631,7 +1631,43 @@
           const hub = k.cyl(0.07, 0.02, x + sx * 0.545, 0.0, z + sz * 0.64, k.M(0xc9ccd1, 0.3)); hub.rotation.z = Math.PI / 2; hub.position.y = F1_Y + 0.16;
         });
       };
-      car(-10.8, -7.2, 0xf5f5f5); car(-8.6, -7.2, 0x3b5b8c); car(-4.2, -7.2, 0x8c8f94);
+      // 교회 승합차 (사용자 요청: 큰 봉고차 느낌, 특정 차 모양은 따르지 않음). 캐릭터 키 1m 기준 0.6배: 길이 3.1 · 폭 1.15 · 높이 1.18
+      //   앞(코)은 북쪽(-z)으로 주차. 짧은 보닛 + 비스듬한 앞유리 + 높은 지붕 + 옆 창 띠 + 미닫이문 선
+      const van = (x, z, col) => {
+        const g = new THREE.Group(); g.position.set(x, F1_Y, z); g.rotation.y = Math.PI / 2; f1.add(g);   // 로컬 +x = 북쪽(앞)
+        const L = 3.1, W = 1.15, h = L / 2;
+        const body = new THREE.MeshStandardMaterial({ color: col, roughness: 0.35, metalness: 0.15 }), glass = new THREE.MeshStandardMaterial({ color: 0x232c36, roughness: 0.1, metalness: 0.3 });
+        const trim = k.M(0x2c2f33, 0.6), tire = k.M(0x18191b, 0.8), hubM = new THREE.MeshStandardMaterial({ color: 0xc9ccd1, roughness: 0.25, metalness: 0.6 });
+        const headM = new THREE.MeshStandardMaterial({ color: 0xf8f6ee, emissive: 0xfff3d6, emissiveIntensity: 0.3, roughness: 0.2 }), tailM = new THREE.MeshStandardMaterial({ color: 0xb3261e, emissive: 0x8a1a14, emissiveIntensity: 0.25, roughness: 0.3 });
+        const add = (m, px, py, pz) => { m.position.set(px, py, pz); m.castShadow = m.receiveShadow = true; g.add(m); return m; };
+        const B = (w, hh, d, px, py, pz, m) => add(new THREE.Mesh(new THREE.BoxGeometry(w, hh, d), m), px, py, pz);
+        const sh = new THREE.Shape([[-h, 0.14], [h, 0.14], [h, 0.5], [h - 0.3, 0.7], [h - 0.72, 1.12], [-h + 0.04, 1.16], [-h, 1.1]].map(([u, v]) => new THREE.Vector2(u, v)));
+        const geo = new THREE.ExtrudeGeometry(sh, { depth: W - 0.06, bevelEnabled: true, bevelThickness: 0.03, bevelSize: 0.03, bevelSegments: 2 }); geo.translate(0, 0, -(W - 0.06) / 2);
+        add(new THREE.Mesh(geo, body), 0, 0, 0);                                                                    // 차체 (한 덩어리)
+        const ws = Math.hypot(0.42, 0.42), wa = Math.atan2(0.42, -0.42);                                            // 앞유리: 보닛 끝에서 지붕까지 비스듬히
+        add(new THREE.Mesh(new THREE.BoxGeometry(ws - 0.06, 0.02, W - 0.12), glass), h - 0.495, 0.93, 0).rotation.z = wa - Math.PI;
+        [-1, 1].forEach((sz) => {
+          const zf = sz * (W / 2 + 0.002);
+          B(L - 1.0, 0.26, 0.02, -0.22, 0.88, zf, glass);                                                           // 옆 창 띠
+          B(0.035, 0.26, 0.024, 0.12, 0.88, zf, body); B(0.035, 0.26, 0.024, -0.62, 0.88, zf, body);               // 창 기둥
+          B(0.012, 0.6, 0.026, 0.02, 0.56, zf, trim);                                                               // 미닫이문 선
+          B(0.1, 0.02, 0.028, -0.12, 0.55, zf, trim);                                                               // 문 손잡이
+          B(0.22, 0.06, 0.03, h - 0.95, 0.15, sz * (W / 2 - 0.01), trim);                                          // 발판
+          B(0.12, 0.08, 0.07, h - 0.62, 0.86, sz * (W / 2 + 0.05), body);                                           // 옆 거울
+          B(0.04, 0.09, 0.22, h + 0.02, 0.44, sz * (W / 2 - 0.2), headM);                                           // 앞 등
+          B(0.04, 0.22, 0.1, -h - 0.02, 0.62, sz * (W / 2 - 0.1), tailM);                                           // 뒤 등 (세로)
+          [h - 0.55, -h + 0.55].forEach((wx) => {                                                                   // 바퀴 + 휠 캡
+            const t = add(new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.14, 22), tire), wx, 0.2, sz * (W / 2 - 0.04)); t.rotation.x = Math.PI / 2;
+            const c = add(new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.11, 0.02, 18), hubM), wx, 0.2, sz * (W / 2 + 0.035)); c.rotation.x = Math.PI / 2;
+          });
+        });
+        B(0.02, 0.26, W - 0.2, -h - 0.025, 0.9, 0, glass);                                                          // 뒷유리
+        B(0.06, 0.12, W - 0.02, h + 0.03, 0.24, 0, trim); B(0.06, 0.12, W - 0.02, -h - 0.03, 0.24, 0, trim);       // 앞·뒤 범퍼
+        B(0.03, 0.12, 0.5, h + 0.02, 0.38, 0, trim);                                                               // 앞 그릴
+        [-0.3, 0.3].forEach((rz) => B(L - 1.1, 0.025, 0.03, -0.25, 1.19, rz, trim));                                // 지붕 가로대
+      };
+      van(-10.8, -7.2, 0xf4f4f2); van(-8.6, -7.2, 0x9aa0a6); van(-4.2, -7.2, 0x2f3b4f);
+
       // #2 계단실 · 전실(로비) · 엘리베이터 (도면 A-302처럼 건물 앞 오른편, 십자가 탑 바로 뒤. 2~4층 계단실과 같은 자리 x -5.4~0, z -5.6~-2.45)
       //   서쪽 = 계단실(x -5.4~-3.0), 동쪽 = 유리 전실(x -3.0~-0.2). 전실 남쪽 벽(탑)에 엘리베이터 문, 북쪽 유리벽에 자동문.
       //   (예전에는 건물 뒤쪽에 따로 떨어진 유리 로비와 계단 문이 있었음 → 없애고 주차장으로 돌림)
