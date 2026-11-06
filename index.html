@@ -3770,6 +3770,7 @@
       isBgmPlaying = !isBgmPlaying;
       const btn = document.getElementById('bgmToggle');
       if (isBgmPlaying) {
+        try { if (!bgmAutoClick) localStorage.removeItem('mdc_bgm_off'); } catch (e) {}
         if (audioCtx.state === 'suspended') audioCtx.resume();
         bgmBus.gain.cancelScheduledValues(audioCtx.currentTime); bgmBus.gain.setValueAtTime(0.55, audioCtx.currentTime);
         btn.innerHTML = '🔊'; btn.style.background = '#2563eb';
@@ -3777,6 +3778,7 @@
       } else {
         btn.innerHTML = '🎵'; btn.style.background = '';
         clearTimeout(audioTimer);
+        try { if (!bgmAutoClick) localStorage.setItem('mdc_bgm_off', '1'); } catch (e) {}   // 직접 끈 사람은 다음에도 자동으로 켜지 않음
         // 남은 음은 0.6초 동안 부드럽게 줄이고 새 소리 길로 바꿈 (이미 예약된 음이 다시 켰을 때 겹치지 않게)
         const old = bgmBus; old.gain.setTargetAtTime(0, audioCtx.currentTime, 0.2);
         setTimeout(() => { try { old.disconnect(); } catch (e) {} }, 1500);
@@ -3784,6 +3786,19 @@
         bgmBus = audioCtx.createGain(); bgmBus.gain.value = 0.55; bgmBus.connect(lp); lp.connect(audioCtx.destination);
       }
     });
+
+    // 들어오면 찬송 반주가 기본으로 나옴 (사용자 요청). 브라우저는 화면을 한 번 누르기 전에는 소리를 막으므로,
+    //   첫 번 누름(손가락 떼기·클릭·키)에 맞춰 켠다. 🎵 단추를 직접 누른 경우와, 예전에 직접 끈 사람은 그대로 둠.
+    let bgmAutoClick = false;
+    {
+      const startOnce = (e) => {
+        ['pointerup', 'touchend', 'keydown'].forEach((t) => window.removeEventListener(t, startOnce, true));
+        if (isBgmPlaying || (e.target && e.target.closest && e.target.closest('#bgmToggle'))) return;
+        try { if (localStorage.getItem('mdc_bgm_off') === '1') return; } catch (err) {}
+        bgmAutoClick = true; document.getElementById('bgmToggle').click(); bgmAutoClick = false;
+      };
+      ['pointerup', 'touchend', 'keydown'].forEach((t) => window.addEventListener(t, startOnce, true));
+    }
 
     // -------------------------------------------------------------------------
     // 7. 메인 루프 (걷기 팔스윙 / 합장 기도 모션 보간)
