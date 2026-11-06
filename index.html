@@ -322,6 +322,7 @@
     .chat-line.fade { opacity: 0; }
     #voiceBtn { position: absolute; right: 14px; bottom: 120px; z-index: 5; width: 48px; height: 48px; border-radius: 50%; border: none; font-size: 21px;
       background: #fffaf2; color: #6b4f33; box-shadow: 0 4px 14px rgba(0,0,0,0.3); cursor: pointer; touch-action: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+    #voiceBtn.off { opacity: 0.6; }
     #voiceBtn.rec { background: #e85d5d; color: #fff; animation: recPulse 1s ease-in-out infinite; }
     @keyframes recPulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(232, 93, 93, 0.55); } 50% { box-shadow: 0 0 0 12px rgba(232, 93, 93, 0); } }
     #voiceRec { position: absolute; right: 72px; bottom: 128px; z-index: 6; background: rgba(15, 23, 42, 0.88); color: #fff; font-size: 13px; padding: 7px 12px; border-radius: 999px; white-space: nowrap; }
@@ -372,7 +373,7 @@
       <b>바닥 누르기</b> 캐릭터가 그곳으로 걸어가요<br>
       <b>의자 누르기</b> 그 자리에 가서 앉아요 (장의자는 기도, 식당은 밥먹기)<br>
       <b>💬 대화</b> 오른쪽 아래 말풍선 버튼 · 같은 층 성도님께 말풍선이 떠요<br>
-      <b>🎤 음성</b> 누르고 있는 동안 녹음(10초까지), 떼면 같은 층 성도님께 들려요<br>
+      <b>🗣️ 읽어주기</b> 대화를 치면 내 캐릭터 목소리로 읽어 줘요 (여자는 여자 목소리, 남자는 남자 목소리 · 누르면 끄기/켜기)<br>
       <b>📝 기도제목</b> 기도제목 쓰기·함께 기도하기 (본당·2층 기도실 게시판을 눌러도 돼요)<br>
       <b>W A S D · 방향키</b> 걷기 (폰은 왼쪽 아래 동그라미)<br>
       <b>화면 끌기</b> 돌려 보기<br>
@@ -406,7 +407,7 @@
   </div>
   <div id="chatLog" aria-live="polite"></div>
   <button id="chatOpen" title="대화하기">💬</button>
-  <button id="voiceBtn" title="누르고 있는 동안 녹음 (최대 10초)">🎤</button>
+  <button id="voiceBtn" title="대화 읽어주기 켜기/끄기">🗣️</button>
   <div id="voiceRec" hidden><span class="dot"></span> 녹음 중 <b id="voiceSec">0</b>초 · 손을 떼면 보내져요</div>
   <div id="chatBar" hidden>
     <input id="chatInput" maxlength="80" placeholder="같은 층 성도님께 인사해 보세요 (80자)" autocomplete="off">
@@ -3293,7 +3294,10 @@
         if ((key !== this.lastKey && gap > 160) || gap > 2000) { this.send('pos', st); this.lastSent = now; this.lastKey = key; }   // 층은 위치 신호에 들어 있음 (접속 정보 다시 등록 안 함)
       },
       onPos(p) { if (!p || !p.id || typeof p.id !== 'string' || p.id === PrayerStore.device()) return; const r = getRemote(p.id, p.n); r.target = p; if (r.name !== p.n) setRemoteName(r, p.n); if (r.group.userData.gender !== (p.g || 'm')) applyGender(r.group, p.g || 'm'); },
-      onChat(c) { if (!c || !c.text) return; const r = remotes.get(c.id); chatLine(c.n, c.text); if (r) showBubble(r.group, c.text, r); },
+      onChat(c) {
+        if (!c || !c.text) return; const r = remotes.get(c.id); chatLine(c.n, c.text); if (r) showBubble(r.group, c.text, r);
+        if (c.lv === curLevel()) Speak.say(c.text, c.id, c.g || (r && r.group.userData.gender) || 'm');   // 같은 층 성도님 말만 소리로
+      },
       syncPeers() {
         const ids = new Set(this.peers.keys());
         const fresh = [...ids].some((id) => id !== PrayerStore.device() && !remotes.has(id));
@@ -3404,14 +3408,81 @@
     function sendChat() {
       const text = chatInput.value.replace(/\s+/g, ' ').trim().slice(0, 80); if (!text) return;
       const me = myState(); chatInput.value = '';
-      Net.send('chat', { id: me.id, n: me.n, lv: me.lv, text });
+      Net.send('chat', { id: me.id, n: me.n, g: me.g, lv: me.lv, text });
       chatLine(me.n, text); showBubble(characterGroup, text);
+      Speak.say(text, me.id, me.g);
     }
     document.getElementById('chatOpen').addEventListener('click', openChat);
     document.getElementById('chatClose').addEventListener('click', closeChat);
     document.getElementById('chatSend').addEventListener('click', sendChat);
     chatInput.addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Enter' && !e.isComposing) sendChat(); if (e.key === 'Escape') closeChat(); });
     chatInput.addEventListener('keyup', (e) => e.stopPropagation());
+    // ---- 글 읽어주기: 대화를 치면 그 사람 캐릭터 목소리로 읽어 줌 (기기 안의 음성 합성, 서버·녹음 없음) ----
+    // 여자 캐릭터는 여자 목소리, 남자 캐릭터는 남자 목소리. 사람마다(기기 번호로) 높낮이·빠르기를 조금씩 달리해서 여러 명이어도 구분됨.
+    // 기기에 한국어 남자 목소리가 없으면 같은 목소리를 낮게 바꿔 남자 목소리처럼 들리게 함.
+    const Speak = {
+      on: (() => { try { return localStorage.getItem('mdc_tts_off') !== '1'; } catch (e) { return true; } })(),
+      ok: 'speechSynthesis' in window && 'SpeechSynthesisUtterance' in window,
+      voices: [], count: 0,
+      load() {
+        if (!this.ok) return;
+        const all = speechSynthesis.getVoices() || [];
+        this.voices = all.filter((v) => /^ko/i.test(v.lang || '') || /korean|한국/i.test(v.name || ''));
+      },
+      // 목소리 이름으로 남녀를 짐작 (윈도·엣지·아이폰·안드로이드에서 흔한 이름들)
+      sexOf(v) {
+        const n = (v.name || '').toLowerCase();
+        if (/injoon|in-joon|hyunsu|minsu|jinho|bongjin|gookmin|male|남/.test(n)) return 'm';
+        if (/sunhi|sun-hi|yuna|sora|heami|jimin|seoyeon|yujin|female|여/.test(n)) return 'f';
+        return '';
+      },
+      hash(id) { let h = 7; for (const ch of String(id || '')) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return h; },
+      // 사람마다 정해진 목소리 설정 (같은 사람은 늘 같은 목소리)
+      profile(id, g) {
+        const f = g === 'f', h = this.hash(id), k = h % 5;
+        const own = this.voices.filter((v) => this.sexOf(v) === (f ? 'f' : 'm'));
+        const any = this.voices.length ? this.voices : [];
+        let voice = null, pitch, rate = [1.0, 1.06, 0.95, 1.1, 0.92][(h >> 3) % 5];
+        if (own.length) { voice = own[(h >> 5) % own.length]; pitch = f ? [1.0, 1.15, 0.92, 1.25, 1.07][k] : [1.0, 0.88, 1.08, 0.8, 0.95][k]; }
+        else {
+          // 맞는 성별 목소리가 없으면: 있는 목소리 중 '모르는' 것 → 반대 성별 순으로 쓰고 높낮이로 남녀를 나눔
+          const neutral = any.filter((v) => !this.sexOf(v)), pool = neutral.length ? neutral : any;
+          voice = pool.length ? pool[(h >> 5) % pool.length] : null;
+          pitch = f ? [1.3, 1.45, 1.2, 1.55, 1.38][k] : [0.6, 0.72, 0.52, 0.8, 0.66][k];
+        }
+        return { voice, pitch, rate };
+      },
+      clean(t) { return String(t).replace(/\p{Extended_Pictographic}|️|‍/gu, ' ').replace(/ㅋ{2,}/g, '크크').replace(/ㅎ{2,}/g, '흐흐').replace(/\s+/g, ' ').trim(); },
+      say(text, id, g) {
+        if (!this.ok || !this.on) return;
+        const t = this.clean(text); if (!t) return;
+        if (!this.voices.length) this.load();
+        const p = this.profile(id, g), u = new SpeechSynthesisUtterance(t);
+        u.lang = (p.voice && p.voice.lang) || 'ko-KR'; if (p.voice) u.voice = p.voice;
+        u.pitch = p.pitch; u.rate = p.rate; u.volume = 1;
+        u.onstart = () => this.duck(true); u.onend = u.onerror = () => setTimeout(() => this.duck(false), 150);
+        if (speechSynthesis.paused) speechSynthesis.resume();
+        speechSynthesis.speak(u); this.count++; this.last = { text: t, pitch: p.pitch, rate: p.rate, voice: p.voice ? p.voice.name : '', g };
+      },
+      // 말하는 동안 찬송 반주를 살짝 줄여서 말이 잘 들리게
+      duck(down) {
+        try {
+          if (!bgmBus || !isBgmPlaying || !audioCtx) return;
+          if (!down && speechSynthesis.speaking) return;
+          bgmBus.gain.setTargetAtTime(down ? 0.18 : 0.55, audioCtx.currentTime, 0.15);
+        } catch (e) {}
+      },
+      toggle() {
+        this.on = !this.on; try { localStorage.setItem('mdc_tts_off', this.on ? '0' : '1'); } catch (e) {}
+        if (!this.on && this.ok) speechSynthesis.cancel();
+        const b = document.getElementById('voiceBtn'); b.textContent = this.on ? '🗣️' : '🔇'; b.classList.toggle('off', !this.on);
+        sysLine(this.on ? '🗣️ 대화를 목소리로 읽어 줘요' : '🔇 대화 읽어주기를 껐어요');
+      },
+    };
+    if (Speak.ok) { Speak.load(); try { speechSynthesis.addEventListener('voiceschanged', () => Speak.load()); } catch (e) {} }
+    // 아이폰은 처음 한 번 사용자가 누를 때 음성을 깨워 둬야 남이 보낸 말도 읽어 줌
+    window.addEventListener('pointerdown', () => { try { if (Speak.ok) { const u = new SpeechSynthesisUtterance(' '); u.volume = 0; speechSynthesis.speak(u); } } catch (e) {} }, { once: true });
+    window.__speak = Speak;
     // ---- 음성 메시지: 누르고 있는 동안 녹음(최대 10초) → 같은 층 성도님께 바로 재생 (서버에 저장하지 않음) ----
     // 기기마다 녹음 형식이 달라(안드로이드 webm, 아이폰 mp4) 서로 못 트는 문제를 피하려고,
     // 소리를 직접 8kHz μ-law(전화 음질)로 바꿔 작은 조각(약 24KB)으로 나눠 보낸다. 받는 쪽은 Web Audio로 바로 재생.
@@ -3481,11 +3552,11 @@
       },
     };
     {
+      // 🎤 녹음 대신: 대화 읽어주기 켜기/끄기 (예전 기기가 보낸 음성 메시지는 그대로 받아서 틀어 줌)
       const vb = document.getElementById('voiceBtn');
-      const down = (e) => { e.preventDefault(); e.stopPropagation(); Voice.holding = true; try { vb.setPointerCapture(e.pointerId); } catch (x) {} Voice.start(); };
-      const up = (e) => { e.preventDefault(); Voice.holding = false; Voice.stop(); };
-      vb.addEventListener('pointerdown', down); vb.addEventListener('pointerup', up); vb.addEventListener('pointercancel', up); vb.addEventListener('lostpointercapture', up);
-      vb.addEventListener('contextmenu', (e) => e.preventDefault());
+      vb.textContent = Speak.on ? '🗣️' : '🔇'; vb.classList.toggle('off', !Speak.on);
+      if (!Speak.ok) vb.hidden = true;
+      vb.addEventListener('click', (e) => { e.stopPropagation(); Speak.toggle(); });
     }
     window.__voice = Voice; window.__rooms = ROOM_LIGHTS;
     window.mdcNet = Net; window.__remotes = remotes;
