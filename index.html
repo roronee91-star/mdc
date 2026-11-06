@@ -1882,6 +1882,65 @@
       plate(-12.26, -10.5, -5.6, 0.08, F4_Y + 0.002, floorM); plate(-5.4, 0.05, -5.6, 0.08, F4_Y + 0.002, floorM);   // 4층 계단실
       plate(-12.26, 0.0, -17.36, -17.33, F4_Y, wallM, 3.15); plate(-12.23, -12.2, -17.33, -11.5, F4_Y, wallM, 3.15);
     }
+    // ---- 방 안 벽 (사용자 요청): 기본은 따뜻한 베이지 벽지, 방마다 원목 한 면 ----
+    //   목양실 = 목사님 뒤(북쪽) 벽 원목 / 소그룹실 = 액자 벽 원목 / 아동부 예배실 = 벽 아래 1m 원목(징두리) / 그 밖의 방 = 벽지
+    //   벽 자체는 그대로 두고, 방 안쪽 면에 얇은 판(8mm)을 덧댐. 문 자리는 비우고 문 위만 덮음. 유리벽·창 쪽은 덮지 않음.
+    {
+      const paperM = new THREE.MeshStandardMaterial({ map: wallpaperTexture(), roughness: 0.92 });
+      const woodM = new THREE.MeshStandardMaterial({ map: woodPanelTexture(), roughness: 0.6 });
+      const railM = new THREE.MeshStandardMaterial({ color: 0x8a5e38, roughness: 0.5 });
+      const T = 0.008;
+      // 판 하나: axis 'x' = x 방향으로 긴 벽(면이 z=face), 'z' = z 방향으로 긴 벽(면이 x=face). dir = 방 안쪽 방향(+1/-1)
+      const plate = (parent, Y, axis, face, dir, a0, a1, y0, y1, m, span) => {
+        if (a1 - a0 < 0.02 || y1 - y0 < 0.02) return;
+        const L = a1 - a0, H = y1 - y0, c = (a0 + a1) / 2, off = face + dir * T / 2;
+        const g = new THREE.Mesh(axis === 'x' ? new THREE.BoxGeometry(L, H, T) : new THREE.BoxGeometry(T, H, L), m);
+        if (axis === 'x') g.position.set(c, Y + y0 + H / 2, off); else g.position.set(off, Y + y0 + H / 2, c);
+        g.receiveShadow = true; parent.add(g); g.updateMatrixWorld(true); g.geometry = planarUV(g, span);
+      };
+      // 벽 한 면: kind 'paper' | 'wood' | 'wains'(아래 1m 원목 + 위 벽지 + 원목 띠), doors = [[가운데, 폭]], top = 문 위 높이
+      const side = (parent, Y, axis, face, dir, a0, a1, h, kind, doors, top) => {
+        const segs = []; let p = a0;
+        (doors || []).slice().sort((u, v) => u[0] - v[0]).forEach(([dc, dw]) => { segs.push([p, dc - dw / 2]); p = dc + dw / 2; });
+        segs.push([p, a1]);
+        segs.forEach(([q0, q1]) => {
+          if (kind === 'wood') plate(parent, Y, axis, face, dir, q0, q1, 0, h, woodM, 1.6);
+          else if (kind === 'wains') { plate(parent, Y, axis, face, dir, q0, q1, 0, 1.0, woodM, 1.6); plate(parent, Y, axis, face, dir, q0, q1, 1.0, h, paperM, 1.0);
+            const r = new THREE.Mesh(axis === 'x' ? new THREE.BoxGeometry(q1 - q0, 0.04, 0.02) : new THREE.BoxGeometry(0.02, 0.04, q1 - q0), railM);   // 원목 띠
+            if (axis === 'x') r.position.set((q0 + q1) / 2, Y + 1.0, face + dir * 0.012); else r.position.set(face + dir * 0.012, Y + 1.0, (q0 + q1) / 2); parent.add(r); }
+          else plate(parent, Y, axis, face, dir, q0, q1, 0, h, paperM, 1.0);
+        });
+        (doors || []).forEach(([dc, dw]) => plate(parent, Y, axis, face, dir, dc - dw / 2, dc + dw / 2, top, h, kind === 'wood' ? woodM : paperM, kind === 'wood' ? 1.6 : 1.0));   // 문 위
+      };
+      // 2층 소예배실 (x -12.23 ~ -7.04, z -15.56 ~ -8.44): 십자가 벽(북쪽) 원목
+      side(f2, F2_Y, 'x', -15.56, +1, -12.23, -7.04, 2.4, 'wood');
+      side(f2, F2_Y, 'x', -8.44, -1, -12.23, -7.04, 2.4, 'paper');
+      side(f2, F2_Y, 'z', -12.23, +1, -15.56, -8.44, 3.3, 'paper');
+      side(f2, F2_Y, 'z', -7.04, -1, -15.56, -8.44, 2.4, 'paper', [[-9.2, 1.2]], 2.0);
+      // 2층 사무실 (x -12.23 ~ -7.04, z -8.36 ~ -2.64): 벽지
+      side(f2, F2_Y, 'x', -8.36, +1, -12.23, -7.04, 2.4, 'paper');
+      side(f2, F2_Y, 'x', -2.64, -1, -12.23, -7.04, 2.4, 'paper');
+      side(f2, F2_Y, 'z', -12.23, +1, -8.36, -2.64, 3.3, 'paper');
+      side(f2, F2_Y, 'z', -7.04, -1, -8.36, -2.64, 2.4, 'paper', [[-3.4, 1.0]], 2.0);
+      // 3층 소그룹실 1~3 (서쪽 벽 roomW, 동쪽은 유리창): 액자 벽(북쪽) 원목
+      for (let i = 0; i < 3; i++) {
+        const za = roomZ[i], zb = roomZ[i + 1];
+        side(furn, F3_Y, 'x', za + 0.04, +1, roomW + 0.04, 0.06, 2.2, 'wood');
+        side(furn, F3_Y, 'x', zb - 0.04, -1, roomW + 0.04, 0.06, 2.2, 'paper');
+        side(furn, F3_Y, 'z', roomW + 0.04, +1, za + 0.04, zb - 0.04, 2.2, 'paper', [[zb - 0.5, 1.0]], 1.9);
+      }
+      // 4층 목양실 (x -12.2 ~ -9.04, z -17.33 ~ -11.52): 목사님 뒤 북쪽 벽 원목
+      side(f4, F4_Y, 'x', -17.33, +1, -12.2, -9.04, 3.15, 'wood');
+      side(f4, F4_Y, 'z', -12.2, +1, -17.33, -11.52, 3.15, 'paper');
+      side(f4, F4_Y, 'z', -9.04, -1, -17.33, -11.52, 3.15, 'paper');
+      // 4층 아동부 예배실 (x -8.06 ~ -3.34): 세 벽 모두 아래 1m 원목
+      side(f4, F4_Y, 'x', -17.33, +1, -8.06, -3.34, 3.15, 'wains');
+      side(f4, F4_Y, 'z', -8.06, +1, -17.33, -11.52, 3.15, 'wains', [[-14.0, 0.8]], 2.0);
+      side(f4, F4_Y, 'z', -3.34, -1, -17.33, -11.52, 3.15, 'wains', [[-14.0, 0.8]], 2.0);
+      // 4층 그룹실 (x -2.36 ~ 유리창): 서쪽 벽 원목
+      side(f4, F4_Y, 'z', -2.36, +1, -17.33, -11.52, 3.15, 'wood');
+      side(f4, F4_Y, 'x', -17.33, +1, -2.36, 0.06, 3.15, 'paper');
+    }
     // 횡단보도: 원래 줄이 남북으로 길게, 게다가 인도에 반쯤 걸쳐 있어서 → 차도를 건너는 동서 방향 줄로 다시 그림
     // 겹친 도로판 정리 (사용자: "도로에 판자가 겹쳐 보임"). 파일은 그대로, 화면에서 높이만 살짝 옮김
     //   건물 쪽 도로(ROAD_FRONT001·ROAD_RIGHT001)가 큰 도로보다 4cm 높아 3m 폭 판처럼 보이고 끝에 턱·줄이 생겼음 → 큰 도로 아래로 내림.
@@ -2196,6 +2255,19 @@
       for (let i = 0; i <= 4; i++) { x.fillRect(i * T - 1.5, 0, 3, N); x.fillRect(0, i * T - 1.5, N, 3); }
       const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 8; if ('colorSpace' in t) t.colorSpace = THREE.SRGBColorSpace;
       return t;
+    }
+    // ---- 방 벽지: 은은한 결이 있는 따뜻한 베이지 (512px = 1.0m, 무늬 없이 잔결·옅은 세로 결만) ----
+    var _paperTex;
+    function wallpaperTexture() {
+      if (_paperTex) return _paperTex;
+      const N = 512, c = document.createElement('canvas'); c.width = c.height = N; const x = c.getContext('2d');
+      let sd = 7; const rnd = () => { sd = (sd * 16807) % 2147483647; return sd / 2147483647; };
+      x.fillStyle = '#e8d5ba'; x.fillRect(0, 0, N, N);
+      for (let i = 0; i < N; i += 2) { x.fillStyle = `rgba(${rnd() < 0.5 ? '255,250,240' : '196,172,138'},${0.04 + rnd() * 0.05})`; x.fillRect(i, 0, 1, N); }   // 세로 잔결
+      for (let j = 0; j < N; j += 3) { x.fillStyle = `rgba(150,124,92,${0.02 + rnd() * 0.03})`; x.fillRect(0, j, N, 1); }                                    // 가로 천결
+      for (let k = 0; k < 1800; k++) { x.fillStyle = rnd() < 0.5 ? 'rgba(180,152,118,0.18)' : 'rgba(255,253,248,0.3)'; x.fillRect(rnd() * N, rnd() * N, 1.2, 1.2); }
+      const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 8; if ('colorSpace' in t) t.colorSpace = THREE.SRGBColorSpace;
+      return (_paperTex = t);
     }
     // 화면에 그릴 복사본 바닥에 위에서 내려다본 무늬 좌표(x, z)를 붙임 (원본 모양·위치는 그대로)
     function planarUV(mesh, span) {
