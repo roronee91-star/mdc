@@ -402,3 +402,8 @@
 ## 3층 바닥을 2층과 같게 (2026-11-06)
 - 3층 실내 바닥 판도 2층과 같은 `f2FloorM`(매끈한 베이지 대리석, `marbleTexture(41, true)`, `planarUV 1.6`)으로.
 - 확인: `tools/walk-check/f3floor.cjs` → f3floor-dine.png, f3floor-group.png. 에러 없음.
+
+## 벽 틈 두 곳 막기 (2026-11-06)
+- 본당: 남쪽 벽(South_L x≤-8.2, South_R x≥-4.2) 가운데 4m 틈이 방송실(높이 3m) 위로 뚫려 있었음 → 같은 원목 벽 `B1_FINAL_Wall_South_Fill`(x -8.2~-4.2, 바닥~천장)을 화면에서 덧댐. GLB는 그대로.
+- 2층 사무실: 남쪽 벽이 x -9.73부터만 있어 책장 뒤로 돌기둥 사이 틈이 보였음 → 벽을 서쪽 끝(-12.26)까지 늘림.
+- 확인: `tools/walk-check/holes.cjs` → hole-b1.png, hole-f2.png. 광선 검사로 두 곳 모두 새 벽에 닿음. 에러 없음.

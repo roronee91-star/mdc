@@ -1672,7 +1672,7 @@
       // 서쪽: 소예배실(z -15.6~-8.4, 예전 소그룹실 A+B를 합침) · 사무실(-8.4~-2.6, 넓게)
       // 동쪽: 방 없이 트인 홀 (창가 소파)
       k.wallDoor(CW, -15.6, CW, -8.4, -9.2, 1.2); k.wallDoor(CW, -8.4, CW, -2.6, -3.4, 1.0);
-      k.wall(-12.26, -15.6, CW, -15.6); k.wall(-12.26, -8.4, CW, -8.4); k.wall(-9.73, -2.6, CW, -2.6);
+      k.wall(-12.26, -15.6, CW, -15.6); k.wall(-12.26, -8.4, CW, -8.4); k.wall(-12.26, -2.6, CW, -2.6);   // 사무실 남쪽 벽: 서쪽 끝까지 (책장 뒤 돌기둥 틈을 막음)
       // (동쪽 방들은 없앰 — 복도와 동쪽 창가가 하나의 트인 홀)
       // ---- 소예배실: 북쪽에 낮은 강단·강대상·십자가, 개인 의자 5줄 × 6 (가운데 통로) ----
       {
@@ -2282,7 +2282,11 @@
       { const tile = stoneTileTexture(), woodT = woodPanelTexture();
         const tileM = new THREE.MeshStandardMaterial({ map: tile, roughness: 0.6 }), woodM = new THREE.MeshStandardMaterial({ map: woodT, roughness: 0.62 });
         [['B1_FINAL_Wall_West', tileM], ['B1_FINAL_Wall_North', tileM], ['B1_FINAL_Wall_East', woodM], ['B1_FINAL_Wall_South_L', woodM], ['B1_FINAL_Wall_South_R', woodM]].forEach(([n, mm]) => {
-          const m = byName[n]; if (!m) return; m.material = mm; m.geometry = planarUV(m, 2.4); }); }
+          const m = byName[n]; if (!m) return; m.material = mm; m.geometry = planarUV(m, 2.4); });
+        // 남쪽 벽 가운데 4m 틈(방송실 위)을 같은 원목 벽으로 막음: 방송실 벽은 3m까지라 그 위로 바깥이 보였음
+        { const sl = byName['B1_FINAL_Wall_South_L'];
+          if (sl && sl.parent) { const fill = new THREE.Mesh(new THREE.BoxGeometry(4.0, 6.0, 0.34), woodM); fill.name = 'B1_FINAL_Wall_South_Fill';
+            fill.position.copy(sl.parent.worldToLocal(new THREE.Vector3(-6.2, -3.6, 0.25))); sl.parent.add(fill); fill.updateMatrixWorld(true); fill.geometry = planarUV(fill, 2.4); fill.receiveShadow = true; } } }
       // 1) 의자: 줄과 간격을 새로 계산해서 다시 놓기 (겹침 · 벽 침범 없음)
       const fT = byName['B1_FINAL_Pew_Frame_0_0'], pT = byName['B1_FINAL_Pew_Pad_0_0'];
       if (fT && pT) {
