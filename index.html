@@ -4,6 +4,24 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
   <title>물댄동산교회 가상 성전 메타버스 투어</title>
+  <script>
+    // 카카오톡 안에서 링크를 열면 목소리·마이크가 막혀서, 들어오자마자 기본 브라우저(크롬·사파리)로 넘김.
+    // 한 번만 시도(못 넘어가고 다시 돌아오면 화면 안 '브라우저로 열기' 단추로 안내).
+    (function () {
+      try {
+        if (!/KAKAOTALK/i.test(navigator.userAgent || '')) return;
+        if (sessionStorage.getItem('mdc_out_tried')) return;
+        sessionStorage.setItem('mdc_out_tried', '1'); window.__mdcOutTried = true;
+        location.href = 'kakaotalk://web/openExternal?url=' + encodeURIComponent(location.href);
+        // 못 넘어간 경우 이 화면의 나머지 불러오기가 끊길 수 있어서, 본 화면 코드가 안 돌았으면 한 번 다시 불러옴(이번엔 안 넘김)
+        var tries = 0, chk = setInterval(function () {
+          tries++;
+          if (window.__mdcMain || tries > 40) { clearInterval(chk); return; }
+          if (document.readyState === 'complete' && !document.hidden) { clearInterval(chk); location.reload(); }
+        }, 500);
+      } catch (e) {}
+    })();
+  </script>
   <style>
     * {
       box-sizing: border-box;
@@ -458,6 +476,7 @@
   </div>
 
   <script type="module">
+    window.__mdcMain = true;   // 본 화면 코드가 돌기 시작함 (카카오톡 넘기기 실패 확인용)
     import * as THREE from 'three'; window.__RC = THREE.Raycaster;
     import {GLTFLoader} from './vendor/three/loaders/GLTFLoader.js';
     import {OrbitControls} from './vendor/three/controls/OrbitControls.js';
@@ -3512,6 +3531,7 @@
       if (to) location.href = to; else sysLine('화면 아래(또는 위) ⋯ 메뉴에서 "Safari로 열기"를 눌러 주세요.');
     }
     Speak.outsideUrl = outsideUrl;
+    if (IN_APP) setTimeout(() => (Speak.told = Object.assign(Speak.told || {}, { unsupported: true })) && outsideLine(window.__mdcOutTried ? '🌐 브라우저로 열었어요. 안 열렸으면 단추를 눌러 주세요 (앱 안에서는 목소리가 안 나와요).' : '🌐 앱 안에서는 목소리가 안 나와요. 크롬·사파리로 열어 주세요.'), 2500);
     function outsideLine(text) {
       const d = document.createElement('div'); d.className = 'chat-line sys'; d.textContent = text;
       if (IN_APP || !Speak.ok) { const b = document.createElement('button'); b.textContent = '브라우저로 열기'; b.addEventListener('click', (e) => { e.stopPropagation(); openOutside(); }); d.appendChild(b); }

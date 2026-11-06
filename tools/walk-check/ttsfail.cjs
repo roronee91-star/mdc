@@ -15,6 +15,8 @@ const STUCK = `(() => { window.__spoke = 0; const ss = { speaking: false, paused
     await p.goto('http://127.0.0.1:8008/index.html?net=local&room=ttsf', { waitUntil: 'commit', timeout: 120000 });
     await p.waitForFunction(() => window.__dbg && window.__speak, null, { timeout: 400000, polling: 2000 });
     await p.evaluate(() => window.__dbg.goTo('step6')); await p.mouse.click(450, 300); await p.waitForTimeout(5000);
+    console.log('카카오톡 → 브라우저로 넘기기 시도:', await p.evaluate(() => [!!window.__mdcOutTried, sessionStorage.getItem('mdc_out_tried')]));
+    console.log('들어오자마자 안내:', await p.evaluate(() => document.getElementById('chatLog').textContent));
     console.log('음성 기능:', await p.evaluate(() => window.__speak.ok), '/ 버튼:', await p.textContent('#voiceBtn'), '/ 보임:', await p.isVisible('#voiceBtn'));
     await p.evaluate(() => document.getElementById('chatOpen').click()); await p.fill('#chatInput', '안녕하세요'); await p.press('#chatInput', 'Enter');
     await p.waitForTimeout(5000);
@@ -26,6 +28,8 @@ const STUCK = `(() => { window.__spoke = 0; const ss = { speaking: false, paused
       console.log('바깥으로 여는 주소:', await p.evaluate(() => window.__speak.outsideUrl())); console.log('누른 뒤 페이지:', await p.evaluate(() => location.href).catch(() => '?'), nav.filter((u) => !/127\.0\.0\.1/.test(u)).slice(0, 2));
     }
     if (out) await p.screenshot({ path: `${out}/ttsfail-${label.length}.png` });
+    await p.reload({ waitUntil: 'commit' }); await p.waitForFunction(() => window.__dbg, null, { timeout: 400000, polling: 2000 });
+    console.log('다시 불러온 뒤 또 넘기기 시도(안 해야 함):', await p.evaluate(() => !!window.__mdcOutTried));
     console.log(errs.join('\n') || 'no errors'); await ctx.close();
   }
   await b.close();
