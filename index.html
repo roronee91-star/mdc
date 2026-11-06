@@ -1315,7 +1315,7 @@
       cafeChair(-0.55, -7.2, Math.PI / 2); cafeChair(-0.55, -6.2, Math.PI / 2); roundTable(-0.55, -6.7, 0.14);
       // 화분: 카페 자리 둘레, 창가, 배식대 양옆, 식당 가장자리
       [[-12.0, -7.4], [-12.0, -1.8], [-7.2, -1.4], [-1.9, -7.6], [-1.9, -4.6], [0.25, -7.7], [-8.45, -12.55]].forEach(([x, z], i) => plant(x, z, 1.05 + (i % 3) * 0.15, i % 2));
-      [[-8.45, -16.4], [-8.4, -11.0], [-8.4, -9.0], [-4.6, -8.0], [-7.6, -8.0]].forEach(([x, z]) => topiary(x, z));
+      [[-8.45, -16.4], [-8.4, -11.0], [-8.4, -9.0], [-4.6, -7.05], [-8.4, -7.3]].forEach(([x, z]) => topiary(x, z));
 
       // 배식대 뒤 주방 벽: 따뜻한 원목 판 (배식구는 비움) + 위에서 내려오는 간접 조명
       const wood = (len, h) => { const t = woodPanelTexture().clone(); t.needsUpdate = true; t.repeat.set(len / 2.4, h / 2.4); return new THREE.MeshStandardMaterial({ map: t, roughness: 0.6 }); };
