@@ -1869,12 +1869,12 @@
       const wallM = new THREE.MeshStandardMaterial({ color: BEIGE_WALL, roughness: 0.85 });
       const lin = new THREE.Group(); lin.name = 'BEIGE_LINING'; scene.add(lin);
       const plate = (x0, x1, z0, z1, y, m, h) => { const g = new THREE.Mesh(new THREE.BoxGeometry(x1 - x0, h || 0.006, z1 - z0), m); g.position.set((x0 + x1) / 2, y + (h || 0.006) / 2, (z0 + z1) / 2); g.receiveShadow = true; lin.add(g); return g; };
-      // 2층 바닥: 매끈한 베이지 대리석 (사용자 요청) — 본당 바닥과 같은 그림 방식, 얼룩을 줄인 판
+      // 2·3층 바닥: 매끈한 베이지 대리석 (사용자 요청) — 본당 바닥과 같은 그림 방식, 얼룩을 줄인 판
       const f2Tex = marbleTexture(41, true);
       const f2FloorM = new THREE.MeshStandardMaterial({ map: f2Tex, color: 0xfff2e0, emissiveMap: f2Tex, emissive: 0xfff0dc, emissiveIntensity: 0.2, roughness: 0.2 });
       [[F2_Y, 3.3], [F3_Y, 3.2]].forEach(([Y, H]) => {
-        const fl = plate(-12.26, 0.05, -17.36, 0.08, Y + 0.002, Y === F2_Y ? f2FloorM : floorM);   // 바닥
-        if (Y === F2_Y) { fl.updateMatrixWorld(true); fl.geometry = planarUV(fl, 1.6); }
+        const fl = plate(-12.26, 0.05, -17.36, 0.08, Y + 0.002, f2FloorM);   // 바닥 (2·3층 같은 매끈한 베이지 대리석)
+        { fl.updateMatrixWorld(true); fl.geometry = planarUV(fl, 1.6); }
         plate(-12.26, 0.0, -17.36, -17.33, Y, wallM, H);                             // 북쪽 벽 안쪽
         plate(-12.26, -12.23, -17.33, 0.0, Y, wallM, H);                             // 서쪽 벽 안쪽
       });

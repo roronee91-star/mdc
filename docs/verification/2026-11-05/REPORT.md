@@ -398,3 +398,7 @@
 ## 식당 나무가 식탁 의자에 붙어 보이던 것 (2026-11-06)
 - 식탁 줄 끝 의자 바로 옆에 있던 작은 나무 둘을 옮김: (-7.6,-8.0) → (-8.4,-7.3) 벽쪽 나무 줄 끝, (-4.6,-8.0) → (-4.6,-7.05) 식탁 줄 앞.
 - 확인: `tools/walk-check/topiary.cjs` → topiary-top.png, topiary-eye.png. 에러 없음.
+
+## 3층 바닥을 2층과 같게 (2026-11-06)
+- 3층 실내 바닥 판도 2층과 같은 `f2FloorM`(매끈한 베이지 대리석, `marbleTexture(41, true)`, `planarUV 1.6`)으로.
+- 확인: `tools/walk-check/f3floor.cjs` → f3floor-dine.png, f3floor-group.png. 에러 없음.
