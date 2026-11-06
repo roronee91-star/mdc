@@ -5,7 +5,7 @@ const { chromium } = require('playwright');
   const p = await (await b.newContext({ viewport: { width: 900, height: 640 } })).newPage(); const errs=[]; p.on('pageerror', e => errs.push(e.message));
   await p.goto('http://127.0.0.1:8008/index.html?net=local&room=of&time=day', { waitUntil:'domcontentloaded', timeout:120000 }); await p.evaluate(() => { localStorage.setItem('mdc_name','혜연'); localStorage.setItem('mdc_gender','f'); }); await p.reload({ waitUntil:'domcontentloaded' }); await p.waitForTimeout(7000);
   await p.evaluate(() => window.__dbg.goTo('step6')); await p.waitForTimeout(2200);
-  await p.evaluate(() => { document.getElementById('ui-overlay').style.display='none'; window.__dbg.setCam([-10.1, 4.55, -6.0], [-10.6, 3.9, -7.3]); }); await p.waitForTimeout(1800);
+  await p.evaluate(() => { document.getElementById('ui-overlay').style.display='none'; window.__dbg.setCam([-10.75, 4.35, -6.75], [-11.0, 4.0, -7.75]); }); await p.waitForTimeout(1800);
   await p.screenshot({ path: 'docs/verification/2026-11-05/office-chair.png' });
   await p.evaluate(() => window.__dbg.setCam([-10.9, 4.35, -4.0], [-11.7, 3.85, -4.9])); await p.waitForTimeout(1800);
   await p.screenshot({ path: 'docs/verification/2026-11-05/office-chair2.png' });
