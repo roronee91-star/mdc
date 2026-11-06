@@ -889,7 +889,9 @@
         scene.add(loadedModel);
         try { applyB1Fixes(loadedModel); } catch (e) { console.warn('본당 보정 실패', e); }
         try { applyF4Fixes(loadedModel); } catch (e) { console.warn('4층 보정 실패', e); }
+        try { fixRoads(loadedModel); } catch (e) { console.warn('도로 보정 실패', e); }
         try { fixCrosswalk(loadedModel); } catch (e) { console.warn('횡단보도 보정 실패', e); }
+        try { streetCars(loadedModel); } catch (e) { console.warn('길가 차 보정 실패', e); }
         goToTourStep('step1'); // 처음부터 캐릭터 눈높이 시점
 
         loadingScreen.style.opacity = '0';
@@ -1880,6 +1882,58 @@
       plate(-12.26, 0.0, -17.36, -17.33, F4_Y, wallM, 3.15); plate(-12.23, -12.2, -17.33, -11.5, F4_Y, wallM, 3.15);
     }
     // 횡단보도: 원래 줄이 남북으로 길게, 게다가 인도에 반쯤 걸쳐 있어서 → 차도를 건너는 동서 방향 줄로 다시 그림
+    // 겹친 도로판 정리 (사용자: "도로에 판자가 겹쳐 보임"). 파일은 그대로, 화면에서 높이만 살짝 옮김
+    //   건물 쪽 도로(ROAD_FRONT001·ROAD_RIGHT001)가 큰 도로보다 4cm 높아 3m 폭 판처럼 보이고 끝에 턱·줄이 생겼음 → 큰 도로 아래로 내림.
+    //   큰 앞 도로와 오른쪽 도로도 2cm 차이로 겹쳐 줄이 보여서, 앞 도로를 조금 올리고(노란 중앙선도 함께) 오른쪽 도로를 조금 내림.
+    function fixRoads(root) {
+      const byName = {}; root.traverse((o) => { if (o.isMesh) byName[o.name] = o; });
+      [['ROAD_FRONT001', -0.06], ['ROAD_RIGHT001', -0.06], ['ENV_ROAD_MAIN_FRONT', 0.02], ['ENV_CENTER_LINE_F', 0.02], ['ENV_ROAD_MAIN_RIGHT', -0.005]].forEach(([n, dy]) => {
+        const m = byName[n]; if (!m) return; const ps = new THREE.Vector3(); m.parent.getWorldScale(ps); m.position.y += dy / (ps.y || 1); m.updateMatrixWorld(true);
+      });
+    }
+    // 길가 차 (사용자: "바퀴가 없음"): 납작한 판 + 상자였던 차 4대를 숨기고, 같은 자리·같은 색으로 바퀴 달린 차를 새로 그림
+    function streetCars(root) {
+      const cars = {};
+      root.traverse((o) => { if (o.isMesh && /^ENV_CAR_\d+/.test(o.name)) { const k = o.name.match(/^ENV_CAR_\d+/)[0]; (cars[k] = cars[k] || []).push(o); } });
+      const down = new THREE.Raycaster(); root.updateMatrixWorld(true);
+      const M = (c, r, extra) => new THREE.MeshStandardMaterial(Object.assign({ color: c, roughness: r }, extra || {}));
+      const glass = M(0x26303b, 0.12, { metalness: 0.3 }), tire = M(0x18191b, 0.8), hubM = M(0xc9ccd1, 0.25, { metalness: 0.6 }), trim = M(0x2c2f33, 0.6);
+      const headM = new THREE.MeshStandardMaterial({ color: 0xf8f6ee, emissive: 0xfff3d6, emissiveIntensity: 0.35, roughness: 0.2 });
+      const tailM = new THREE.MeshStandardMaterial({ color: 0xb3261e, emissive: 0x8a1a14, emissiveIntensity: 0.3, roughness: 0.3 });
+      const extrude = (pts, depth, mat) => { const sh = new THREE.Shape(pts.map(([x, y]) => new THREE.Vector2(x, y)));
+        const geo = new THREE.ExtrudeGeometry(sh, { depth, bevelEnabled: true, bevelThickness: 0.04, bevelSize: 0.04, bevelSegments: 2 }); geo.translate(0, 0, -depth / 2); return new THREE.Mesh(geo, mat); };
+      Object.values(cars).forEach((parts) => {
+        const bb = new THREE.Box3(); let base = null;
+        parts.forEach((o) => { o.geometry.computeBoundingBox(); bb.union(o.geometry.boundingBox.clone().applyMatrix4(o.matrixWorld)); if (/_Base$/.test(o.name)) base = o; });
+        const col = base ? base.material.color.getHex() : 0xe7eaed;
+        const cx = (bb.min.x + bb.max.x) / 2, cz = (bb.min.z + bb.max.z) / 2, alongX = (bb.max.x - bb.min.x) >= (bb.max.z - bb.min.z);
+        const L = alongX ? bb.max.x - bb.min.x : bb.max.z - bb.min.z, W = alongX ? bb.max.z - bb.min.z : bb.max.x - bb.min.x;
+        parts.forEach((o) => { o.visible = false; o.userData.forceHidden = true; const i = clickableObjects.indexOf(o); if (i >= 0) clickableObjects.splice(i, 1); });
+        down.set(new THREE.Vector3(cx, 3, cz), new THREE.Vector3(0, -1, 0));
+        const hit = down.intersectObject(root, true).find((h) => h.object.visible && h.point.y < 0.2);
+        const g = new THREE.Group(); g.name = 'STREET_CAR'; g.position.set(cx, hit ? hit.point.y : -0.21, cz);
+        // 앞쪽(+x 지역) 방향: 앞 도로는 중앙선(z 14) 기준 차선마다 반대로, 오른쪽 도로 차는 아래(-z)를 봄
+        g.rotation.y = alongX ? (cz < 14 ? Math.PI : 0) : Math.PI / 2; scene.add(g);
+        const body = M(col, 0.35, { metalness: 0.15 }), h = L / 2;
+        const add = (mesh, x, y, z) => { mesh.position.set(x, y, z); mesh.castShadow = true; mesh.receiveShadow = true; g.add(mesh); return mesh; };
+        add(extrude([[-h, 0.3], [h, 0.3], [h, 0.62], [h - 0.28, 0.82], [-h + 0.15, 0.86], [-h, 0.74]], W - 0.08, body), 0, 0, 0);     // 차체
+        add(extrude([[-h + 0.62, 0.84], [h - 1.05, 0.84], [h - 1.75, 1.22], [-h + 1.1, 1.22]], W - 0.24, glass), 0, 0, 0);            // 창 (유리)
+        add(new THREE.Mesh(new THREE.BoxGeometry(L - 2.9, 0.05, W - 0.22), body), (-h + 1.1 + h - 1.75) / 2, 1.255, 0);              // 지붕
+        add(new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.38, W - 0.2), body), -0.25, 1.03, 0);                                        // 가운데 기둥
+        add(new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.14, W - 0.1), trim), h + 0.02, 0.36, 0);                                  // 범퍼
+        add(new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.14, W - 0.1), trim), -h - 0.02, 0.36, 0);
+        add(new THREE.Mesh(new THREE.BoxGeometry(L - 1.2, 0.07, W - 0.02), trim), 0, 0.3, 0);                                     // 아래 문턱
+        [-1, 1].forEach((sz) => {
+          add(new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.1, 0.34), headM), h + 0.03, 0.62, sz * (W / 2 - 0.3));                   // 앞 등
+          add(new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.1, 0.32), tailM), -h - 0.03, 0.68, sz * (W / 2 - 0.3));                  // 뒤 등
+          add(new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.09, 0.08), body), h - 1.1, 0.93, sz * (W / 2 + 0.02));                    // 옆 거울
+          [h - 0.85, -h + 0.85].forEach((wx) => {                                                                                    // 바퀴 + 휠 캡
+            const t = add(new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.34, 0.24, 22), tire), wx, 0.34, sz * (W / 2 - 0.08)); t.rotation.x = Math.PI / 2;
+            const c = add(new THREE.Mesh(new THREE.CylinderGeometry(0.19, 0.19, 0.02, 18), hubM), wx, 0.34, sz * (W / 2 + 0.045)); c.rotation.x = Math.PI / 2;
+          });
+        });
+      });
+    }
     function fixCrosswalk(root) {
       const stripes = []; root.traverse((o) => { if (o.isMesh && o.name.indexOf('CROSSWALK_FRONT') === 0) stripes.push(o); });
       if (!stripes.length) return;

@@ -8,4 +8,5 @@ const pre = process.argv[2] || 'road';
 const shot = async (c, t, n) => { await p.evaluate(([c, t]) => { document.getElementById('ui-overlay').style.display='none'; window.__dbg.setCam(c, t); }, [c, t]); await p.waitForTimeout(1800); await p.screenshot({ path: `docs/verification/2026-11-05/${pre}-${n}.png` }); };
 await shot([-6, 1.3, 20.5], [-6, -0.2, 9], 'front');
 await shot([4, 1.3, 20.5], [9, -0.2, 8], 'corner');
+await shot([6, 25, 25], [-2, 0, 6], 'top');
 console.log(errs.join('\n') || 'no errors'); await b.close(); })();
