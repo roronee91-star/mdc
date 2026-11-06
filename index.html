@@ -3244,7 +3244,8 @@
       L.forEach((l, i) => g.fillText(l + (i === 2 && lines.length > 3 ? '…' : ''), 256, 6 + 34 + i * 42));
       const tex = new THREE.CanvasTexture(c); if ('colorSpace' in tex) tex.colorSpace = THREE.SRGBColorSpace;
       const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false }));
-      sp.scale.set(1.9, 0.74, 1); sp.position.set(0, 1.78, 0); sp.renderOrder = 13; sp.userData.born = performance.now();
+      // 꼬리 끝이 이름표(윗변 약 1.37) 바로 위에 오게: 그림 아래쪽 빈 칸만큼 내림
+      sp.scale.set(1.9, 0.74, 1); sp.position.set(0, 1.42 - 0.74 * (0.5 - (6 + h + 18) / 200), 0); sp.renderOrder = 13; sp.userData.born = performance.now();
       group.add(sp); holder.bubble = sp;
     }
     const myBubble = {};
@@ -3479,7 +3480,7 @@
     function isWaving() { return performance.now() < waveUntil; }
     const WAVE = { x: -0.3, z: 2.5, amp: 0.35 };   // 오른팔(+x 쪽)을 바깥으로 들어 올려 머리 옆에서 좌우로 흔듦 (z가 +여야 바깥쪽)
     function WAVE_Z(t) { return WAVE.z + Math.sin(t * 9) * WAVE.amp; }
-    window.__dbg.wave = (ms) => { waveUntil = performance.now() + (ms || 2600); }; window.__dbg.WAVE = WAVE;
+    window.__dbg.wave = (ms) => { waveUntil = performance.now() + (ms || 2600); }; window.__dbg.bubble = (t) => showBubble(characterGroup, t); window.__dbg.WAVE = WAVE;
     function personNear() {
       const p = characterGroup.position; let near = false;
       remotes.forEach((r) => { if (r.group.visible && Math.hypot(r.group.position.x - p.x, r.group.position.z - p.z) < 3 && Math.abs(r.group.position.y - p.y) < 1.5) near = true; });
