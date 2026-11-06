@@ -319,6 +319,7 @@
       animation: uiIn 0.25s ease-out both; transition: opacity 1s; word-break: break-word; }
     .chat-line b { color: #fde68a; margin-right: 5px; }
     .chat-line.sys { color: #cbd5e1; font-style: italic; }
+    .chat-line button { pointer-events: auto; margin-left: 6px; font-size: 12px; font-weight: 800; padding: 3px 8px; border-radius: 8px; border: none; background: #fde68a; color: #4a3520; font-style: normal; }
     .chat-line.fade { opacity: 0; }
     #voiceBtn { position: absolute; right: 14px; bottom: 120px; z-index: 5; width: 48px; height: 48px; border-radius: 50%; border: none; font-size: 21px;
       background: #fffaf2; color: #6b4f33; box-shadow: 0 4px 14px rgba(0,0,0,0.3); cursor: pointer; touch-action: none; -webkit-user-select: none; -webkit-touch-callout: none; }
@@ -3395,9 +3396,9 @@
     }
     // 대화 기록 (왼쪽 아래, 최근 5줄, 15초 뒤 흐려짐)
     const chatLogEl = document.getElementById('chatLog');
-    function addLine(el) {
+    function addLine(el, ms = 15000) {
       chatLogEl.appendChild(el); while (chatLogEl.children.length > 5) chatLogEl.firstChild.remove();
-      setTimeout(() => el.classList.add('fade'), 15000); setTimeout(() => el.remove(), 16200);
+      setTimeout(() => el.classList.add('fade'), ms); setTimeout(() => el.remove(), ms + 1200);
     }
     function chatLine(name, text) { const d = document.createElement('div'); d.className = 'chat-line'; const b = document.createElement('b'); b.textContent = name || '성도'; d.append(b, document.createTextNode(text)); addLine(d); }
     function sysLine(text) { const d = document.createElement('div'); d.className = 'chat-line sys'; d.textContent = text; addLine(d); }
@@ -3410,7 +3411,7 @@
       const me = myState(); chatInput.value = '';
       Net.send('chat', { id: me.id, n: me.n, g: me.g, lv: me.lv, text });
       chatLine(me.n, text); showBubble(characterGroup, text);
-      Speak.say(text, me.id, me.g);
+      if (Speak.ok) Speak.say(text, me.id, me.g); else Speak.trouble('unsupported');
     }
     document.getElementById('chatOpen').addEventListener('click', openChat);
     document.getElementById('chatClose').addEventListener('click', closeChat);
@@ -3460,9 +3461,25 @@
         const p = this.profile(id, g), u = new SpeechSynthesisUtterance(t);
         u.lang = (p.voice && p.voice.lang) || 'ko-KR'; if (p.voice) u.voice = p.voice;
         u.pitch = p.pitch; u.rate = p.rate; u.volume = 1;
-        u.onstart = () => this.duck(true); u.onend = u.onerror = () => setTimeout(() => this.duck(false), 150);
+        u.onstart = () => { this.started = (this.started || 0) + 1; this.startAt = performance.now(); this.duck(true); };
+        u.onend = () => { this.cur = null; setTimeout(() => this.duck(false), 150); };
+        u.onerror = (e) => { this.cur = null; setTimeout(() => this.duck(false), 150); this.trouble(e && e.error); };
+        // 크롬에서 앞 말이 끝났다는 신호 없이 멈춰 버리면 줄이 막히므로 20초 넘게 걸린 말은 정리
+        if (speechSynthesis.speaking && this.startAt && performance.now() - this.startAt > 20000) speechSynthesis.cancel();
         if (speechSynthesis.paused) speechSynthesis.resume();
-        speechSynthesis.speak(u); this.count++; this.last = { text: t, pitch: p.pitch, rate: p.rate, voice: p.voice ? p.voice.name : '', g };
+        this.cur = u;                                                   // 크롬이 말 도중에 지워 버리지 않게 잡아 둠
+        speechSynthesis.speak(u); this.count++;
+        if (!this.hinted) { this.hinted = true; const n = this.started || 0;
+          setTimeout(() => { if ((this.started || 0) === n && this.on) this.trouble('no-start'); }, 4000); }   // 4초 안에 말이 시작 안 되면 안내
+        this.last = { text: t, pitch: p.pitch, rate: p.rate, voice: p.voice ? p.voice.name : '', g };
+      },
+      // 소리가 안 날 때 화면에 이유와 방법을 알려 줌 (같은 안내는 한 번만)
+      trouble(code) {
+        if (code === 'interrupted' || code === 'canceled') return;
+        this.told = this.told || {}; const key = code === 'no-start' || !code ? 'quiet' : code; if (this.told[key]) return; this.told[key] = true;
+        if (code === 'not-allowed') sysLine('🔇 아직 소리를 낼 수 없어요. 화면을 한 번 눌러 주세요.');
+        else if (code === 'unsupported') outsideLine(IN_APP ? '🔇 앱 안에서 열면 목소리가 안 나와요. 크롬·사파리로 열어 주세요.' : '🔇 이 브라우저는 목소리 기능이 없어요. 크롬·사파리로 열어 주세요.');
+        else outsideLine('🔇 목소리가 안 나와요. 휴대폰 무음(진동) 모드를 풀고 소리를 키워 주세요.' + (IN_APP ? ' 그래도 안 되면 크롬·사파리로 열어 주세요.' : ''));
       },
       // 말하는 동안 찬송 반주를 살짝 줄여서 말이 잘 들리게
       duck(down) {
@@ -3481,7 +3498,25 @@
     };
     if (Speak.ok) { Speak.load(); try { speechSynthesis.addEventListener('voiceschanged', () => Speak.load()); } catch (e) {} }
     // 아이폰은 처음 한 번 사용자가 누를 때 음성을 깨워 둬야 남이 보낸 말도 읽어 줌
-    window.addEventListener('pointerdown', () => { try { if (Speak.ok) { const u = new SpeechSynthesisUtterance(' '); u.volume = 0; speechSynthesis.speak(u); } } catch (e) {} }, { once: true });
+    window.addEventListener('pointerdown', () => { try { if (Speak.ok) { speechSynthesis.cancel(); speechSynthesis.speak(new SpeechSynthesisUtterance('')); } } catch (e) {} }, { once: true });
+    // 카카오톡·밴드 같은 앱 안에서 열면 목소리(와 마이크)가 막힌 경우가 많아서, 바깥 브라우저로 여는 단추를 줌
+    const IN_APP = /KAKAOTALK|NAVER\(inapp|BAND\/|Instagram|FBAN|FBAV|Line\/|DaumApps|; wv\)/i.test(navigator.userAgent || '');
+    function outsideUrl() {
+      const url = location.href, ua = navigator.userAgent || '';
+      if (/KAKAOTALK/i.test(ua)) return 'kakaotalk://web/openExternal?url=' + encodeURIComponent(url);
+      if (/Android/i.test(ua)) return 'intent://' + url.replace(/^https?:\/\//, '') + '#Intent;scheme=https;package=com.android.chrome;end';
+      return '';
+    }
+    function openOutside() {
+      const to = outsideUrl();
+      if (to) location.href = to; else sysLine('화면 아래(또는 위) ⋯ 메뉴에서 "Safari로 열기"를 눌러 주세요.');
+    }
+    Speak.outsideUrl = outsideUrl;
+    function outsideLine(text) {
+      const d = document.createElement('div'); d.className = 'chat-line sys'; d.textContent = text;
+      if (IN_APP || !Speak.ok) { const b = document.createElement('button'); b.textContent = '브라우저로 열기'; b.addEventListener('click', (e) => { e.stopPropagation(); openOutside(); }); d.appendChild(b); }
+      addLine(d, 45000);                                                // 안내는 45초 동안 보여 줌
+    }
     window.__speak = Speak;
     // ---- 음성 메시지: 누르고 있는 동안 녹음(최대 10초) → 같은 층 성도님께 바로 재생 (서버에 저장하지 않음) ----
     // 기기마다 녹음 형식이 달라(안드로이드 webm, 아이폰 mp4) 서로 못 트는 문제를 피하려고,
@@ -3555,8 +3590,8 @@
       // 🎤 녹음 대신: 대화 읽어주기 켜기/끄기 (예전 기기가 보낸 음성 메시지는 그대로 받아서 틀어 줌)
       const vb = document.getElementById('voiceBtn');
       vb.textContent = Speak.on ? '🗣️' : '🔇'; vb.classList.toggle('off', !Speak.on);
-      if (!Speak.ok) vb.hidden = true;
-      vb.addEventListener('click', (e) => { e.stopPropagation(); Speak.toggle(); });
+      if (!Speak.ok) { vb.textContent = '🔇'; vb.classList.add('off'); }
+      vb.addEventListener('click', (e) => { e.stopPropagation(); if (!Speak.ok) { Speak.told = {}; Speak.trouble('unsupported'); return; } Speak.toggle(); });
     }
     window.__voice = Voice; window.__rooms = ROOM_LIGHTS;
     window.mdcNet = Net; window.__remotes = remotes;
@@ -3614,7 +3649,7 @@
       const diffTime = performance.now() - downTime;
       const dist = Math.hypot(e.clientX - downPos.x, e.clientY - downPos.y);
       if (diffTime > 260 || dist > 6) return;
-      if (e.target.closest('#ui-overlay') || e.target.closest('#uiShow') || e.target.closest('#joy') || e.target.closest('#elevPanel') || e.target.closest('#nameModal') || e.target.closest('#prayerPanel') || e.target.closest('#chatBar') || e.target.closest('#chatOpen') || e.target.closest('#voiceBtn')) return;
+      if (e.target.closest('#ui-overlay') || e.target.closest('#uiShow') || e.target.closest('#joy') || e.target.closest('#elevPanel') || e.target.closest('#nameModal') || e.target.closest('#prayerPanel') || e.target.closest('#chatBar') || e.target.closest('#chatOpen') || e.target.closest('#voiceBtn') || e.target.closest('#chatLog button')) return;
 
       mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
       mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
