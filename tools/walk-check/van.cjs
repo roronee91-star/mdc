@@ -10,7 +10,7 @@ const { chromium } = require('playwright');
     await p.evaluate(([cam, look]) => window.__dbg.setCam(cam, look), [cam, look]); await p.waitForTimeout(2200);
     await p.screenshot({ path: 'docs/verification/2026-11-05/' + f });
   };
-  await shot('step2', [-6.4, 0, -3.8], [-5.0, 2.0, -2.6], [-8.0, 0.6, -7.4], 'van-park.png');
+  await shot('step2', [-6.4, 0, -3.8], [-5.6, 2.2, -2.4], [-7.6, 0.5, -7.4], 'van-park.png');
   await shot('step2', [-7.6, 0, -4.4], [-12.0, 1.6, -3.6], [-9.2, 0.6, -7.6], 'van-side.png');
   await shot('step5', [-5.4, 7.25, -5.2], [-5.0, 7.25 + 2.4, -3.2], [-7.0, 7.25 + 0.6, -12.0], 'dine-notree.png');
   console.log(errs.join('\n')||'no errors'); await b.close();
