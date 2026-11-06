@@ -15,6 +15,7 @@ const { chromium } = require('playwright');
     await p.screenshot({ path: `${out}/${pre}${n}.png` });
   };
   const F4 = 10.75, F2 = 3.65, F3 = 7.25;
+  if (process.argv[4] === 'kids') { await shot('step7', [-5.7, F4, -13.0], [-5.7, F4 + 1.9, -11.9], [-5.7, F4 + 0.6, -15.6], 'kids'); await shot('step7', [-6.4, F4, -15.4], [-6.0, F4 + 1.2, -14.2], [-7.3, F4 + 1.4, -17.3], 'kids-screen'); console.log(errs.join('\n') || 'no errors'); await b.close(); return; }
   await shot('step7', [-5.7, F4, -13.0], [-5.7, F4 + 1.9, -11.9], [-5.7, F4 + 0.6, -15.6], 'kids');
   await shot('step7', [-5.2, F4, -14.2], [-4.6, F4 + 1.5, -12.6], [-7.6, F4 + 0.4, -15.2], 'kids-west');
   await shot('step7', [-6.2, F4, -14.2], [-6.9, F4 + 1.5, -12.6], [-3.8, F4 + 0.4, -15.2], 'kids-east');

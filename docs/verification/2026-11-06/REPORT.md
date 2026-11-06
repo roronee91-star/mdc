@@ -52,3 +52,9 @@
 | 주방 가스레인지 | ![](r7-before-kitchen-stove.png) | ![](r7-kitchen-stove.png) |
 
 ![](r7-kids-west.png) ![](r7-kids-east.png) ![](r7-kitchen-sink.png) ![](r7-kitchen.png)
+
+## 아동부실 찬양 화면 그림 바꿈
+- 사용자가 보낸 그림(예수님과 어린 양들 · "예수님 사랑해요", 1672×941)을 1280×720 JPEG로 줄여 `assets/screen/kids-jesus-love.jpg`(97KB)로 넣음. 화면 판을 16:9(1.32×0.743m)로 맞추고 검은 테두리도 살짝 키움. 그림을 못 불러오면 예전 글씨 그림이 그대로 보임.
+- 결과: 화면에 그림이 또렷이 보임 ✅, 페이지 오류 없음.
+
+![](r7img-kids.png) ![](r7img-kids-screen.png)
