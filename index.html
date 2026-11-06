@@ -1399,6 +1399,50 @@
           add(0.28, 0.14, 0.025, 0, 0.34, -0.135, mat || k.mSeat);
           g.userData.seat = { x, y: Y + 0.20 * (sc || 1), z, rot: rotY, kind: kind || 'chair' };
         },
+        // 사무실 컴퓨터 의자 (사용자가 고른 모양): 흰 다섯 발 받침·바퀴, 회색 방석, 흰 틀에 하늘색 망사 등받이, 회색 머리 받침, 흰 고리형 팔걸이
+        officeChair(x, z, rotY) {
+          const g = new THREE.Group(); g.position.set(x, Y, z); g.rotation.y = rotY; group.add(g);
+          const W = k._ocW || (k._ocW = new THREE.MeshStandardMaterial({ color: 0xf3f3f1, roughness: 0.4 }));
+          const G = k._ocG || (k._ocG = new THREE.MeshStandardMaterial({ color: 0x8e9297, roughness: 0.9 }));
+          const B = k._ocB || (k._ocB = new THREE.MeshStandardMaterial({ color: 0x1e2022, roughness: 0.5 }));
+          const C = k._ocC || (k._ocC = new THREE.MeshStandardMaterial({ color: 0xc9cdd2, roughness: 0.25, metalness: 0.5 }));
+          const NET = k._ocN || (k._ocN = (() => {                                    // 망사: 가는 가로줄 무늬
+            const c = document.createElement('canvas'); c.width = 64; c.height = 128; const x2 = c.getContext('2d');
+            x2.fillStyle = '#a9c3da'; x2.fillRect(0, 0, 64, 128); x2.fillStyle = 'rgba(70,110,150,0.35)'; for (let i = 0; i < 128; i += 3) x2.fillRect(0, i, 64, 1);
+            const t = new THREE.CanvasTexture(c); if ('colorSpace' in t) t.colorSpace = THREE.SRGBColorSpace;
+            return new THREE.MeshStandardMaterial({ map: t, roughness: 0.8, transparent: true, opacity: 0.92, side: THREE.DoubleSide });
+          })());
+          const add = (geo, m, px, py, pz, rx, ry, rz) => { const b = new THREE.Mesh(geo, m); b.position.set(px, py, pz); b.rotation.set(rx || 0, ry || 0, rz || 0); b.castShadow = true; g.add(b); return b; };
+          const rbox = (w, d, h, r) => { const sh = new THREE.Shape(); sh.moveTo(-w / 2 + r, -d / 2); sh.lineTo(w / 2 - r, -d / 2); sh.quadraticCurveTo(w / 2, -d / 2, w / 2, -d / 2 + r); sh.lineTo(w / 2, d / 2 - r); sh.quadraticCurveTo(w / 2, d / 2, w / 2 - r, d / 2); sh.lineTo(-w / 2 + r, d / 2); sh.quadraticCurveTo(-w / 2, d / 2, -w / 2, d / 2 - r); sh.lineTo(-w / 2, -d / 2 + r); sh.quadraticCurveTo(-w / 2, -d / 2, -w / 2 + r, -d / 2);
+            const geo = new THREE.ExtrudeGeometry(sh, { depth: h, bevelEnabled: true, bevelThickness: 0.006, bevelSize: 0.006, bevelSegments: 2, curveSegments: 5 }); geo.rotateX(-Math.PI / 2); return geo; };
+          for (let i = 0; i < 5; i++) { const a = (i / 5) * Math.PI * 2;                // 다섯 발 + 바퀴
+            add(new THREE.BoxGeometry(0.03, 0.02, 0.17), W, Math.sin(a) * 0.085, 0.035, Math.cos(a) * 0.085, 0.12, a, 0);
+            add(new THREE.SphereGeometry(0.018, 8, 6), B, Math.sin(a) * 0.165, 0.018, Math.cos(a) * 0.165); }
+          add(new THREE.CylinderGeometry(0.03, 0.035, 0.03, 12), W, 0, 0.045, 0);
+          add(new THREE.CylinderGeometry(0.014, 0.014, 0.1, 10), C, 0, 0.1, 0);             // 가스 실린더
+          add(new THREE.BoxGeometry(0.12, 0.025, 0.12), B, 0, 0.152, 0);                     // 아래 장치
+          add(new THREE.BoxGeometry(0.008, 0.008, 0.09), B, 0.09, 0.15, 0.03, 0, 0.5, 0);   // 높이 조절 손잡이
+          add(rbox(0.29, 0.28, 0.026, 0.05), G, 0, 0.168, 0);                                // 방석 (윗면 약 0.20)
+          // 등받이: 위가 조금 넓은 모양, 흰 틀 + 하늘색 망사, 살짝 뒤로 기울어짐
+          const back = new THREE.Shape(); back.moveTo(-0.11, 0); back.lineTo(0.11, 0); back.lineTo(0.135, 0.33); back.quadraticCurveTo(0, 0.35, -0.135, 0.33); back.lineTo(-0.11, 0);
+          const frame = new THREE.ExtrudeGeometry(back, { depth: 0.014, bevelEnabled: false, curveSegments: 8 });
+          const inner = new THREE.Shape(); inner.moveTo(-0.095, 0.02); inner.lineTo(0.095, 0.02); inner.lineTo(0.117, 0.31); inner.quadraticCurveTo(0, 0.328, -0.117, 0.31); inner.lineTo(-0.095, 0.02);
+          const netG = new THREE.ShapeGeometry(inner, 8); const uv = netG.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * 3, uv.getY(i) * 3);
+          const bg = new THREE.Group(); bg.position.set(0, 0.235, -0.15); bg.rotation.x = -0.12; g.add(bg);
+          const fr = new THREE.Mesh(frame, W); fr.castShadow = true; bg.add(fr);
+          const hole = new THREE.Mesh(new THREE.ShapeGeometry(inner, 8), NET); hole.position.z = 0.0155; bg.add(hole);   // 앞쪽 망사
+          const net = new THREE.Mesh(netG, NET); net.position.z = -0.0015; bg.add(net);                                  // 뒤쪽 망사
+          add(new THREE.BoxGeometry(0.05, 0.07, 0.02), W, 0, 0.215, -0.14);                  // 등받이 받침
+          add(new THREE.BoxGeometry(0.012, 0.07, 0.012), W, 0, 0.62, -0.195, -0.12);         // 머리 받침 기둥 + 머리 받침
+          { const hr = new THREE.Mesh(rbox(0.15, 0.03, 0.06, 0.012), G); hr.position.set(0, 0.41, -0.01); hr.rotation.x = Math.PI / 2; hr.castShadow = true; bg.add(hr); }
+          [-1, 1].forEach((sx) => {                                                          // 고리형 팔걸이
+            add(new THREE.BoxGeometry(0.018, 0.12, 0.018), W, sx * 0.16, 0.25, 0.07);
+            add(new THREE.BoxGeometry(0.018, 0.12, 0.018), W, sx * 0.16, 0.25, -0.1, -0.15);
+            add(new THREE.BoxGeometry(0.022, 0.018, 0.2), W, sx * 0.16, 0.315, -0.015);
+            add(new THREE.BoxGeometry(0.04, 0.012, 0.04), W, sx * 0.145, 0.19, 0.07);
+          });
+          g.userData.seat = { x, y: Y + 0.20, z, rot: rotY, kind: 'chair' };
+        },
         table(x, z, w, d, mat) {
           k.box(w, 0.04, d, x, 0.34, z, mat || k.mWood);
           [[-1, -1], [-1, 1], [1, -1], [1, 1]].forEach(([sx, sz]) => k.box(0.04, 0.34, 0.04, x + sx * (w / 2 - 0.04), 0, z + sz * (d / 2 - 0.04), mat || k.mWood));
@@ -1542,9 +1586,9 @@
       {
         const dk = k.M(0xcfc6b8), scr = k.M(0x22303f, 0.3), chairM = k.M(0x4a5563);
         [[-11.0, -7.7], [-9.2, -7.7]].forEach(([x, z]) => {                        // 북쪽 벽(소예배실 쪽)에 붙인 책상 2
-          k.table(x, z, 1.2, 0.55, dk); k.box(0.42, 0.26, 0.03, x, 0.42, z - 0.18, scr); k.chair(x, z + 0.5, Math.PI, chairM); });
+          k.table(x, z, 1.2, 0.55, dk); k.box(0.42, 0.26, 0.03, x, 0.42, z - 0.18, scr); k.officeChair(x, z + 0.5, Math.PI); });
         [[-12.0, -5.6], [-12.0, -4.2]].forEach(([x, z]) => {                       // 서쪽 벽에 붙인 책상 2
-          k.table(x, z, 0.55, 1.1, dk); k.box(0.03, 0.26, 0.42, x - 0.18, 0.42, z, scr); k.chair(x + 0.5, z, -Math.PI / 2, chairM); });
+          k.table(x, z, 0.55, 1.1, dk); k.box(0.03, 0.26, 0.42, x - 0.18, 0.42, z, scr); k.officeChair(x + 0.5, z, -Math.PI / 2); });
         k.table(-9.0, -4.6, 1.0, 1.4, k.M(0xa77b50));                              // 회의 탁자 + 의자 4
         [[-9.0, -5.55, 0], [-9.0, -3.65, Math.PI], [-9.75, -4.6, Math.PI / 2], [-8.25, -4.6, -Math.PI / 2]].forEach(([x, z, r]) => k.chair(x, z, r, chairM));
         k.shelf(-7.95, -7.95, 1.0, 0); k.shelf(-11.0, -2.8, 1.8, Math.PI);         // 책장
