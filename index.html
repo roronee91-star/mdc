@@ -1247,8 +1247,8 @@
       // 식탁 길이 0.9m: 식탁 양 끝에 0.65m 이상 남겨 문 반대편(동쪽) 의자까지 돌아 들어갈 수 있게
       groupTable(GX, cz, 0.9, 0.5);
       [-0.23, 0.23].forEach((k) => {
-        groupChair(GX - 0.30, cz + k, +1);
-        groupChair(GX + 0.30, cz + k, -1);
+        groupChair(GX - 0.39, cz + k, +1);                         // 식탁 가장자리(0.25)에서 0.14 띄움: 앉은 몸이 식탁을 뚫고 보이지 않게
+        groupChair(GX + 0.39, cz + k, -1);
       });
       groupDecor(GX, cz, za + 0.04);
       box(0.08, 0.3, 1.0, roomW, 1.9, zb - 0.5, mWall);                           // 문 위 인방
@@ -1810,7 +1810,7 @@
       {
         // 3층 소그룹실과 같은 따뜻한 원목 의자 · 흰 식탁 · 러그 · 꽃병 (사용자 요청)
         groupTable(-1.25, -13.0, 1.2, 0.6, f4, F4_Y);
-        [-0.35, 0.35].forEach((dz) => { groupChair(-1.25 - 0.36, -13.0 + dz, +1, f4, F4_Y); groupChair(-1.25 + 0.36, -13.0 + dz, -1, f4, F4_Y); });
+        [-0.35, 0.35].forEach((dz) => { groupChair(-1.25 - 0.44, -13.0 + dz, +1, f4, F4_Y); groupChair(-1.25 + 0.44, -13.0 + dz, -1, f4, F4_Y); });   // 식탁 가장자리(0.3)에서 0.14 띄움
         groupDecor(-1.25, -13.0, null, f4, F4_Y);
         k.sign('그룹실', -1.4, F4_IN_S + 0.06, 0, 2.4);
       }

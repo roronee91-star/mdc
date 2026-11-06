@@ -12,7 +12,7 @@ const { chromium } = require('playwright');
   await cam([-10.3, 11.6, -12.4], [-11.8, 10.9, -12.95], 'sofa');
   await cam([-0.35, 12.0, -12.0], [-1.3, 10.95, -13.2], 'group');
   const r = await p.evaluate(async () => { const out = []; const all = window.__dbg.seatsHere();
-    for (const f of [(s) => Math.abs(s.x + 10.5) < 0.05 && Math.abs(s.z + 15.15) < 0.05, (s) => s.x < -11.4 && s.z > -13.4 && s.z < -12.5, (s) => s.x > -1.8 && s.x < -0.7 && s.z < -12.4 && s.z > -13.5]) {
+    for (const f of [(s) => Math.abs(s.x + 10.5) < 0.05 && Math.abs(s.z + 15.15) < 0.05, (s) => s.x < -11.4 && s.z > -13.4 && s.z < -12.5, (s) => s.x > -1.9 && s.x < -0.6 && s.z < -12.4 && s.z > -13.5]) {
       const st = all.find(f); if (!st) { out.push('none'); continue; } window.__dbg.sit(st); await new Promise(r => setTimeout(r, 11000)); const c = window.__dbg.character.position; out.push(+Math.hypot(c.x - st.x, c.z - st.z).toFixed(2)); }
     return out; });
   console.log('앉은 뒤 거리 (목사님 의자, 소파, 그룹실 의자):', JSON.stringify(r));
