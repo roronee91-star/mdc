@@ -17,7 +17,7 @@ const FAKE = (voices) => `(() => {
     const ctx = await b.newContext({ viewport: { width: 900, height: 600 } }); await ctx.addInitScript(FAKE(voices));
     const errs = [];
     const open = async (name, g, dev) => { const p = await ctx.newPage(); p.on('pageerror', (e) => errs.push(name + ': ' + e.message));
-      await p.goto('http://127.0.0.1:8008/index.html?net=local&room=tts' + label.length, { waitUntil: 'domcontentloaded', timeout: 120000 }); await p.evaluate(([n, g, d]) => { localStorage.setItem('mdc_name', n); localStorage.setItem('mdc_gender', g); localStorage.setItem('mdc_device', JSON.stringify(d)); }, [name, g, dev]); await p.reload({ waitUntil: 'domcontentloaded', timeout: 120000 }); await p.waitForTimeout(8000); return p; };
+      await p.goto('http://127.0.0.1:8008/index.html?net=local&room=tts' + label.length, { waitUntil: 'domcontentloaded', timeout: 120000 }); await p.evaluate(([n, g, d]) => { localStorage.setItem('mdc_name', n); localStorage.setItem('mdc_gender', g); localStorage.setItem('mdc_device', JSON.stringify(d)); }, [name, g, dev]); await p.reload({ waitUntil: 'commit', timeout: 120000 }); await p.waitForFunction(() => window.__dbg && window.__speak, null, { timeout: 180000 }); await p.waitForTimeout(3000); return p; };
     const A = await open('혜연', 'f', 'tA'), B = await open('은혜', 'f', 'tB'), C = await open('철수', 'm', 'tC'), D = await open('민준', 'm', 'tD');
     const all = [A, B, C, D];
     for (const p of all) { await p.evaluate(() => window.__dbg.goTo('step6')); await p.mouse.click(450, 300); }
