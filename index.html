@@ -2035,12 +2035,14 @@
         k.box(3.6, 0.1, 1.0, cx, 0, -16.8, k.M(0xd9b98c, 0.7));                   // 낮은 강단
         k.box(0.45, 0.4, 0.3, cx, 0.1, -16.55, k.M(0xe7a35a, 0.6)); k.box(0.5, 0.04, 0.34, cx, 0.5, -16.53, k.M(0xf6c177, 0.6));   // 작은 강대상
         k.box(0.06, 0.8, 0.06, cx, 1.35, -17.3, k.mWood); k.box(0.42, 0.06, 0.06, cx, 1.85, -17.3, k.mWood);   // 십자가
-        k.box(1.4, 0.83, 0.04, cx - 1.6, 1.185, -17.32, k.M(0x1b1d22, 0.3));         // 찬양 화면 (16:9 그림에 맞춤)
+        // 찬양 화면 (16:9 그림에 맞춤). 사용자 "벽 끝에 너무 붙음" → 서쪽 벽(x -8.06)과 십자가 왼팔 끝(x -5.91) 한가운데
+        const SX = (-8.06 + (cx - 0.21)) / 2;
+        k.box(1.4, 0.83, 0.04, SX, 1.185, -17.32, k.M(0x1b1d22, 0.3));
         const sc = document.createElement('canvas'); sc.width = 256; sc.height = 146; const sg = sc.getContext('2d');
         const gr = sg.createLinearGradient(0, 0, 256, 146); gr.addColorStop(0, '#8ab4f8'); gr.addColorStop(1, '#c58af9'); sg.fillStyle = gr; sg.fillRect(0, 0, 256, 146);
         sg.fillStyle = '#fff'; sg.font = 'bold 30px sans-serif'; sg.textAlign = 'center'; sg.fillText('예수님 사랑해요', 128, 70); sg.font = '20px sans-serif'; sg.fillText('♡ 아동부 예배 ♡', 128, 108);
         const stex = new THREE.CanvasTexture(sc); if ('colorSpace' in stex) stex.colorSpace = THREE.SRGBColorSpace;
-        const scr = new THREE.Mesh(new THREE.PlaneGeometry(1.32, 0.743), new THREE.MeshBasicMaterial({ map: stex, toneMapped: false })); scr.position.set(cx - 1.6, F4_Y + 1.6, -17.295); f4.add(scr);
+        const scr = new THREE.Mesh(new THREE.PlaneGeometry(1.32, 0.743), new THREE.MeshBasicMaterial({ map: stex, toneMapped: false })); scr.position.set(SX, F4_Y + 1.6, -17.295); f4.add(scr);
         // 사용자가 준 그림(예수님과 어린 양들 · 예수님 사랑해요)으로 바꿈. 못 불러오면 위 글씨 그림을 그대로 씀
         const kidImg = new Image();
         kidImg.onload = () => { const t = new THREE.Texture(kidImg); if ('colorSpace' in t) t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; t.needsUpdate = true; scr.material.map = t; scr.material.needsUpdate = true; stex.dispose(); };
