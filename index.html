@@ -3443,7 +3443,7 @@
         const own = this.voices.filter((v) => this.sexOf(v) === (f ? 'f' : 'm'));
         const any = this.voices.length ? this.voices : [];
         let voice = null, pitch, rate = [1.0, 1.06, 0.95, 1.1, 0.92][(h >> 3) % 5];
-        if (own.length) { voice = own[(h >> 5) % own.length]; pitch = f ? [1.0, 1.15, 0.92, 1.25, 1.07][k] : [1.0, 0.88, 1.08, 0.8, 0.95][k]; }
+        if (own.length) { voice = own[(h >> 5) % own.length]; pitch = f ? [1.0, 1.15, 1.06, 1.25, 1.1][k] : [1.0, 0.88, 0.94, 0.8, 0.84][k]; }
         else {
           // 맞는 성별 목소리가 없으면: 있는 목소리 중 '모르는' 것 → 반대 성별 순으로 쓰고 높낮이로 남녀를 나눔
           const neutral = any.filter((v) => !this.sexOf(v)), pool = neutral.length ? neutral : any;
