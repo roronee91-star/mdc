@@ -1,5 +1,5 @@
 // 4층 그룹실 홈카페 구석 화면 찍기 + 걷기 길 확인 (T=night 이면 밤)
-// 사용: node homecafe.cjs <저장폴더> [이름앞말] [찍을 장면들: user,high,corner,front,machine,drip,shelf,west]
+// 사용: node homecafe.cjs <저장폴더> [이름앞말] [찍을 장면들: user,high,corner,front,north,south,end,west]
 const { chromium } = require('playwright');
 (async () => {
   const out = process.argv[2], pre = process.argv[3] || '';
@@ -18,13 +18,13 @@ const { chromium } = require('playwright');
   const only = process.argv[4] ? process.argv[4].split(',') : null, want = (n) => !only || only.includes(n);
   if (want('user')) await shot('step7', [-2.0, F4, -14.6], [-1.6, F4 + 1.5, -13.0], [-2.0, F4 + 0.6, -16.8], 'user');
   if (want('high')) await shot('step7', [-1.9, F4, -12.2], [-0.4, F4 + 2.7, -11.7], [-1.7, F4 + 0.2, -15.6], 'high');
-  if (want('corner')) await shot('step7', [-1.4, F4, -14.4], [-0.6, F4 + 1.3, -13.6], [-2.2, F4 + 0.7, -16.6], 'corner');
-  if (want('front')) await shot('step7', [-0.5, F4, -12.5], [-1.69, F4 + 0.95, -16.05], [-1.69, F4 + 0.85, -17.3], 'front');
-  if (want('machine')) await shot('step7', [-0.5, F4, -12.5], [-1.86, F4 + 0.82, -16.62], [-1.9, F4 + 0.6, -17.2], 'machine');
-  if (want('drip')) await shot('step7', [-0.5, F4, -12.5], [-1.38, F4 + 0.8, -16.65], [-1.45, F4 + 0.6, -17.2], 'drip');
-  if (want('shelf')) await shot('step7', [-0.5, F4, -12.5], [-1.7, F4 + 1.25, -16.45], [-1.7, F4 + 1.15, -17.3], 'shelf');
-  if (want('west')) await shot('step7', [-0.5, F4, -12.5], [-1.25, F4 + 1.0, -15.9], [-2.35, F4 + 0.85, -16.25], 'west');
-  const kp = await p.evaluate(() => [[-1.8, -16.6], [-1.8, -15.2], [-0.6, -14.6], [-1.25, -12.0]].map(([x, z]) => { const r = window.__dbg.findPath({ x: -1.4, z: -11.9 }, { x, z }); if (!r || !r.length) return 'none'; const e = r[r.length - 1]; return [r.length, +(e.x !== undefined ? e.x : e[0]).toFixed(2), +(e.z !== undefined ? e.z : e[1]).toFixed(2)]; }));
-  console.log('그룹실 길 (구석 안쪽, 구석 앞, 기둥 앞, 문 앞):', JSON.stringify(kp));
+  if (want('corner')) await shot('step7', [-1.4, F4, -13.6], [-2.15, F4 + 1.75, -11.9], [-1.25, F4 + 0.75, -16.0], 'corner');
+  if (want('front')) await shot('step7', [-0.5, F4, -12.5], [-2.25, F4 + 1.05, -16.21], [-1.04, F4 + 0.85, -16.21], 'front');
+  if (want('north')) await shot('step7', [-0.5, F4, -12.5], [-2.2, F4 + 0.95, -16.95], [-1.04, F4 + 0.75, -16.95], 'north');
+  if (want('south')) await shot('step7', [-0.5, F4, -12.5], [-2.2, F4 + 0.95, -15.55], [-1.04, F4 + 0.75, -15.55], 'south');
+  if (want('end')) await shot('step7', [-0.5, F4, -12.5], [-1.75, F4 + 1.1, -15.4], [-1.85, F4 + 0.9, -17.32], 'end');
+  if (want('west')) await shot('step7', [-0.5, F4, -12.5], [-1.45, F4 + 1.1, -16.0], [-2.35, F4 + 1.0, -16.45], 'west');
+  const kp = await p.evaluate(() => [[-1.85, -16.75], [-1.75, -15.6], [-0.6, -14.6], [-1.25, -12.0]].map(([x, z]) => { const r = window.__dbg.findPath({ x: -1.4, z: -11.9 }, { x, z }); if (!r || !r.length) return 'none'; const e = r[r.length - 1]; return [r.length, +(e.x !== undefined ? e.x : e[0]).toFixed(2), +(e.z !== undefined ? e.z : e[1]).toFixed(2)]; }));
+  console.log('그룹실 길 (카페장 앞 안쪽, 카페장 앞 남쪽, 기둥 앞, 문 앞):', JSON.stringify(kp));
   console.log(errs.join('\n') || 'no errors'); await b.close();
 })();
