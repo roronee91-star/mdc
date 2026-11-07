@@ -3695,7 +3695,9 @@
       },
       onPos(p) { if (!p || !p.id || typeof p.id !== 'string' || p.id === PrayerStore.device()) return; const r = getRemote(p.id, p.n); r.target = p; if (r.name !== p.n) setRemoteName(r, p.n); if (r.group.userData.gender !== (p.g || 'm')) applyGender(r.group, p.g || 'm'); },
       onChat(c) {
-        if (!c || !c.text) return; const r = remotes.get(c.id); chatLine(c.n, c.text); if (r) showBubble(r.group, c.text, r);
+        if (!c || !c.text) return; const r = remotes.get(c.id);
+        const FL = { B1: '지하', F1: '1층', F2: '2층', F3: '3층', F4: '4층' };
+        chatLine(c.lv && c.lv !== curLevel() ? `${c.n} (${FL[c.lv] || c.lv})` : c.n, c.text); if (r) showBubble(r.group, c.text, r);   // 다른 층 말은 층을 붙여 보여 줌(소리는 같은 층만)
         if (c.lv === curLevel()) Speak.say(c.text, c.id, c.g || (r && r.group.userData.gender) || 'm');   // 같은 층 성도님 말만 소리로
       },
       syncPeers() {
@@ -3810,7 +3812,7 @@
       const me = myState(); chatInput.value = '';
       Net.send('chat', { id: me.id, n: me.n, g: me.g, lv: me.lv, text });
       chatLine(me.n, text); showBubble(characterGroup, text);
-      if (Speak.ok) Speak.say(text, me.id, me.g); else Speak.trouble('unsupported');
+      if (Speak.ok) Speak.say(text, me.id, me.g, true); else Speak.trouble('unsupported');   // 보내기(누름) 안이라 바로 말할 수 있음
     }
     document.getElementById('chatOpen').addEventListener('click', openChat);
     document.getElementById('chatClose').addEventListener('click', closeChat);
@@ -3853,9 +3855,26 @@
         return { voice, pitch, rate };
       },
       clean(t) { return String(t).replace(/\p{Extended_Pictographic}|️|‍/gu, ' ').replace(/ㅋ{2,}/g, '크크').replace(/ㅎ{2,}/g, '흐흐').replace(/\s+/g, ' ').trim(); },
-      say(text, id, g) {
+      // 휴대폰(특히 아이폰)은 사람이 화면을 '누르고 뗄 때'(touchend·click·keydown)에 처음 한 번 말을 해야 그다음부터 혼자 말할 수 있음.
+      // 예전엔 '닿는 순간'(pointerdown)에 깨워서 인정이 안 됐음 → 남이 보낸 말이 안 나옴(내 말은 보내기를 누를 때라 됐음)
+      unlocked: false, pending: [],
+      unlock() {
+        if (this.unlocked || !this.ok) return; this.unlocked = true;
+        try { const u = new SpeechSynthesisUtterance(' '); u.volume = 0; u.rate = 2; u.lang = 'ko-KR'; speechSynthesis.speak(u); } catch (e) {}
+        const now = performance.now(), q = this.pending.filter((x) => now - x.at < 20000); this.pending = [];
+        q.forEach((x) => this.say(x.text, x.id, x.g));                  // 깨우기 전에 온 말(20초 안)은 지금 읽어 줌
+      },
+      say(text, id, g, gesture) {
         if (!this.ok || !this.on) return;
         const t = this.clean(text); if (!t) return;
+        if (!this.unlocked) {
+          if (gesture) this.unlock();
+          else {
+            this.pending.push({ text, id, g, at: performance.now() }); if (this.pending.length > 3) this.pending.shift();
+            if (!this.toldTap) { this.toldTap = true; sysLine('🔊 성도님 말을 목소리로 들으려면 화면을 한 번 눌러 주세요'); }
+            return;
+          }
+        }
         if (!this.voices.length) this.load();
         const p = this.profile(id, g), u = new SpeechSynthesisUtterance(t);
         u.lang = (p.voice && p.voice.lang) || 'ko-KR'; if (p.voice) u.voice = p.voice;
@@ -3897,7 +3916,7 @@
     };
     if (Speak.ok) { Speak.load(); try { speechSynthesis.addEventListener('voiceschanged', () => Speak.load()); } catch (e) {} }
     // 아이폰은 처음 한 번 사용자가 누를 때 음성을 깨워 둬야 남이 보낸 말도 읽어 줌
-    window.addEventListener('pointerdown', () => { try { if (Speak.ok) { speechSynthesis.cancel(); speechSynthesis.speak(new SpeechSynthesisUtterance('')); } } catch (e) {} }, { once: true });
+    ['pointerup', 'touchend', 'click', 'keydown'].forEach((t) => window.addEventListener(t, () => Speak.unlock(), { capture: true, passive: true }));
     // 카카오톡·밴드 같은 앱 안에서 열면 목소리(와 마이크)가 막힌 경우가 많아서, 바깥 브라우저로 여는 단추를 줌
     const IN_APP = /KAKAOTALK|NAVER\(inapp|BAND\/|Instagram|FBAN|FBAV|Line\/|DaumApps|; wv\)/i.test(navigator.userAgent || '');
     function outsideUrl() {
