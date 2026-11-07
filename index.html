@@ -283,6 +283,8 @@
     .pp-pray { border: 1px solid #c9a97a; background: #fff; color: #6b4f33; border-radius: 999px; padding: 6px 12px; font-size: 13px; font-weight: 700; cursor: pointer; }
     .pp-pray.on { background: #8a6a42; color: #fff; border-color: #8a6a42; }
     .pp-del { border: none; background: none; color: #b08a6a; font-size: 12px; cursor: pointer; }
+    .pp-only { background: #eef3f8; color: #5b6f86; border-radius: 6px; padding: 1px 6px; }
+    .pp-share { border: 1px solid #9fb6cc; background: #f4f8fc; color: #4f6a86; border-radius: 999px; padding: 4px 9px; font-size: 12px; font-weight: 700; cursor: pointer; margin-right: 4px; }
     .pp-empty { text-align: center; color: #8b7a66; padding: 26px 0; font-size: 14px; }
     .pp-label { font-size: 13px; color: #7a6a58; display: block; margin-bottom: 6px; }
     #ppText { width: 100%; font-size: 16px; padding: 10px; border-radius: 10px; border: 1.5px solid #d8c7ab; resize: vertical; user-select: text; font-family: inherit; }
@@ -1179,24 +1181,72 @@
       if (kind === 0) { dBox(0.07, 0.035, 0.05, tx, T, z, dMat.wood); dBox(0.06, 0.012, 0.045, tx, T + 0.035, z, dMat.napkin); }
       else { dCyl(0.024, 0.026, 0.075, tx, T, z, dMat.steel); dCyl(0.012, 0.022, 0.015, tx, T + 0.075, z, dMat.steel); dBox(0.006, 0.04, 0.012, tx + 0.03, T + 0.02, z, dMat.steel); }
     }
-    // 배식대 위: 식판 더미 · 반찬통 4개(유리 가림막) · 밥솥 · 수저통
+    // 배식대 위 (사용자: "주방처럼 디테일하게"): 식판 더미·수저통 → 밥(주걱) → 미역국(국통·국자) → 제육볶음(집게) → 김치 → 계란말이·시금치나물,
+    //   칸마다 메뉴 이름표, 2단 유리 가림막(스테인리스 기둥·위 선반·보온등). 먹는 사람은 동쪽(+x)에서 북→남으로 지나감
+    const sM = {
+      rice: mat(0xfbf8ef), paddle: mat(0xf2f0ea), soup: new THREE.MeshStandardMaterial({ color: 0x585a2c, roughness: 0.25 }), seaweed: mat(0x2f3d1c),
+      pork: mat(0xb8431c), pork2: mat(0xd2622a), scallion: mat(0x5aa03c), kimchi: mat(0xc23526), kimchi2: mat(0xeaa27a), eggroll: mat(0xf3c94a), eggIn: mat(0xfbe9a6),
+      spinach: mat(0x3d7a2b), sesame: mat(0xf1e6c8), lamp: new THREE.MeshBasicMaterial({ color: 0xffc977, toneMapped: false }), tray2: mat(0xb9c3cc)
+    };
     function dineCounter() {
-      const X = -8.45, T = 0.54;
-      for (let i = 0; i < 6; i++) dBox(0.15, 0.008, 0.26, X + 0.06, T + i * 0.012, -15.98, dMat.tray);
-      const foods = ['kimchi', 'namul', 'meat', 'egg'];
-      [-15.55, -15.12, -14.69, -14.26].forEach((z, i) => {
-        dBox(0.3, 0.035, 0.38, X, T, z, dMat.steel);
-        if (foods[i] === 'egg') [-0.1, 0, 0.1].forEach((dz) => dDome(0.03, X, T + 0.03, z + dz, dMat.egg, 0.5));
-        else dBox(0.27, 0.012, 0.35, X, T + 0.028, z, dMat[foods[i]]);
-        dBox(0.02, 0.004, 0.15, X + 0.1, T + 0.045, z + 0.05, dMat.steel);         // 집게
+      const X = -8.45, T = 0.54, SZ = [-15.88, -15.46, -15.04, -14.62, -14.2, -13.82];
+      const pan = (z, w, food) => { dBox(0.32, 0.04, w, X, T, z, dMat.steel); dBox(0.29, 0.006, w - 0.03, X, T + 0.04, z, dMat[food] || sM[food]); };   // 음식 바닥 판은 통 윗면 위에
+      const scatter = (n, x0, z0, wx, wz, y, sz, mats, seed) => { let k = seed || 1; const r = () => (k = (k * 9301 + 49297) % 233280) / 233280;
+        for (let i = 0; i < n; i++) dBox(sz * (0.7 + r() * 0.6), sz * 0.45, sz * (0.5 + r() * 0.5), x0 + (r() - 0.5) * wx, y, z0 + (r() - 0.5) * wz, mats[i % mats.length], r() * 3); };
+      // 0) 식판 더미 (식판 꽂이) + 수저통 두 개 (숟가락 · 젓가락)
+      for (let i = 0; i < 10; i++) dBox(0.15, 0.008, 0.26, X - 0.06, T + i * 0.011, SZ[0], i % 2 ? dMat.tray : sM.tray2);
+      [-1, 1].forEach((sd) => dBox(0.17, 0.13, 0.008, X - 0.06, T, SZ[0] + sd * 0.14, dMat.steel));
+      [[-15.98, 'sp'], [-15.8, 'ch']].forEach(([z, kd]) => {
+        dCyl(0.035, 0.03, 0.08, X + 0.12, T, z, dMat.steel);
+        for (let i = 0; i < 8; i++) { const a = i * 0.8, rr = 0.016; kd === 'sp' ? (dBox(0.005, 0.11, 0.005, X + 0.12 + Math.cos(a) * rr, T + 0.04, z + Math.sin(a) * rr, dMat.steel), i % 2 || dPut(new THREE.SphereGeometry(0.009, 8, 6).scale(1, 0.4, 1.4), dMat.steel, X + 0.12 + Math.cos(a) * rr, T + 0.15, z + Math.sin(a) * rr)) : dBox(0.003, 0.13, 0.003, X + 0.12 + Math.cos(a) * rr, T + 0.04, z + Math.sin(a) * rr, dMat.steel); }
       });
-      [-15.8, -14.0].forEach((z) => dBox(0.015, 0.26, 0.015, X + 0.16, T, z, dMat.steel));   // 가림막 기둥
-      dBox(0.2, 0.008, 1.84, X + 0.08, T + 0.26, -14.9, dMat.glass);                // 유리 가림막
-      dCyl(0.1, 0.095, 0.15, X, T, -13.78, dMat.cooker, 20);                         // 밥솥
-      dDome(0.1, X, T + 0.15, -13.78, dMat.cooker, 0.35);
-      dBox(0.06, 0.02, 0.03, X + 0.1, T + 0.07, -13.78, dMat.dark);
-      dCyl(0.035, 0.03, 0.08, X + 0.15, T, -14.0, dMat.steel);                       // 수저통 + 수저
-      for (let i = 0; i < 6; i++) dBox(0.004, 0.1, 0.004, X + 0.14 + (i % 3) * 0.01, T + 0.04, -14.01 + (i < 3 ? 0 : 0.012), dMat.steel);
+      // 1) 쌀밥: 소복한 밥 + 주걱
+      pan(SZ[1], 0.38, 'rice'); dPut(new THREE.SphereGeometry(0.14, 18, 8, 0, Math.PI * 2, 0, Math.PI / 2).scale(0.9, 0.28, 1.1), sM.rice, X, T + 0.04, SZ[1]);
+      dBox(0.07, 0.008, 0.1, X + 0.05, T + 0.07, SZ[1] + 0.04, sM.paddle, 0.4); dBox(0.025, 0.008, 0.12, X + 0.1, T + 0.075, SZ[1] + 0.13, sM.paddle, 0.4);
+      // 2) 미역국: 둥근 국통 + 국자
+      dCyl(0.15, 0.14, 0.13, X, T, SZ[2], dMat.steel, 22); dCyl(0.142, 0.142, 0.004, X, T + 0.118, SZ[2], sM.soup, 22);
+      scatter(10, X, SZ[2], 0.2, 0.2, T + 0.121, 0.03, [sM.seaweed], 7);
+      dPut(new THREE.SphereGeometry(0.03, 12, 6, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), dMat.steel, X - 0.05, T + 0.12, SZ[2] + 0.04);
+      dPut(new THREE.BoxGeometry(0.008, 0.2, 0.014).rotateX(0.5), dMat.steel, X - 0.05, T + 0.2, SZ[2] + 0.09);
+      // 3) 제육볶음 + 집게
+      pan(SZ[3], 0.38, 'pork'); scatter(40, X, SZ[3], 0.26, 0.32, T + 0.04, 0.028, [sM.pork, sM.pork2, sM.pork, sM.scallion], 3);
+      dBox(0.006, 0.006, 0.16, X + 0.09, T + 0.06, SZ[3] + 0.02, dMat.steel, 0.2); dBox(0.006, 0.006, 0.16, X + 0.105, T + 0.066, SZ[3] + 0.025, dMat.steel, 0.2);
+      // 4) 배추김치 + 집게
+      pan(SZ[4], 0.38, 'kimchi'); scatter(36, X, SZ[4], 0.26, 0.32, T + 0.04, 0.034, [sM.kimchi, sM.kimchi, sM.kimchi2], 5);
+      dBox(0.006, 0.006, 0.16, X + 0.09, T + 0.06, SZ[4] - 0.02, dMat.steel, -0.2);
+      // 5) 계란말이(반 칸) · 시금치나물(반 칸)
+      dBox(0.32, 0.04, 0.17, X, T, SZ[5] - 0.095, dMat.steel); dBox(0.32, 0.04, 0.17, X, T, SZ[5] + 0.095, dMat.steel);
+      for (let r = 0; r < 2; r++) for (let i = 0; i < 6; i++) { const x = X - 0.11 + i * 0.044, z = SZ[5] - 0.13 + r * 0.07;
+        dBox(0.034, 0.03, 0.055, x, T + 0.04, z, sM.eggroll); dBox(0.026, 0.022, 0.002, x, T + 0.044, z + 0.0285, sM.eggIn); }
+      scatter(44, X, SZ[5] + 0.095, 0.27, 0.14, T + 0.04, 0.022, [sM.spinach, sM.spinach, sM.spinach, sM.sesame], 11);
+      // 2단 유리 가림막: 기둥 3개 + 앞 유리 + 위 유리 선반 + 아래쪽 보온등
+      [-16.08, -14.85, -13.62].forEach((z) => dBox(0.018, 0.34, 0.018, X + 0.17, T, z, dMat.steel));
+      dBox(0.006, 0.18, 2.44, X + 0.19, T + 0.14, -14.85, dMat.glass);
+      dBox(0.24, 0.008, 2.46, X + 0.06, T + 0.34, -14.85, dMat.glass); dBox(0.24, 0.012, 0.02, X + 0.06, T + 0.336, -16.07, dMat.steel); dBox(0.24, 0.012, 0.02, X + 0.06, T + 0.336, -13.63, dMat.steel);
+      SZ.slice(1).forEach((z) => dBox(0.05, 0.006, 0.22, X + 0.02, T + 0.328, z, sM.lamp));
+      // 위 선반: 밥공기·국그릇 더미
+      for (let i = 0; i < 4; i++) { dCyl(0.032, 0.022, 0.026, X + 0.0, T + 0.348 + i * 0.016, -15.6, dMat.bowl); dCyl(0.036, 0.024, 0.028, X + 0.0, T + 0.348 + i * 0.016, -15.25, dMat.steel); }
+    }
+    // 메뉴 이름표 (칸마다, 먹는 사람 쪽 유리 아래에) + 벽에 '오늘의 메뉴' 칠판
+    function dineLabels() {
+      const X = -8.45, T = 0.54;
+      [['쌀밥', -15.46], ['미역국', -15.04], ['제육볶음', -14.62], ['배추김치', -14.2], ['계란말이', -13.915], ['시금치나물', -13.725]].forEach(([t, z]) => {
+        const c = document.createElement('canvas'); c.width = 160; c.height = 56; const g = c.getContext('2d');
+        g.fillStyle = '#fffaf0'; g.fillRect(0, 0, 160, 56); g.strokeStyle = '#c9a77a'; g.lineWidth = 4; g.strokeRect(2, 2, 156, 52);
+        g.fillStyle = '#5a4126'; g.font = `bold ${t.length > 4 ? 24 : 30}px sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(t, 80, 30);
+        const tx = new THREE.CanvasTexture(c); if ('colorSpace' in tx) tx.colorSpace = THREE.SRGBColorSpace;
+        const w = t.length > 4 ? 0.16 : 0.13, m = new THREE.Mesh(new THREE.PlaneGeometry(w, w * 0.35), new THREE.MeshBasicMaterial({ map: tx, toneMapped: false }));
+        m.rotation.y = Math.PI / 2; m.position.set(X + 0.197, F3_Y + T + 0.045, z); noHit(m); furn.add(m);
+      });
+      const c = document.createElement('canvas'); c.width = 512; c.height = 360; const g = c.getContext('2d');
+      g.fillStyle = '#2f4a3a'; g.fillRect(0, 0, 512, 360); g.strokeStyle = '#8a6240'; g.lineWidth = 22; g.strokeRect(0, 0, 512, 360);
+      g.fillStyle = '#fff6d8'; g.font = 'bold 46px sans-serif'; g.textAlign = 'center'; g.fillText('오늘의 메뉴', 256, 72);
+      g.strokeStyle = 'rgba(255,246,216,0.5)'; g.lineWidth = 2; g.beginPath(); g.moveTo(70, 94); g.lineTo(442, 94); g.stroke();
+      g.font = '32px sans-serif'; ['쌀밥 · 미역국', '제육볶음', '배추김치 · 계란말이', '시금치나물'].forEach((t, i) => g.fillText(t, 256, 146 + i * 50));
+      g.font = '24px sans-serif'; g.fillStyle = '#f7c873'; g.fillText('맛있게 드세요 ♡', 256, 340);
+      const tx = new THREE.CanvasTexture(c); if ('colorSpace' in tx) tx.colorSpace = THREE.SRGBColorSpace;
+      const board = new THREE.Mesh(new THREE.PlaneGeometry(0.72, 0.5), new THREE.MeshStandardMaterial({ map: tx, roughness: 0.85 }));
+      board.rotation.y = Math.PI / 2; board.position.set(-8.645, F3_Y + 1.1, -16.45); noHit(board); furn.add(board);
     }
 
     // ---- 식당: 4열 x 3줄 식탁 (한 식탁에 양쪽 3명씩) ----
@@ -1214,10 +1264,19 @@
         dineFlush();                                       // 식탁마다 한 덩어리로 (식탁 밖으로 막힘이 번지지 않게)
       });
     });
-    // 배식대: 주방 벽에 붙여서 (주방 통로 앞)
-    box(0.4, 0.5, 2.5, -8.45, 0, -14.85, mCounter);
-    box(0.46, 0.04, 2.56, -8.45, 0.5, -14.85, mTop);
-    dineCounter(); dineFlush();
+    // 배식대: 주방 벽에 붙여서 (주방 통로 앞). 스테인리스 몸통 + 먹는 쪽 원목 앞판 + 식판 미는 레일(걸음도 막음)
+    {
+      const sBody = new THREE.MeshStandardMaterial({ color: 0xc3c9cf, roughness: 0.38, metalness: 0.22 }), sTop = new THREE.MeshStandardMaterial({ color: 0xdadee2, roughness: 0.22, metalness: 0.28 });
+      box(0.36, 0.05, 2.46, -8.47, 0, -14.85, mat(0x2c2d30));
+      box(0.4, 0.45, 2.5, -8.45, 0.05, -14.85, sBody);
+      box(0.46, 0.04, 2.56, -8.45, 0.5, -14.85, sTop);
+      box(0.012, 0.36, 2.44, -8.244, 0.07, -14.85, new THREE.MeshStandardMaterial({ color: 0xb98a5a, roughness: 0.6 }));   // 원목 앞판
+      box(0.14, 0.018, 2.5, -8.18, 0.4, -14.85, sTop);                                                                   // 식판 레일
+      dBox(0.008, 0.03, 2.5, -8.115, 0.405, -14.85, dMat.steel);
+      [-15.9, -14.85, -13.8].forEach((z) => dBox(0.12, 0.05, 0.02, -8.19, 0.35, z, dMat.steel));                        // 레일 받침
+      for (let i = 1; i < 5; i++) dBox(0.002, 0.34, 0.004, -8.237, 0.08, -16.1 + i * 0.5, mat(0x8f6a45));            // 앞판 줄눈
+    }
+    dineCounter(); dineFlush(); dineLabels();
     // 정수기와 종이컵 (배식대 남쪽, 주방 벽에 붙임)
     box(0.2, 0.5, 0.2, -8.58, 0, -13.25, mat(0xf4f4f2));
     box(0.21, 0.08, 0.21, -8.58, 0.5, -13.25, mat(0x9fb6c8));
@@ -2922,9 +2981,10 @@
       {
         const x0 = -0.98, x1 = -0.82;
         bx(x0, x1, 0, H, -16.0, -15.6, wm);
-        bx(x0, x1, 0, 0.9, -15.6, -12.3, wm);
+        // 창 아래 벽: 0.9 → 0.3m (사용자 "창문이 캐릭터보다 높다" → 캐릭터 무릎 높이, 안이 잘 보이게)
+        bx(x0, x1, 0, 0.3, -15.6, -12.3, wm);
         bx(x0, x1, 2.2, H, -15.6, -12.3, wm);
-        bx(x0 + 0.05, x1 - 0.05, 0.9, 2.2, -15.6, -12.3, gm);
+        bx(x0 + 0.05, x1 - 0.05, 0.3, 2.2, -15.6, -12.3, gm);
         bx(x0, x1, 0, H, -12.3, -12.0, wm);
         bx(x0, x1, 2.1, H, -12.0, -11.0, wm);              // 문(-12.0 ~ -11.0) 위
         bx(x0, x1, 0, H, -11.0, -10.95, wm);
@@ -2932,15 +2992,40 @@
         bx(x0, 0.63, 0, H, -10.95, -10.87, wm);             // 자모실 남쪽 끝 벽
         const pink = M(0xf6c6d0), white = M(0xfafafa), wood = M(0xd2b48c);
         bx(-0.78, 0.55, 0, 0.02, -15.8, -11.2, pink);       // 바닥 매트
-        [-15.2, -14.3, -13.4].forEach((z) => {              // 아기 침대
-          bx(0.05, 0.5, 0.02, 0.28, z - 0.3, z + 0.3, white);
-          bx(0.05, 0.5, 0.28, 0.4, z - 0.3, z - 0.27, wood);
-          bx(0.05, 0.5, 0.28, 0.4, z + 0.27, z + 0.3, wood);
-        });
-        [[-0.5, -12.6, 0xe74c3c], [-0.3, -12.3, 0x3498db], [-0.55, -12.0, 0xf1c40f]].forEach(([x, z, c]) => {
-          bx(x - 0.07, x + 0.07, 0.02, 0.16, z - 0.07, z + 0.07, M(c));   // 장난감 블록
-        });
-        bx(-0.7, -0.35, 0, 0.22, -11.7, -11.35, wood);       // 작은 의자
+        // 상자처럼 보여 앞을 가리던 아기 침대 3개·작은 의자는 치우고(사용자 요청), 북쪽 끝 벽에 작고 낮은 아기 장난감장 +
+        // 매트 위에 아기 놀이 아치(모빌)·말랑 블록·공. 모두 낮아서(0.3m 아래) 창 너머가 가리지 않음. 작은 조각은 재질별로 합침
+        {
+          const JB = new Map(), jput = (geo, m, x, y, z) => { geo.translate(x, FLOOR + y, z); if (!JB.has(m)) JB.set(m, []); JB.get(m).push(geo); };
+          const jb = (w, h, d, x, y0, z, m, ry) => { const gq = new THREE.BoxGeometry(w, h, d); if (ry) gq.rotateY(ry); jput(gq, m, x, y0 + h / 2, z); };
+          const jsp = (r, x, y, z, m, sy) => jput(new THREE.SphereGeometry(r, 12, 9).scale(1, sy || 1, 1), m, x, y, z);
+          const JC = new Map(), jc = (c, r) => { if (!JC.has(c)) JC.set(c, M(c, { roughness: r === undefined ? 0.6 : r })); return JC.get(c); };
+          // 아기 장난감장: 폭 0.8 · 깊이 0.22 · 높이 0.28, 2단 × 3칸 파스텔 바구니
+          const cx = -0.15, zb = -15.98, D = 0.22, Hc = 0.28, W = 0.8, zc = zb + D / 2, cream = jc(0xfaf6ee);
+          const blk = bx(cx - W / 2, cx + W / 2, 0, Hc, zb, zb + D, new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false })); blk.castShadow = blk.receiveShadow = false; blk.userData.noCamBlock = true;   // 걷기만 막는 보이지 않는 상자
+          jb(W, Hc, 0.012, cx, 0, zb + 0.006, cream); jb(W, 0.025, D, cx, 0, zc, cream); jb(W, 0.014, D, cx, 0.135, zc, cream); jb(W + 0.02, 0.02, D + 0.02, cx, Hc, zc, jc(0xf6d6de));
+          for (let i = 0; i <= 3; i++) jb(0.016, Hc, D, cx - W / 2 + 0.008 + i * (W - 0.016) / 3, 0, zc, cream);
+          const BIN = [0xfbd3e0, 0xc9e7f8, 0xd4f0d2, 0xfff3b0, 0xe2d6f5, 0xffd9c7];
+          for (let r = 0; r < 2; r++) for (let i = 0; i < 3; i++) {
+            const x = cx - W / 2 + (i + 0.5) * W / 3, y0 = r ? 0.15 : 0.027;
+            jb(W / 3 - 0.04, 0.1, D - 0.04, x, y0, zc + 0.01, jc(BIN[r * 3 + i], 0.5));
+            jb(0.05, 0.016, 0.004, x, y0 + 0.07, zb + D - 0.008, jc(0x8a7766, 0.8));                   // 손잡이 구멍
+          }
+          const top = Hc + 0.02;
+          // 위: 링 쌓기 · 고무 오리 · 딸랑이
+          jb(0.07, 0.014, 0.07, cx - 0.25, top, zc, jc(0xf2b8c6)); jb(0.012, 0.11, 0.012, cx - 0.25, top + 0.014, zc, jc(0xf2b8c6));
+          [0x7cc3f0, 0x9be08a, 0xfde27a, 0xf7a1a1].forEach((c, i) => jput(new THREE.TorusGeometry(0.03 - i * 0.005, 0.011, 8, 18).rotateX(Math.PI / 2), jc(c, 0.4), cx - 0.25, top + 0.026 + i * 0.022, zc));
+          const dk = jc(0xffd84a, 0.35); jsp(0.035, cx, top + 0.03, zc, dk, 0.8); jsp(0.022, cx, top + 0.075, zc + 0.02, dk); jb(0.02, 0.008, 0.02, cx, top + 0.07, zc + 0.045, jc(0xf28c28, 0.4));
+          jb(0.012, 0.07, 0.012, cx + 0.24, top, zc, jc(0xffffff)); jsp(0.028, cx + 0.24, top + 0.09, zc, jc(0x9fd8e0, 0.3));
+          // 매트 위: 아기 놀이 아치(모빌) — 두 아치가 엇갈리고 장난감이 매달림
+          const ax = -0.05, az = -13.9, arc = jc(0xf7c873, 0.5);
+          [0.6, -0.6].forEach((ry) => { const t = new THREE.TorusGeometry(0.22, 0.012, 8, 24, Math.PI); t.rotateY(ry); jput(t, arc, ax, 0.02, az); });
+          jb(0.5, 0.012, 0.5, ax, 0.02, az, jc(0xbfe3d0, 0.9));                                         // 놀이 매트
+          [[0x9fd8e0, -0.06], [0xf7a1a1, 0.0], [0xc8b6f0, 0.06]].forEach(([c, d], i) => { jb(0.004, 0.06, 0.004, ax + d, 0.17, az + d * 0.5, jc(0xffffff)); jsp(0.022, ax + d, 0.155, az + d * 0.5, jc(c, 0.4)); });
+          // 말랑 블록 · 공 (작게)
+          [[-0.55, -12.7, 0xf28b82], [-0.45, -12.55, 0x8ab4f8], [-0.5, -12.62, 0xfde27a, 0.06]].forEach(([x, z, c, y]) => jb(0.07, 0.07, 0.07, x, 0.02 + (y || 0), z, jc(c, 0.7), x * 2));
+          jsp(0.05, 0.25, 0.07, -12.4, jc(0xff9e80, 0.5));
+          JB.forEach((geos, m) => { const mesh = new THREE.Mesh(mergeGeometries(geos), m); geos.forEach((q) => q.dispose()); mesh.castShadow = true; mesh.receiveShadow = true; noHit(mesh); g.add(mesh); });
+        }
         makeSign(g, '자모실', -1.03, FLOOR + 2.3, -11.5, -Math.PI / 2);   // 홀 쪽 문 위
       }
 
@@ -3267,6 +3352,8 @@
     // ---- 기도제목: 쓰기 · 함께 기도하기 · 지우기 ----
     // 저장소를 한 곳(PrayerStore)으로 모아 두어, 나중에 Supabase를 연결하면 이 부분만 바꾸면 되게 함.
     const PRAYER_CATS = ['개인', '가정', '건강', '직장·학업', '교회', '선교', '감사'];
+    const SUPABASE_URL = 'https://slpqownhiafmiuyisxuo.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_hOEENGzXwQnZcQSKwbeusQ_k9BHFjdZ';   // 공개용 키 (비밀 키 아님)
     const PrayerStore = {
       KEY: 'mdc_prayers', PRAYED: 'mdc_prayed', DEVICE: 'mdc_device',
       _get(k, d) { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch (e) { return d; } },
@@ -3288,23 +3375,78 @@
         this._set(this.KEY, all);
       },
     };
+    // ---- 기도제목 함께 보기 (사용자 요청: "기도제목은 누구나 볼 수 있게") ----
+    //   Supabase 표 prayers 에 저장. 읽기는 누구나, 쓰기·지우기·함께 기도는 함수(add_prayer · delete_prayer · pray_prayer)로만.
+    //   표를 만드는 글은 docs/supabase/prayers.sql (대시보드 SQL Editor에서 한 번 실행). 표가 아직 없거나 인터넷이 안 되면
+    //   예전처럼 이 휴대폰에만 저장. 글쓴이 확인은 이 휴대폰에만 있는 비밀 열쇠로 (기기 번호는 남에게 보이므로 쓰지 않음)
+    const PrayerCloud = {
+      ok: null, items: [], mine: null, at: 0, busy: null, timer: 0,
+      key() {
+        let k = PrayerStore._get('mdc_owner_key', null);
+        if (!k) { const a = new Uint8Array(16); (window.crypto || window.msCrypto).getRandomValues(a); k = [...a].map((b) => b.toString(16).padStart(2, '0')).join(''); PrayerStore._set('mdc_owner_key', k); }
+        return k;
+      },
+      myIds() { return this.mine || (this.mine = PrayerStore._get('mdc_my_prayers', [])); },
+      remember(id, on) { const m = this.myIds().filter((x) => x !== id); if (on) m.push(id); this.mine = m.slice(-200); PrayerStore._set('mdc_my_prayers', this.mine); },
+      async req(path, body) {
+        const ctl = new AbortController(), to = setTimeout(() => ctl.abort(), 9000);
+        try {
+          const r = await fetch(SUPABASE_URL + '/rest/v1/' + path, { method: body ? 'POST' : 'GET', signal: ctl.signal,
+            headers: { apikey: SUPABASE_KEY, 'Content-Type': 'application/json', Accept: 'application/json' }, body: body ? JSON.stringify(body) : undefined });
+          const txt = await r.text();
+          if (!r.ok) { const e = new Error(txt.slice(0, 200)); e.status = r.status; throw e; }
+          return txt ? JSON.parse(txt) : null;
+        } finally { clearTimeout(to); }
+      },
+      load(force) {
+        if (this.busy) return this.busy;
+        if (!force && this.ok && performance.now() - this.at < 15000) return Promise.resolve();
+        this.busy = this.req('prayers?select=id,body,cat,name,prays,created_at&order=created_at.desc&limit=200').then((rows) => {
+          this.items = (rows || []).map((r) => ({ id: String(r.id), text: String(r.body || ''), cat: String(r.cat || '기타'), name: String(r.name || ''), prays: +r.prays || 0, at: Date.parse(r.created_at) || Date.now(), cloud: true }));
+          this.ok = true; this.at = performance.now();
+        }).catch((e) => { console.warn('기도제목 불러오기 실패', e); if (this.ok === null) this.ok = false; })
+          .finally(() => { this.busy = null; prayersChanged(); });
+        return this.busy;
+      },
+      soon() { clearTimeout(this.timer); this.timer = setTimeout(() => this.load(true), 700 + Math.random() * 800); },   // 다른 성도님이 바꿨다는 신호를 받으면
+      tell() { try { if (window.mdcNet) window.mdcNet.send('prayer', { t: Date.now() }); } catch (e) {} },
+      async add(text, cat, name) { const id = await this.req('rpc/add_prayer', { p_body: text, p_cat: cat, p_name: name, p_owner: this.key() }); if (id) this.remember(String(id), true); await this.load(true); this.tell(); },
+      async remove(id) { await this.req('rpc/delete_prayer', { p_id: id, p_owner: this.key() }); this.remember(id, false); this.items = this.items.filter((p) => p.id !== id); prayersChanged(); this.tell(); this.load(true); },
+      async pray(id) {
+        const it = this.items.find((p) => p.id === id); if (!it) return;
+        const mine = PrayerStore._get(PrayerStore.PRAYED, []), on = !mine.includes(id);
+        PrayerStore._set(PrayerStore.PRAYED, on ? [...mine, id] : mine.filter((x) => x !== id));
+        it.prays = Math.max(0, it.prays + (on ? 1 : -1)); prayersChanged();          // 먼저 화면에 보이고
+        try { const n = await this.req('rpc/pray_prayer', { p_id: id, p_delta: on ? 1 : -1 }); if (typeof n === 'number') { it.prays = n; prayersChanged(); } this.tell(); }
+        catch (e) { console.warn('함께 기도 저장 실패', e); }
+      },
+    };
+    // 화면에 보일 기도제목: 함께 보는 것 + (이 휴대폰에만 있던 예전 것은 나에게만 '나만 보임'으로)
+    function allPrayers() {
+      const local = PrayerStore.list().map((p) => Object.assign({}, p, { local: true }));
+      if (!PrayerCloud.ok) return local;
+      return [...PrayerCloud.items, ...local.filter((p) => p.owner === PrayerStore.device())].sort((a, b) => b.at - a.at);
+    }
+    const isMine = (p) => (p.local ? p.owner === PrayerStore.device() : PrayerCloud.myIds().includes(p.id));
+    function prayersChanged() { if (isShown(pp.panel)) renderPrayers(); else updatePrayerBoards(); }
     const pp = { panel: document.getElementById('prayerPanel'), items: document.getElementById('ppItems'), filter: 'all', cat: PRAYER_CATS[0] };
     const esc = (t) => t.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     const when = (t) => { const d = (Date.now() - t) / 60000; if (d < 1) return '방금'; if (d < 60) return Math.floor(d) + '분 전'; if (d < 1440) return Math.floor(d / 60) + '시간 전'; const x = new Date(t); return (x.getMonth() + 1) + '월 ' + x.getDate() + '일'; };
     function renderPrayers() {
       const f = document.getElementById('ppFilter');
       f.innerHTML = ['all', ...PRAYER_CATS].map((c) => `<button class="pp-chip ${pp.filter === c ? 'on' : ''}" data-f="${c}">${c === 'all' ? '전체' : c}</button>`).join('');
-      const me = PrayerStore.device();
-      const list = PrayerStore.list().filter((p) => pp.filter === 'all' || p.cat === pp.filter);
+      const list = allPrayers().filter((p) => pp.filter === 'all' || p.cat === pp.filter);
       pp.items.innerHTML = list.length ? list.map((p) => `
         <div class="pp-item">
-          <div class="pp-meta"><span class="pp-cat">${esc(p.cat)}</span><span>${p.name ? esc(p.name) : '익명'}</span><span>· ${when(p.at)}</span></div>
+          <div class="pp-meta"><span class="pp-cat">${esc(p.cat)}</span><span>${p.name ? esc(p.name) : '익명'}</span><span>· ${when(p.at)}</span>${p.local && PrayerCloud.ok ? '<span class="pp-only">📱 나만 보임</span>' : ''}</div>
           <div class="pp-txt">${esc(p.text)}</div>
           <div class="pp-actions">
-            <button class="pp-pray ${PrayerStore.prayed(p.id) ? 'on' : ''}" data-pray="${p.id}">🙏 함께 기도해요 ${p.prays || ''}</button>
-            ${p.owner === me ? `<button class="pp-del" data-del="${p.id}">지우기</button>` : ''}
+            <button class="pp-pray ${PrayerStore.prayed(p.id) ? 'on' : ''}" data-pray="${esc(p.id)}">🙏 함께 기도해요 ${p.prays || ''}</button>
+            <span>${p.local && PrayerCloud.ok && isMine(p) ? `<button class="pp-share" data-share="${esc(p.id)}">모두와 나누기</button>` : ''}${isMine(p) ? `<button class="pp-del" data-del="${esc(p.id)}">지우기</button>` : ''}</span>
           </div>
-        </div>`).join('') : '<div class="pp-empty">아직 올라온 기도제목이 없어요.<br>첫 기도제목을 나눠 주세요 🙏</div>';
+        </div>`).join('') : `<div class="pp-empty">${PrayerCloud.ok === null ? '기도제목을 불러오는 중이에요…' : '아직 올라온 기도제목이 없어요.<br>첫 기도제목을 나눠 주세요 🙏'}</div>`;
+      document.getElementById('ppNote').textContent = PrayerCloud.ok ? '🌐 모든 성도님이 함께 보는 기도제목이에요. 이름 없이 올리려면 "익명으로 올리기"를 눌러 주세요.'
+        : PrayerCloud.ok === null ? '기도제목을 불러오는 중이에요…' : '📱 지금은 교회 기도제목 게시판에 연결되지 않아 이 휴대폰에만 저장돼요.';
       document.getElementById('ppCats').innerHTML = PRAYER_CATS.map((c) => `<button class="pp-chip ${pp.cat === c ? 'on' : ''}" data-c="${c}">${c}</button>`).join('');
       updatePrayerBoards();
     }
@@ -3313,7 +3455,7 @@
       document.getElementById('ppList').hidden = tab !== 'list'; document.getElementById('ppWrite').hidden = tab !== 'write';
       if (tab === 'write') { ppSync(); setTimeout(() => document.getElementById('ppText').focus(), 50); }
     }
-    function openPrayers(tab) { renderPrayers(); showPrayerTab(tab || 'list'); showEl(pp.panel, true); }
+    function openPrayers(tab) { renderPrayers(); showPrayerTab(tab || 'list'); showEl(pp.panel, true); PrayerCloud.load(); }
     document.getElementById('prayerBtn').addEventListener('click', () => openPrayers('list'));
     document.getElementById('ppClose').addEventListener('click', () => { showEl(pp.panel, false); });
     pp.panel.addEventListener('click', (e) => {
@@ -3322,18 +3464,37 @@
       if (t.dataset.tab) showPrayerTab(t.dataset.tab);
       if (t.dataset.f) { pp.filter = t.dataset.f; renderPrayers(); }
       if (t.dataset.c) { pp.cat = t.dataset.c; renderPrayers(); }
-      if (t.dataset.pray) { PrayerStore.togglePray(t.dataset.pray); renderPrayers(); }
-      if (t.dataset.del && confirm('이 기도제목을 지울까요?')) { PrayerStore.remove(t.dataset.del); renderPrayers(); }
+      const findP = (id) => allPrayers().find((p) => p.id === id);
+      if (t.dataset.pray) { const it = findP(t.dataset.pray); if (it && !it.local) PrayerCloud.pray(it.id); else { PrayerStore.togglePray(t.dataset.pray); renderPrayers(); } }
+      if (t.dataset.del && confirm('이 기도제목을 지울까요?')) {
+        const it = findP(t.dataset.del);
+        if (it && !it.local) PrayerCloud.remove(it.id).catch(() => alert('지우지 못했어요. 인터넷 연결을 확인하고 다시 해 주세요.'));
+        else { PrayerStore.remove(t.dataset.del); renderPrayers(); }
+      }
+      if (t.dataset.share) {                                    // 이 휴대폰에만 있던 예전 기도제목을 모두와 나누기
+        const it = findP(t.dataset.share); if (!it) return; t.disabled = true;
+        PrayerCloud.add(it.text, it.cat, it.name).then(() => { PrayerStore.remove(it.id); renderPrayers(); })
+          .catch(() => { t.disabled = false; alert('올리지 못했어요. 인터넷 연결을 확인하고 다시 해 주세요.'); });
+      }
     });
     const ppText = document.getElementById('ppText'), ppSubmit = document.getElementById('ppSubmit');
     const ppSubmitAnon = document.getElementById('ppSubmitAnon');
     const ppSync = () => { document.getElementById('ppLen').textContent = ppText.value.length; ppSubmit.disabled = ppSubmitAnon.disabled = !ppText.value.trim(); document.getElementById('ppMyName').textContent = loadName() || '내'; };
     ppText.addEventListener('input', ppSync);   // 처음 표시는 창을 열 때 (이름 기능이 아래에서 준비된 뒤)
     ['keydown', 'keyup'].forEach((ev) => ppText.addEventListener(ev, (e) => e.stopPropagation()));   // 글 쓰는 동안 W·A·S·D로 캐릭터가 움직이지 않게
-    const submitPrayer = (anon) => {
-      const v = ppText.value.trim(); if (!v) return;
-      PrayerStore.add(v.slice(0, 300), pp.cat, anon);
-      ppText.value = ''; ppSync(); pp.filter = 'all'; renderPrayers(); showPrayerTab('list');
+    const submitPrayer = async (anon) => {
+      const v = ppText.value.trim(); if (!v || ppSubmit.dataset.busy) return;
+      ppSubmit.dataset.busy = '1'; ppSubmit.disabled = ppSubmitAnon.disabled = true;
+      const done = () => { delete ppSubmit.dataset.busy; ppText.value = ''; ppSync(); pp.filter = 'all'; renderPrayers(); showPrayerTab('list'); };
+      if (PrayerCloud.ok !== false) {
+        try { await PrayerCloud.add(v.slice(0, 300), pp.cat, anon ? '' : (loadName() || '')); done(); return; }
+        catch (e) {
+          if (/too many/.test(e.message)) { delete ppSubmit.dataset.busy; ppSync(); alert('조금 전에 여러 개를 올리셨어요. 잠시 뒤에 다시 올려 주세요.'); return; }
+          console.warn('기도제목 올리기 실패', e);
+        }
+      }
+      PrayerStore.add(v.slice(0, 300), pp.cat, anon); done();
+      if (PrayerCloud.ok) alert('인터넷 연결이 불안해서 이 휴대폰에만 저장했어요. 연결되면 "모두와 나누기"를 눌러 주세요.');
     };
     ppSubmit.addEventListener('click', () => submitPrayer(false));
     ppSubmitAnon.addEventListener('click', () => submitPrayer(true));
@@ -3351,7 +3512,7 @@
       prayerBoards.push(board);
     }
     function updatePrayerBoards() {
-      const list = PrayerStore.list();
+      const list = allPrayers();
       prayerBoards.forEach((b) => {
         const { canvas: c, tex } = b.userData, g = c.getContext('2d');
         g.fillStyle = '#c9a97a'; g.fillRect(0, 0, 512, 340);                                   // 코르크 바탕
@@ -3443,14 +3604,15 @@
     document.getElementById('btnLight').addEventListener('click', () => { const r = currentRoom(); if (r) setRoomLight(r.id, !r.on); });
     makePrayerBoard(0.6, -6.6 + 1.45, -6.0, -Math.PI / 2);     // 지하 본당 동쪽 벽 (뒤쪽 통로 옆)
     makePrayerBoard(-6.93, F2_Y + 1.35, -12.0, Math.PI / 2);   // 2층 홀: 소예배실 벽(복도 쪽)에 걸림
-    updatePrayerBoards();
+    updatePrayerBoards(); PrayerCloud.load();
+    setInterval(() => { if (isShown(pp.panel) || document.visibilityState === 'visible') PrayerCloud.load(); }, 90000);   // 1분 반마다 새 기도제목 확인 (15초 안에 불러왔으면 건너뜀)
+    window.__prayers = { cloud: PrayerCloud, all: allPrayers };
     // =========================================================================
     // 친구랑 만나기: 같은 방(기본 'main', 주소 끝에 ?room=이름 으로 바꿀 수 있음)에 들어온 성도님끼리
     // 캐릭터·이름표가 보이고, 말풍선으로 대화. Supabase Realtime(Presence + Broadcast) 사용.
     // 주소에 ?net=local 을 붙이면 같은 브라우저 창끼리만 연결되는 연습 모드(검사용).
     // =========================================================================
-    const SUPABASE_URL = 'https://slpqownhiafmiuyisxuo.supabase.co';
-    const SUPABASE_KEY = 'sb_publishable_hOEENGzXwQnZcQSKwbeusQ_k9BHFjdZ';   // 공개용 키 (비밀 키 아님)
+    // (SUPABASE_URL · SUPABASE_KEY 는 기도제목 함께 보기에서도 써서 위로 옮김)
     const qs = new URLSearchParams(location.search);
     const ROOM = (qs.get('room') || 'main').replace(/[^\w가-힣-]/g, '').slice(0, 30) || 'main';
     const remotes = new Map();
@@ -3500,6 +3662,7 @@
         ch.on('broadcast', { event: 'chat' }, ({ payload }) => this.onChat(payload));
         ch.on('broadcast', { event: 'voice' }, ({ payload }) => Voice.onChunk(payload));
         ch.on('broadcast', { event: 'light' }, ({ payload }) => { if (payload) setRoomLight(payload.room, !!payload.on, true); });
+        ch.on('broadcast', { event: 'prayer' }, () => PrayerCloud.soon());
         ch.subscribe(async (status) => {
           if (status === 'SUBSCRIBED') { this.ready = true; this.subAt = performance.now(); await ch.track(myState()); this.setStatus(true); }
           else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') { this.ready = false; this.setStatus(false); }
@@ -3513,6 +3676,7 @@
           if (data.t === 'chat') this.onChat(data.p);
           if (data.t === 'voice') Voice.onChunk(data.p);
           if (data.t === 'light' && data.p) setRoomLight(data.p.room, !!data.p.on, true);
+          if (data.t === 'prayer') PrayerCloud.soon();
         };
         setInterval(() => { const now = performance.now(); seen.forEach((t, id) => { if (now - t > 12000) { seen.delete(id); const p = this.peers.get(id); this.peers.delete(id); if (p) sysLine(`${p.n}님이 나가셨어요`); this.syncPeers(); } }); }, 2000);
         this.setStatus(true);
