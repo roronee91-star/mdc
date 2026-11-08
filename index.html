@@ -2005,12 +2005,68 @@
       //   사용자 "공간이 허하다" → 회의 탁자 아래 따뜻한 카페트, 회의 의자는 크림색 부클레 원형 의자로, 동쪽 벽에 작은 홈카페장
       {
         const dk = k.M(0xcfc6b8), scr = k.M(0x22303f, 0.3);
-        [[-11.0, -7.7], [-9.2, -7.7]].forEach(([x, z]) => {                        // 북쪽 벽(소예배실 쪽)에 붙인 책상 2
-          k.table(x, z, 1.2, 0.55, dk); k.computer(x, z, 0); k.officeChair(x, z + 0.5, Math.PI); });
-        [[-12.0, -5.6], [-12.0, -4.2]].forEach(([x, z]) => {                       // 서쪽 벽에 붙인 책상 2
-          k.table(x, z, 0.55, 1.1, dk); k.computer(x, z, Math.PI / 2); k.officeChair(x + 0.5, z, -Math.PI / 2); });
         k.table(-9.0, -4.6, 1.0, 1.4, k.M(0xa77b50));                              // 회의 탁자 (윗면 0.38)
         const d = decoKit(F2_Y, f2);
+        // 0) 책상 4개를 한 덩어리로 붙임 (사용자 "책상들이 좀 붙어 있게, 파티션"): 북쪽 벽 앞에 2 × 2로 마주 보게
+        //    북쪽 줄은 남쪽을 보고(의자는 벽 쪽), 남쪽 줄은 북쪽을 봄. 모니터는 가운데 칸막이 쪽.
+        //    칸막이: 마주 보는 줄 사이 · 옆 책상 사이, 책상 위 0.3m 세이지 회색 천 + 원목 테, 칸막이에 메모지·달력
+        {
+          const PX = [-11.45, -10.25], ZM = -6.95, DW = 1.2, DD = 0.6, PT = 0.38, PH = 0.3;
+          PX.forEach((x) => {
+            k.table(x, ZM - DD / 2, DW, DD, dk); k.computer(x, ZM - DD / 2, Math.PI); k.officeChair(x, ZM - DD / 2 - 0.5, 0);
+            k.table(x, ZM + DD / 2, DW, DD, dk); k.computer(x, ZM + DD / 2, 0); k.officeChair(x, ZM + DD / 2 + 0.5, Math.PI);
+          });
+          const felt = d.mat(0xb5c0ae, 1), rail = d.mat(0xc98f55, 0.55), x0 = PX[0] - DW / 2, x1 = PX[1] + DW / 2, xm = (PX[0] + PX[1]) / 2;
+          d.box(x1 - x0, PH, 0.03, (x0 + x1) / 2, PT, ZM, felt); d.box(x1 - x0 + 0.01, 0.014, 0.04, (x0 + x1) / 2, PT + PH, ZM, rail);
+          [x0, x1].forEach((x) => d.box(0.02, PH + 0.014, 0.04, x, PT, ZM, rail));
+          d.box(0.03, PH, DD * 2 - 0.02, xm, PT, ZM, felt); d.box(0.04, 0.014, DD * 2 - 0.01, xm, PT + PH, ZM, rail);
+          [ZM - DD + 0.01, ZM + DD - 0.01].forEach((z) => d.box(0.04, PH + 0.014, 0.02, xm, PT, z, rail));
+          const NOTE = [0xfff176, 0xf8bbd0, 0xc8e6c9, 0xbbdefb], white = d.mat(0xfbf9f4, 0.6), red = d.mat(0xd9534f, 0.6), inside = d.mat(0x5b4636, 0.9);
+          let n = 0;
+          PX.forEach((x) => [-1, 1].forEach((side) => {
+            const fz = ZM + side * 0.0165, uz = ZM + side * DD / 2, sd = side;   // fz: 칸막이 면 · uz: 책상 가운데 (side -1 = 북쪽 줄)
+            [[-0.43, 0.6], [-0.49, 0.53], [0.42, 0.58]].forEach(([dx, y], i) => d.box(0.05, 0.05, 0.002, x + dx, y, fz, d.mat(NOTE[(n + i) % 4], 0.8), (i - 1) * 0.08));
+            d.box(0.085, 0.075, 0.002, x + 0.5, PT + 0.08, fz, white); d.box(0.085, 0.016, 0.0025, x + 0.5, PT + 0.14, fz, red);
+            const ux = x + (n % 2 ? -0.42 : 0.42), wz = uz + sd * 0.12, m = d.mat([0xa9bfa3, 0xf3ebdc, 0xd9876a, 0x8fa9c4][n], 0.45);
+            d.cyl(0.022, 0.02, 0.045, ux, PT, wz, m); d.cyl(0.0185, 0.0185, 0.002, ux, PT + 0.045, wz, inside); d.ring(0.012, 0.004, ux + 0.027, PT + 0.023, wz, m);
+            const px = x - (n % 2 ? -0.42 : 0.42), pz = uz - sd * 0.08;
+            if (n % 2) { d.cyl(0.025, 0.02, 0.03, px, PT, pz, d.mat(0xece6da, 0.6)); for (let i = 0; i < 7; i++) { const a = i * 2.4, r = i < 2 ? 0.005 : 0.013; d.ball(0.01, px + Math.cos(a) * r, PT + 0.036 + (i < 2 ? 0.006 : 0), pz + Math.sin(a) * r, d.mat(i % 2 ? 0x8fb08a : 0x6f9a6a, 0.7), 1, 0.6, 1.4); } }
+            else { d.cyl(0.018, 0.018, 0.05, px, PT, pz, d.mat(0xc98f55, 0.55)); [0x2f5d8a, 0xd9534f, 0x222222].forEach((c, i) => d.put(new THREE.CylinderGeometry(0.003, 0.003, 0.09, 6).rotateZ((i - 1) * 0.12), d.mat(c, 0.5), px + (i - 1) * 0.006, PT + 0.06, pz)); }
+            d.box(0.12, 0.012, 0.16, x - (n % 2 ? 0.2 : -0.22), PT, uz + sd * 0.05, white, (n - 1.5) * 0.1);
+            n++;
+          }));
+        }
+        // 0-2) 서쪽 벽(책상이 있던 자리): 낮은 수납장 위 복합기 · 복사 용지 · 서류철 · 작은 화분, 벽에 '이번 주 일정' 화이트보드
+        {
+          const WX = -12.22, Dc = 0.4, L = 1.6, zc = -4.6, Hc = 0.45, cx = WX + Dc / 2;
+          k.box(Dc, Hc - 0.03, L, cx, 0.03, zc, k.M(0xf1eee8, 0.5)); k.box(Dc - 0.04, 0.03, L - 0.04, cx - 0.01, 0, zc, k.M(0x2b2826, 0.6));
+          const oakL = d.mat(0xdcae78, 0.5), brass = d.mat(0xc9a25a, 0.3, 0.6), seam = d.mat(0xd8d3ca, 0.6);
+          d.box(Dc + 0.01, 0.025, L + 0.01, cx, Hc - 0.005, zc, oakL);
+          for (let i = 1; i < 4; i++) d.box(0.004, Hc - 0.07, 0.004, WX + Dc + 0.001, 0.05, zc - L / 2 + i * L / 4, seam);
+          for (let i = 0; i < 4; i++) d.box(0.012, 0.012, 0.09, WX + Dc + 0.008, Hc - 0.1, zc - L / 2 + (i + 0.5) * L / 4 + (i % 2 ? -0.13 : 0.13), brass);
+          const T = Hc + 0.02, PZ = -4.95, grey = d.mat(0xe4e6e8, 0.45), dg = d.mat(0x4a4f55, 0.5), paper = d.mat(0xfbfaf6, 0.8);
+          d.box(0.3, 0.15, 0.36, cx, T, PZ, grey); d.box(0.28, 0.008, 0.3, cx, T + 0.15, PZ, dg); d.box(0.06, 0.012, 0.09, cx + 0.12, T + 0.15, PZ + 0.1, dg);
+          d.box(0.03, 0.006, 0.012, cx + 0.152, T + 0.12, PZ + 0.12, new THREE.MeshBasicMaterial({ color: 0x8fd3ff, toneMapped: false }));
+          d.box(0.2, 0.004, 0.26, cx, T + 0.06, PZ, paper); d.box(0.22, 0.006, 0.05, cx + 0.04, T + 0.03, PZ, dg);
+          [0, 1, 2].forEach((i) => d.box(0.22, 0.05, 0.3, cx, T + i * 0.05, -4.45, i % 2 ? d.mat(0xc9a679, 0.9) : paper));
+          [0x2f5d8a, 0x3f7d4e, 0xc9a227, 0xb5443a].forEach((c, i) => d.box(0.24, 0.2, 0.035, cx, T, -4.1 + i * 0.04, d.mat(c, 0.6)));
+          d.cyl(0.04, 0.032, 0.06, cx, T, -5.27, d.mat(0xc4704d, 0.8));
+          for (let i = 0; i < 8; i++) { const a = i * 0.8; d.ball(0.022, cx + Math.cos(a) * 0.026, T + 0.08 + (i % 3) * 0.012, -5.27 + Math.sin(a) * 0.026, d.mat(i % 2 ? 0x5f8f4e : 0x7aab5c, 0.7), 1.2, 0.6, 1); }
+          const wc = document.createElement('canvas'); wc.width = 400; wc.height = 220; const wg = wc.getContext('2d');
+          wg.fillStyle = '#fbfbf9'; wg.fillRect(0, 0, 400, 220);
+          wg.fillStyle = '#2f5d8a'; wg.font = 'bold 30px sans-serif'; wg.textBaseline = 'middle'; wg.fillText('이번 주 일정', 20, 30);
+          wg.strokeStyle = 'rgba(47,93,138,0.6)'; wg.lineWidth = 2; wg.beginPath(); wg.moveTo(20, 52); wg.lineTo(380, 52); wg.stroke();
+          wg.font = 'bold 22px sans-serif';
+          [['주일', '예배 · 점심 교제', '#2f5d8a'], ['수', '수요 예배', '#3f7d4e'], ['금', '금요 기도회', '#b5443a'], ['토', '청소 · 꽃꽂이', '#c98a1f']].forEach(([a, b, c], i) => {
+            wg.fillStyle = c; wg.fillRect(24, 72 + i * 36, 14, 14); wg.fillStyle = '#333'; wg.fillText(a, 50, 80 + i * 36); wg.fillStyle = '#555'; wg.fillText(b, 110, 80 + i * 36); });
+          wg.fillStyle = '#fff176'; wg.fillRect(300, 120, 70, 66); wg.fillStyle = '#6b5a2a'; wg.font = 'bold 18px sans-serif'; wg.fillText('감사', 316, 153);
+          const wt = new THREE.CanvasTexture(wc); if ('colorSpace' in wt) wt.colorSpace = THREE.SRGBColorSpace; wt.anisotropy = 4;
+          d.box(0.016, 0.58, 1.04, WX + 0.008, 0.8, zc, d.mat(0xc9ccd0, 0.3, 0.5));
+          const wb = noHit(new THREE.Mesh(new THREE.PlaneGeometry(1.0, 0.55), new THREE.MeshStandardMaterial({ map: wt, roughness: 0.35 })));
+          wb.rotation.y = Math.PI / 2; wb.position.set(WX + 0.0165, F2_Y + 1.09, zc); f2.add(wb);
+          d.box(0.04, 0.012, 0.5, WX + 0.02, 0.79, zc, d.mat(0xc9ccd0, 0.3, 0.5));
+          [[0.1, 0x2f5d8a], [0.04, 0xb5443a], [-0.03, 0x3f7d4e]].forEach(([dz, c]) => d.put(new THREE.CylinderGeometry(0.006, 0.006, 0.07, 8).rotateX(Math.PI / 2), d.mat(c, 0.5), WX + 0.025, 0.808, zc + dz));
+        }
         // 1) 카페트 (2.2 × 2.6m): 테라코타 테두리 · 크림 띠(작은 마름모) · 겨자색 줄 · 크림 바탕에 마름모 격자 · 가운데 무늬, 양 끝 술
         {
           const c = document.createElement('canvas'); c.width = 256; c.height = 304; const g = c.getContext('2d');
