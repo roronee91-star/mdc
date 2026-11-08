@@ -1,5 +1,5 @@
 // 4층 목양실 (구석 작은 홈카페장) 화면 찍기 + 걷기 길 · 앉기 확인 (T=night 이면 밤)
-// 사용: node pastor.cjs <저장폴더> [이름앞말] [찍을 장면들: user,top,cafe,close,side]
+// 사용: node pastor.cjs <저장폴더> [이름앞말] [찍을 장면들: user,top,cafe,close,side,desk,deskTop,deskGuest]
 const { chromium } = require('playwright');
 (async () => {
   const out = process.argv[2], pre = process.argv[3] || '';
@@ -23,6 +23,10 @@ const { chromium } = require('playwright');
   if (want('cafe')) await shot(null, [-10.35, F4 + 1.2, -15.1], [-12.18, F4 + 0.85, -15.3], 'cafe');
   if (want('close')) await shot(null, [-11.25, F4 + 0.85, -15.05], [-12.18, F4 + 0.62, -15.35], 'close');
   if (want('side')) await shot(null, [-10.75, F4 + 1.15, -13.55], [-12.0, F4 + 0.75, -15.4], 'side');
+  // 목사님 책상 (윗면 F4 + 0.42): 목사님 자리 어깨 너머 · 위에서 · 손님 자리에서
+  if (want('desk')) await shot(null, [-10.12, F4 + 0.95, -15.3], [-10.5, F4 + 0.42, -14.62], 'desk');
+  if (want('deskTop')) await shot(null, [-10.5, F4 + 1.35, -15.05], [-10.5, F4 + 0.42, -14.6], 'deskTop');
+  if (want('deskGuest')) await shot(null, [-10.75, F4 + 0.9, -13.55], [-10.5, F4 + 0.5, -14.6], 'deskGuest');
   const kp = await p.evaluate(() => [[-11.45, -15.3], [-11.0, -15.4], [-10.5, -15.15], [-11.5, -14.0], [-9.6, -16.6]].map(([x, z]) => { const r = window.__dbg.findPath({ x: -10.0, z: -11.0 }, { x, z }); if (!r || !r.length) return 'none'; const e = r[r.length - 1]; return [r.length, +(e.x !== undefined ? e.x : e[0]).toFixed(2), +(e.z !== undefined ? e.z : e[1]).toFixed(2)]; }));
   console.log('목양실 길 (홈카페 앞, 목사님 의자 서쪽, 목사님 의자, 십자가 앞, 북동쪽):', JSON.stringify(kp));
   const st = await p.evaluate(async () => { const all = window.__dbg.seatsHere().filter((s) => s.x > -12.3 && s.x < -9.0 && s.z > -17.4 && s.z < -11.5);

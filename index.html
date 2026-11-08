@@ -2329,7 +2329,150 @@
         const desk = k.M(0x6b4a30, 0.6), leather = k.M(0x3d3027, 0.6);
         k.box(1.2, 0.04, 0.55, -10.5, 0.38, -14.6, desk); k.box(1.2, 0.34, 0.05, -10.5, 0.04, -14.85, desk);
         k.box(0.05, 0.34, 0.5, -11.08, 0.04, -14.6, desk); k.box(0.05, 0.34, 0.5, -9.92, 0.04, -14.6, desk);
-        k.computer(-10.5, -14.6, Math.PI);                                                 // 컴퓨터 (2층 사무실과 같은 모양, 목사님 쪽을 봄)
+        // 목사님 책상 위 (사용자 "목사님 책상에 성경책과 모니터 키보드 마우스 디테일"): 예전 컴퓨터는 키보드·마우스가 책상 판(윗면 0.42) 속에 묻혀 안 보였음
+        //   가죽 데스크 매트(바늘땀) · 얇은 모니터(설교 원고 · 11월 달력 · 메모 화면, 웹캠, 은색 받침) · 자판이 하나하나 있는 키보드 · 휠 달린 마우스
+        //   펼친 성경(가운데로 휘는 종이 · 금박 옆면 · 가름끈 둘 · 형광펜 줄) · 덮인 성경('성경전서' 금박) + 설교 노트 · 만년필 · 초록 갓 책상 스탠드(밤에 둘레가 환함)
+        {
+          const d = decoKit(F4_Y, f4), TY = 0.42;
+          const RO = new THREE.Matrix4().makeTranslation(-10.5, 0, -14.6).multiply(new THREE.Matrix4().makeRotationY(Math.PI));   // 책상 틀: +z = 목사님 쪽, +x = 목사님 오른손 쪽
+          const fr = (x, z, ry) => RO.clone().multiply(new THREE.Matrix4().makeTranslation(x, 0, z)).multiply(new THREE.Matrix4().makeRotationY(ry || 0));
+          const og = new THREE.Group(); og.matrixAutoUpdate = false; og.matrix.copy(RO); f4.add(og);
+          const cv = (w, h, draw) => { const c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d'), w, h);
+            const t = new THREE.CanvasTexture(c); if ('colorSpace' in t) t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; return t; };
+          const tm = (geo, mat, x, y, z) => { geo.translate(x, F4_Y + y, z); geo.applyMatrix4(d.R); const m = noHit(new THREE.Mesh(geo, mat)); m.receiveShadow = true; f4.add(m); return m; };   // 무늬 있는 판 (지금 d.R 틀)
+          const leather = d.mat(0x3a2a20, 0.7), stitch = d.mat(0xa08058, 0.8), bezel = d.mat(0x17181b, 0.35), shell = d.mat(0x2b2c30, 0.45), alu = d.mat(0xc3c7cc, 0.3, 0.6);
+          const kbBody = d.mat(0xc9cdd2, 0.35, 0.5), keyM = d.mat(0x2a2c31, 0.55), mouseM = d.mat(0xeceae6, 0.4), wheelM = d.mat(0x3a3a3f, 0.5), lens = d.mat(0x08080a, 0.15);
+          const cover = d.mat(0x1c1a1a, 0.55), gilt = d.mat(0xd2ad62, 0.35, 0.5), red = d.mat(0xa3202c, 0.6), goldRib = d.mat(0xc9a14a, 0.5), note = d.mat(0x8b5a36, 0.65), cream = d.mat(0xf1e8d2, 0.85), band = d.mat(0x2a201a, 0.6);
+          const penM = d.mat(0x111114, 0.2, 0.3), gold = d.mat(0xd8b264, 0.3, 0.8), brass = d.mat(0xc9a25a, 0.3, 0.8);
+          const led = new THREE.MeshBasicMaterial({ color: 0xcfe8ff }), lit = new THREE.MeshBasicMaterial({ color: 0xfff0cc });
+          const shadeM = new THREE.MeshStandardMaterial({ color: 0x1d5a3c, roughness: 0.22, metalness: 0.15, emissive: 0x0a2416 });
+          // 가죽 데스크 매트 + 둘레 바늘땀
+          d.R = fr(0, 0);
+          const PX = 0.01, PZ = 0.115, PW0 = 0.6, PD0 = 0.235;
+          d.box(PW0, 0.003, PD0, PX, TY, PZ, leather);
+          [PZ - PD0 / 2 + 0.008, PZ + PD0 / 2 - 0.008].forEach((z) => d.box(PW0 - 0.016, 0.0006, 0.0015, PX, TY + 0.003, z, stitch));
+          [PX - PW0 / 2 + 0.008, PX + PW0 / 2 - 0.008].forEach((x) => d.box(0.0015, 0.0006, PD0 - 0.016, x, TY + 0.003, PZ, stitch));
+          // 모니터: 얇은 테두리 화면(살짝 뒤로 기울임) · 뒷판 · 웹캠 · 전원 불빛 + 은색 목 · 납작한 받침
+          d.R = fr(0, -0.15);
+          const HY = TY + 0.225, TILT = -0.08, hd = (geo, m, x, y, z) => { geo.translate(x, y, z); geo.rotateX(TILT); d.put(geo, m, 0, HY, 0); };
+          hd(new THREE.BoxGeometry(0.48, 0.285, 0.012), bezel, 0, 0, 0);
+          hd(new THREE.BoxGeometry(0.47, 0.275, 0.004), d.mat(0x3a3c42, 0.4, 0.3), 0, 0, -0.0075);   // 뒷면: 짙은 회색 (손님 쪽에서 덜 무겁게)
+          hd(new THREE.BoxGeometry(0.3, 0.17, 0.02), shell, 0, -0.01, -0.016);
+          hd(new THREE.BoxGeometry(0.11, 0.09, 0.012), alu, 0, -0.01, -0.031);
+          hd(new THREE.BoxGeometry(0.055, 0.015, 0.02), bezel, 0, 0.15, 0.002);
+          hd(new THREE.CylinderGeometry(0.0042, 0.0042, 0.002, 12).rotateX(Math.PI / 2), lens, 0, 0.15, 0.0125);
+          hd(new THREE.BoxGeometry(0.006, 0.0018, 0.001), led, 0.215, -0.134, 0.0062);
+          { const g = new THREE.BoxGeometry(0.045, 0.21, 0.01); g.rotateX(0.118); d.put(g, alu, 0, TY + 0.112, -0.055); }
+          d.put(new THREE.CylinderGeometry(1, 1, 0.006, 28).scale(0.1, 1, 0.07), alu, 0, TY + 0.003, -0.045);
+          const scrMat = new THREE.MeshBasicMaterial({ color: 0xe8e8e8, map: cv(512, 288, (g, W, H) => {
+            const bg = g.createLinearGradient(0, 0, 0, H); bg.addColorStop(0, '#a6c6e6'); bg.addColorStop(1, '#f1dcc3'); g.fillStyle = bg; g.fillRect(0, 0, W, H);
+            g.fillStyle = 'rgba(255,255,255,0.6)'; g.fillRect(0, 0, W, 9);
+            // 설교 원고 창
+            g.fillStyle = 'rgba(0,0,0,0.18)'; g.fillRect(24, 24, 284, 240); g.fillStyle = '#ffffff'; g.fillRect(20, 20, 284, 240);
+            g.fillStyle = '#3f6fb3'; g.fillRect(20, 20, 284, 14); g.fillStyle = '#eef1f5'; g.fillRect(20, 34, 284, 12);
+            g.fillStyle = '#b8c2cf'; for (let i = 0; i < 9; i++) g.fillRect(26 + i * 14, 37, 9, 6);
+            g.fillStyle = '#1f2937'; g.font = 'bold 22px sans-serif'; g.fillText('주일 설교', 40, 76);
+            g.fillStyle = '#6b7280'; g.font = '12px sans-serif'; g.fillText('본문: 시편 23편 · 11월 둘째 주', 40, 96);
+            let y = 112, w = 0;
+            for (let i = 0; i < 13; i++) { if (i === 5) y += 6; w = (i === 4 || i === 12) ? 120 : 236 - (i * 37) % 30;
+              if (i === 7) { g.fillStyle = 'rgba(255,225,90,0.7)'; g.fillRect(38, y - 2, w + 4, 8); }
+              g.fillStyle = '#9aa3ad'; g.fillRect(40, y, w, 4); y += 11; }
+            g.fillStyle = '#111111'; g.fillRect(40 + w + 3, y - 13, 1.5, 9);
+            // 11월 달력 (2026년 11월 1일 = 주일, 오늘 8일에 동그라미)
+            g.fillStyle = 'rgba(0,0,0,0.15)'; g.fillRect(324, 24, 172, 130); g.fillStyle = '#ffffff'; g.fillRect(320, 20, 172, 130);
+            g.fillStyle = '#5b8a6c'; g.fillRect(320, 20, 172, 20); g.fillStyle = '#ffffff'; g.font = 'bold 13px sans-serif'; g.fillText('11월', 332, 35);
+            g.font = '9px sans-serif';
+            for (let r = 0; r < 5; r++) for (let c = 0; c < 7; c++) { const x = 328 + c * 23, yy = 46 + r * 20, n = r * 7 + c + 1; if (n > 30) continue;
+              g.fillStyle = c === 0 ? '#f8dede' : '#eef0f2'; g.fillRect(x, yy, 19, 16); g.fillStyle = c === 0 ? '#b8403a' : '#4b5563'; g.fillText(String(n), x + 3, yy + 11); }
+            g.strokeStyle = '#d0533f'; g.lineWidth = 2; g.beginPath(); g.arc(328 + 9.5, 46 + 20 + 8, 11, 0, 7); g.stroke();
+            g.fillStyle = '#5b8a6c'; g.fillRect(328 + 3 * 23, 46 + 20 + 13, 19, 3);
+            // 노란 메모
+            g.save(); g.translate(388, 204); g.rotate(-0.05); g.fillStyle = 'rgba(0,0,0,0.15)'; g.fillRect(-50, -30, 108, 66); g.fillStyle = '#fff1a0'; g.fillRect(-54, -34, 108, 66);
+            g.fillStyle = '#4b3b1a'; g.font = 'bold 12px sans-serif'; g.fillText('심방 오후 2시', -46, -13); g.fillText('수요예배 7:30', -46, 4); g.fillText('새가족 전화', -46, 21); g.restore();
+            // 아래 앱 줄
+            g.fillStyle = 'rgba(255,255,255,0.55)'; g.fillRect(186, 268, 140, 18);
+            ['#3f6fb3', '#5b8a6c', '#e0a43a', '#c4544a', '#7a5aa8', '#4a9bc4'].forEach((c, i) => { g.fillStyle = c; g.fillRect(193 + i * 22, 271, 13, 12); });
+          }) });
+          { const g = new THREE.PlaneGeometry(0.464, 0.258); g.translate(0, 0.006, 0.0065); g.rotateX(TILT); tm(g, scrMat, 0, HY, 0); }
+          // 키보드: 은색 판(뒤가 살짝 높음) + 자판 76개 (기능키 줄 · 숫자 · 위 · 가운데 · 아래 · 스페이스 줄)
+          d.R = fr(-0.02, 0.105);
+          const KT = 0.035, kb = (geo, m, x, y, z) => { geo.translate(x, y, z); geo.rotateX(KT); d.put(geo, m, 0, TY + 0.0058, 0); };
+          kb(new THREE.BoxGeometry(0.282, 0.007, 0.104), kbBody, 0, 0, 0);
+          const KP = 0.0178, KX0 = -0.267 / 2, ones = (n) => Array(n).fill(1);
+          for (let i = 0; i < 15; i++) kb(new THREE.BoxGeometry(KP - 0.0028, 0.003, 0.007), keyM, KX0 + (i + 0.5) * KP, 0.005, -0.0415);
+          [[...ones(13), 2], [1.5, ...ones(12), 1.5], [1.75, ...ones(11), 2.25], [2.25, ...ones(10), 2.75], [1.25, 1.25, 1.25, 6.25, 1.25, 1.25, 1.25, 1.25]].forEach((row, ri) => {
+            let u = 0; row.forEach((w) => { kb(new THREE.BoxGeometry(w * KP - 0.0028, 0.0035, 0.0142), keyM, KX0 + (u + w / 2) * KP, 0.00525, -0.027 + ri * 0.0168); u += w; }); });
+          // 마우스 (오른손 쪽): 둥근 몸통 + 휠
+          d.R = fr(0.215, 0.115, -0.12);
+          d.put(new THREE.SphereGeometry(1, 18, 12).scale(0.023, 0.0155, 0.037), mouseM, 0, TY + 0.003, 0);
+          d.put(new THREE.CylinderGeometry(0.0042, 0.0042, 0.003, 12).rotateZ(Math.PI / 2), wheelM, 0, TY + 0.003 + 0.0125, -0.016);
+          // 펼친 성경 (왼손 쪽, 목사님 쪽으로 살짝 돌림): 검은 가죽 표지 · 금박 옆면 종이 뭉치 · 가운데로 휘는 윗장 · 가름끈 (빨강 · 금색)
+          d.R = fr(-0.43, 0.075, 0.2);
+          const BW = 0.108, BD = 0.148, BH = 0.013, cu = (s) => 0.003 + (BH - 0.003) * (1 - Math.exp(-s / 0.016)), sl = (s) => Math.atan((BH - 0.003) / 0.016 * Math.exp(-s / 0.016));
+          [-1, 1].forEach((sg) => d.box(BW + 0.005, 0.003, BD + 0.008, sg * (BW + 0.005) / 2, TY, 0, cover));
+          const giltM = new THREE.MeshStandardMaterial({ color: 0xd8b66e, roughness: 0.4, metalness: 0.45 });
+          const pageMat = new THREE.MeshStandardMaterial({ roughness: 0.85, map: cv(512, 352, (g, W, H) => {
+            g.fillStyle = '#f5eedb'; g.fillRect(0, 0, W, H);
+            [[0, '23'], [256, '24']].forEach(([ox, ch], pi) => {
+              g.fillStyle = '#8a7f70'; g.font = '11px serif'; g.textAlign = 'center'; g.fillText('시 편', ox + 128, 22); g.textAlign = 'left';
+              g.fillStyle = '#c9bfae'; g.fillRect(ox + 22, 28, 212, 1); g.fillRect(ox + 127, 34, 1, 296);
+              for (let c = 0; c < 2; c++) { const cx = ox + 22 + c * 110; let y = 40;
+                if (c === 0) { g.fillStyle = '#9e2330'; g.font = 'bold 30px serif'; g.fillText(ch, cx, y + 24); y += 34; }
+                for (let l = 0; y < 330; l++, y += 9) { const lw = (l * 7 + c * 3 + pi * 5) % 11 === 0 ? 40 + (l * 13) % 50 : 100;
+                  if (pi === 0 && c === 1 && (l === 6 || l === 7)) { g.fillStyle = 'rgba(255,220,60,0.65)'; g.fillRect(cx - 1, y - 2, lw + 2, 8); }   // 형광펜
+                  g.fillStyle = 'rgba(70,62,52,0.78)'; g.fillRect(cx, y, lw, 3.2);
+                  if ((l * 5 + c) % 4 === 0) { g.fillStyle = '#9e2330'; g.fillRect(cx, y, 4, 3.2); }
+                  if (pi === 1 && c === 0 && l === 9) { g.fillStyle = '#5a4a3a'; g.fillRect(cx, y + 4.6, lw, 1); } } } });   // 연필 밑줄
+            const gs = g.createLinearGradient(226, 0, 286, 0); gs.addColorStop(0, 'rgba(110,85,50,0)'); gs.addColorStop(0.5, 'rgba(110,85,50,0.42)'); gs.addColorStop(1, 'rgba(110,85,50,0)'); g.fillStyle = gs; g.fillRect(226, 0, 60, H);
+          }) });
+          [-1, 1].forEach((sg) => {
+            const sh = new THREE.Shape(); sh.moveTo(0, 0); sh.lineTo(sg * BW, 0); for (let i = 0; i <= 16; i++) { const s = BW * (1 - i / 16); sh.lineTo(sg * s, cu(s)); }
+            const blk = new THREE.ExtrudeGeometry(sh, { depth: BD, bevelEnabled: false, curveSegments: 1 }); blk.translate(0, 0, -BD / 2); tm(blk, giltM, 0, TY + 0.003, 0).castShadow = true;
+            const pg = new THREE.PlaneGeometry(BW, BD, 20, 1); pg.rotateX(-Math.PI / 2); const pos = pg.attributes.position, uv = pg.attributes.uv;
+            for (let i = 0; i < pos.count; i++) { const x = pos.getX(i) + sg * BW / 2; pos.setX(i, x); pos.setY(i, cu(Math.abs(x)) + 0.0004); uv.setX(i, sg > 0 ? 0.5 + 0.5 * uv.getX(i) : 0.5 * uv.getX(i)); }
+            pg.computeVertexNormals(); tm(pg, pageMat, 0, TY + 0.003, 0);
+          });
+          [[0.032, red, 0.03], [-0.04, goldRib, 0.022]].forEach(([x, m, tail]) => {
+            const s = Math.abs(x), sg = Math.sign(x), yr = TY + 0.003 + cu(s) + 0.0008, z0 = -BD / 2 + 0.012, z1 = BD / 2;
+            d.put(new THREE.BoxGeometry(0.0065, 0.0006, z1 - z0).rotateZ(sg * sl(s)), m, x, yr, (z0 + z1) / 2);
+            const dz = 0.014, dy = yr - (TY + 0.0003), L = Math.hypot(dz, dy);
+            d.put(new THREE.BoxGeometry(0.0065, 0.0006, L).rotateX(Math.atan2(dy, dz)), m, x, (yr + TY + 0.0003) / 2, z1 + dz / 2);
+            d.box(0.0065, 0.0006, tail, x, TY, z1 + dz + tail / 2, m);
+          });
+          // 덮인 성경 + 설교 노트 (오른손 쪽 뒤 구석)
+          d.R = fr(0.44, -0.085, -0.12);
+          d.box(0.112, 0.003, 0.156, 0, TY, 0, note); d.box(0.106, 0.011, 0.15, 0.002, TY + 0.003, 0, cream); d.box(0.112, 0.003, 0.156, 0, TY + 0.014, 0, note);
+          d.box(0.004, 0.017, 0.156, -0.056, TY, 0, note); d.box(0.005, 0.0176, 0.158, 0.04, TY - 0.0003, 0, band);
+          d.R = fr(0.445, -0.09, 0.07);
+          const B0 = TY + 0.017;
+          d.box(0.124, 0.004, 0.168, 0.002, B0, 0, cover); d.box(0.116, 0.024, 0.16, 0.002, B0 + 0.004, 0, gilt); d.box(0.124, 0.004, 0.168, 0.002, B0 + 0.028, 0, cover);
+          d.put(new THREE.CylinderGeometry(0.016, 0.016, 0.168, 12, 1, false, Math.PI, Math.PI).rotateX(Math.PI / 2), cover, -0.06, B0 + 0.016, 0);
+          tm(new THREE.PlaneGeometry(0.112, 0.156).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ roughness: 0.5, map: cv(128, 178, (g, W, H) => {
+            g.fillStyle = '#1c1a1a'; g.fillRect(0, 0, W, H); g.fillStyle = 'rgba(255,255,255,0.035)'; for (let i = 0; i < 300; i++) g.fillRect((i * 37) % W, (i * 53) % H, 1, 1);
+            g.strokeStyle = '#c9a45a'; g.lineWidth = 1.5; g.strokeRect(8, 8, W - 16, H - 16);
+            g.fillStyle = '#d4af62'; g.fillRect(W / 2 - 3, 40, 6, 36); g.fillRect(W / 2 - 13, 50, 26, 6);
+            g.font = 'bold 17px serif'; g.textAlign = 'center'; g.fillText('성경전서', W / 2, 112); g.font = '9px serif'; g.fillText('HOLY BIBLE', W / 2, 128);
+          }) }), 0.004, B0 + 0.0322, 0);
+          // 만년필 (매트 위, 성경과 키보드 사이)
+          d.R = fr(-0.235, 0.12, 0.35);
+          const PY = TY + 0.003 + 0.0042, ax = (g) => g.rotateX(Math.PI / 2);
+          d.put(ax(new THREE.CylinderGeometry(0.0042, 0.0042, 0.05, 12)), penM, 0, PY, -0.012);
+          d.put(ax(new THREE.CylinderGeometry(0.0038, 0.0042, 0.03, 12)), penM, 0, PY, 0.028);
+          d.put(ax(new THREE.CylinderGeometry(0.0045, 0.0045, 0.003, 12)), gold, 0, PY, 0.0125);
+          d.put(ax(new THREE.CylinderGeometry(0.0005, 0.0038, 0.012, 10)), gold, 0, PY, 0.049);
+          d.box(0.0014, 0.0016, 0.026, 0, PY + 0.0034, -0.02, gold);
+          // 책상 스탠드 (왼손 쪽 뒤): 놋쇠 받침 · 기둥 · 팔 + 초록 유리 반원 갓 · 놋쇠 테 · 아래 빛 판 · 당김 줄
+          d.R = fr(-0.43, -0.17, 0.12);
+          d.cyl(0.04, 0.045, 0.012, 0, TY, 0, brass, 24); d.cyl(0.026, 0.034, 0.012, 0, TY + 0.012, -0.004, brass, 20);
+          d.cyl(0.0055, 0.0055, 0.15, 0, TY + 0.024, -0.012, brass, 10); d.ball(0.008, 0, TY + 0.176, -0.012, brass); d.box(0.008, 0.006, 0.05, 0, TY + 0.174, 0.01, brass);
+          d.put(new THREE.CylinderGeometry(0.036, 0.036, 0.17, 20, 1, false, 0, Math.PI).rotateZ(Math.PI / 2), shadeM, 0, TY + 0.15, 0.04);
+          [0.04 - 0.036, 0.04 + 0.036].forEach((z) => d.box(0.172, 0.004, 0.004, 0, TY + 0.148, z, brass));
+          d.box(0.164, 0.0015, 0.066, 0, TY + 0.149, 0.04, lit);
+          d.cyl(0.0011, 0.0011, 0.04, 0.06, TY + 0.11, 0.07, brass, 6); d.ball(0.0035, 0.06, TY + 0.108, 0.07, brass);
+          d.R = null; d.flush();
+          glowSpot(og, -0.42, F4_Y + TY + 0.0035, -0.07, 0.36, 0.3, 0xffd9a0, [-Math.PI / 2, 0, 0], 0.1, 0.55);   // 스탠드 불빛
+          glowSpot(og, 0, F4_Y + TY + 0.0036, 0.0, 0.52, 0.2, 0xa9c8ff, [-Math.PI / 2, 0, 0], 0, 0.22);           // 밤: 화면 빛이 책상에 비침
+        }
         k.execChair(-10.5, -15.15, 0);                                                     // 목사님 의자: 고급 가죽 의자
         k.execChair(-10.85, -13.95, Math.PI, true); k.execChair(-10.15, -13.95, Math.PI, true);   // 손님 의자: 낮은 가죽 의자
         k.shelf(-9.15, -15.6, 1.4, -Math.PI / 2); k.shelf(-9.15, -13.9, 1.0, -Math.PI / 2);
