@@ -1990,15 +1990,41 @@
       // (동쪽 방들은 없앰 — 복도와 동쪽 창가가 하나의 트인 홀)
       // ---- 소예배실: 북쪽에 낮은 강단·강대상·십자가, 개인 의자 5줄 × 6 (가운데 통로) ----
       {
-        const wood = k.M(0x8a6240, 0.6), seatM = k.M(0xb7895a), cx = -9.63;
+        const wood = k.M(0x8a6240, 0.6), cx = -9.63;
         k.box(4.2, 0.1, 1.3, cx, 0, -14.9, k.M(0xc9a97a, 0.7));                   // 강단 (높이 10cm)
         k.box(0.55, 0.3, 0.36, cx, 0.1, -14.75, wood); k.box(0.6, 0.04, 0.42, cx, 0.4, -14.73, wood);   // 강대상: 윗면이 캐릭터 가슴 높이(강단 위 0.34m) — 사용자 "강대상이 높아"로 0.2m 낮춤
         k.box(0.06, 1.0, 0.06, cx, 1.0, -15.55, k.mWood); k.box(0.5, 0.06, 0.06, cx, 1.65, -15.55, k.mWood);   // 북쪽 벽 십자가
         k.box(0.32, 0.5, 0.32, cx - 1.6, 0.1, -15.15, k.M(0x2b2b2b, 0.3)); k.box(0.5, 0.06, 0.22, cx - 1.6, 0.6, -15.2, k.M(0x111111, 0.3));   // 작은 디지털 피아노
         k.box(2.4, 0.012, 4.5, cx, 0, -11.2, k.M(0xa8846a, 0.95));                // 가운데 통로 카펫
-        [-13.4, -12.65, -11.9, -11.15, -10.4].forEach((z) => {
-          [-11.55, -11.05, -10.55, -8.7, -8.2, -7.7].forEach((x) => k.chair(x, z, Math.PI, seatM, 'pew'));   // 강단을 바라봄
-        });
+        // 개인 의자 (사용자가 보여 준 교회 의자 분위기만 참고): 밝은 원목 틀 + 초록 가죽 방석·등받이, 등받이 아래 원목 판, 살짝 뒤로 기운 등받이
+        //   앉는 높이·크기는 예전 의자와 같음(윗면 0.20m, 폭 0.30m). 30개가 같은 모양 두 개(원목 · 초록)를 함께 써서 가벼움 (의자마다 2조각)
+        {
+          const woodM = new THREE.MeshStandardMaterial({ color: 0xe0c296, roughness: 0.6 }), padM = new THREE.MeshStandardMaterial({ color: 0x62806a, emissive: 0x18261c, roughness: 0.5 });   // 세운 등판이 너무 어두워 보여 살짝 스스로 밝게
+          const bx = (w, h, d, x, y, z) => new THREE.BoxGeometry(w, h, d).translate(x, y + h / 2, z);
+          const rr = (w, d, r) => { const sh = new THREE.Shape(), a = -w / 2, b = -d / 2; sh.moveTo(a + r, b); sh.lineTo(a + w - r, b); sh.quadraticCurveTo(a + w, b, a + w, b + r); sh.lineTo(a + w, b + d - r); sh.quadraticCurveTo(a + w, b + d, a + w - r, b + d);
+            sh.lineTo(a + r, b + d); sh.quadraticCurveTo(a, b + d, a, b + d - r); sh.lineTo(a, b + r); sh.quadraticCurveTo(a, b, a + r, b); return sh; };
+          const pad = (w, h, d) => { const g = new THREE.ExtrudeGeometry(rr(w - 0.012, d - 0.012, 0.018), { depth: h - 0.012, bevelEnabled: true, bevelThickness: 0.006, bevelSize: 0.006, bevelSegments: 2, curveSegments: 4 }); g.rotateX(-Math.PI / 2); g.translate(0, 0.006, 0); return g; };   // 둥근 모서리 방석 (바닥 y 0 ~ 위 h)
+          const TILT = -0.1, W = [], G = [];
+          [-1, 1].forEach((sx) => {
+            W.push(bx(0.032, 0.165, 0.032, sx * 0.135, 0, 0.125));                                                   // 앞다리
+            W.push(new THREE.BoxGeometry(0.034, 0.52, 0.036).translate(0, 0.26, 0).rotateX(TILT).translate(sx * 0.152, 0, -0.105));   // 뒷다리 겸 등받이 기둥 (뒤로 기움)
+            W.push(bx(0.024, 0.045, 0.24, sx * 0.14, 0.118, 0.005));                                                  // 옆 띠
+          });
+          W.push(bx(0.27, 0.045, 0.024, 0, 0.118, 0.125), bx(0.27, 0.045, 0.024, 0, 0.118, -0.118));                 // 앞·뒤 띠
+          G.push(pad(0.27, 0.042, 0.28).translate(0, 0.163, 0.025));                                                 // 방석 (윗면 0.205)
+          // 등받이: 아래 띠 · 들어간 원목 판 · 가운데 띠 · 초록 등판 · 위 띠 → 뒤로 기울여 방석 뒤에 세움
+          const back = (g) => g.rotateX(TILT).translate(0, 0.205, -0.125);
+          [bx(0.27, 0.014, 0.03, 0, 0, 0), bx(0.25, 0.062, 0.012, 0, 0.014, -0.006), bx(0.27, 0.026, 0.03, 0, 0.076, 0), bx(0.3, 0.04, 0.036, 0, 0.282, 0)].forEach((g) => W.push(back(g)));
+          G.push(back(pad(0.25, 0.03, 0.18).rotateX(Math.PI / 2).translate(0, 0.192, 0)));
+          const woodG = mergeGeometries(W), padG = mergeGeometries(G); W.concat(G).forEach((g) => g.dispose());
+          [-13.4, -12.65, -11.9, -11.15, -10.4].forEach((z) => {
+            [-11.55, -11.05, -10.55, -8.7, -8.2, -7.7].forEach((x) => {                                                 // 강단(북쪽)을 바라봄, 앉으면 기도
+              const g = new THREE.Group(); g.position.set(x, F2_Y, z); g.rotation.y = Math.PI; f2.add(g);
+              [[woodG, woodM], [padG, padM]].forEach(([geo, m]) => { const o = new THREE.Mesh(geo, m); o.castShadow = o.receiveShadow = true; g.add(o); });
+              g.userData.seat = { x, y: F2_Y + 0.20, z, rot: Math.PI, kind: 'pew' };
+            });
+          });
+        }
         k.sign('소예배실', CW + 0.05, -9.2, Math.PI / 2, 2.25); k.light(cx, -12.0, 1.5);
       }
       // ---- 사무실 (소예배실 옆, 예전 소그룹실 자리를 넓게): 책상 4 · 모니터 · 의자 · 책장 2 · 회의 탁자 ----
