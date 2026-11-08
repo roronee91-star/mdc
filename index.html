@@ -1752,8 +1752,8 @@
           for (let i = 0; i < n; i++) { const t = (i - (n - 1) / 2) * ((len - 0.2) / n); g.userData.seats.push({ x: x + c * t + sn * 0.14, z: z - sn * t + c * 0.14, y: Y + 0.22, rot: rotY, kind: 'chair' }); }
         },
         // 컴퓨터 한 벌: 받침 달린 얇은 모니터(바탕화면) · 키보드 · 마우스와 패드. rotY: 앉은 사람 쪽(화면 앞)이 보는 방향 (0 = +z). 책상 윗면 0.38
-        computer(x, z, rotY) {
-          const g = new THREE.Group(); g.position.set(x, Y + 0.38, z); g.rotation.y = rotY; group.add(g);
+        computer(x, z, rotY, sc) {                                                   // sc = 크기 (없으면 1)
+          const g = new THREE.Group(); g.position.set(x, Y + 0.38, z); g.rotation.y = rotY; if (sc) g.scale.setScalar(sc); group.add(g);
           const M = (c, r, mt) => new THREE.MeshStandardMaterial({ color: c, roughness: r, metalness: mt || 0 });
           const dark = k._pcD || (k._pcD = M(0x1d1f23, 0.4)), silver = k._pcS || (k._pcS = M(0xc4c8cd, 0.3, 0.4)), keyM = k._pcK || (k._pcK = M(0xf1f1ef, 0.5));
           const scr = k._pcScr || (k._pcScr = (() => {                                 // 바탕화면: 하늘빛 그러데이션 + 작은 십자가 + 창 하나 + 아래 줄
@@ -2005,16 +2005,16 @@
       //   사용자 "공간이 허하다" → 회의 탁자 아래 따뜻한 카페트, 회의 의자는 크림색 부클레 원형 의자로, 동쪽 벽에 작은 홈카페장
       {
         const dk = k.M(0xcfc6b8), scr = k.M(0x22303f, 0.3);
-        k.table(-9.0, -4.6, 1.0, 1.4, k.M(0xa77b50));                              // 회의 탁자 (윗면 0.38)
+        k.table(-9.6, -4.3, 0.8, 1.0, k.M(0xa77b50));                              // 4인 탁자 (윗면 0.38) — 사용자 "탁자 자리는 작게"로 1.0×1.4 → 0.8×1.0
         const d = decoKit(F2_Y, f2);
-        // 0) 책상 4개를 한 덩어리로 붙임 (사용자 "책상들이 좀 붙어 있게, 파티션"): 북쪽 벽 앞에 2 × 2로 마주 보게
+        // 0) 책상 4개를 한 덩어리로 붙임 (사용자 "책상들이 좀 붙어 있게, 파티션" → "좀 더 크게"): 북쪽 벽 앞에 2 × 2로 마주 보게, 책상 1.5 × 0.75m · 모니터 1.15배
         //    북쪽 줄은 남쪽을 보고(의자는 벽 쪽), 남쪽 줄은 북쪽을 봄. 모니터는 가운데 칸막이 쪽.
         //    칸막이: 마주 보는 줄 사이 · 옆 책상 사이, 책상 위 0.3m 세이지 회색 천 + 원목 테, 칸막이에 메모지·달력
         {
-          const PX = [-11.45, -10.25], ZM = -6.95, DW = 1.2, DD = 0.6, PT = 0.38, PH = 0.3;
+          const PX = [-11.4, -9.9], ZM = -7.1, DW = 1.5, DD = 0.75, PT = 0.38, PH = 0.34;
           PX.forEach((x) => {
-            k.table(x, ZM - DD / 2, DW, DD, dk); k.computer(x, ZM - DD / 2, Math.PI); k.officeChair(x, ZM - DD / 2 - 0.5, 0);
-            k.table(x, ZM + DD / 2, DW, DD, dk); k.computer(x, ZM + DD / 2, 0); k.officeChair(x, ZM + DD / 2 + 0.5, Math.PI);
+            k.table(x, ZM - DD / 2, DW, DD, dk); k.computer(x, ZM - DD / 2, Math.PI, 1.15); k.officeChair(x, ZM - DD - 0.2, 0);
+            k.table(x, ZM + DD / 2, DW, DD, dk); k.computer(x, ZM + DD / 2, 0, 1.15); k.officeChair(x, ZM + DD + 0.2, Math.PI);
           });
           const felt = d.mat(0xb5c0ae, 1), rail = d.mat(0xc98f55, 0.55), x0 = PX[0] - DW / 2, x1 = PX[1] + DW / 2, xm = (PX[0] + PX[1]) / 2;
           d.box(x1 - x0, PH, 0.03, (x0 + x1) / 2, PT, ZM, felt); d.box(x1 - x0 + 0.01, 0.014, 0.04, (x0 + x1) / 2, PT + PH, ZM, rail);
@@ -2025,14 +2025,14 @@
           let n = 0;
           PX.forEach((x) => [-1, 1].forEach((side) => {
             const fz = ZM + side * 0.0165, uz = ZM + side * DD / 2, sd = side;   // fz: 칸막이 면 · uz: 책상 가운데 (side -1 = 북쪽 줄)
-            [[-0.43, 0.6], [-0.49, 0.53], [0.42, 0.58]].forEach(([dx, y], i) => d.box(0.05, 0.05, 0.002, x + dx, y, fz, d.mat(NOTE[(n + i) % 4], 0.8), (i - 1) * 0.08));
-            d.box(0.085, 0.075, 0.002, x + 0.5, PT + 0.08, fz, white); d.box(0.085, 0.016, 0.0025, x + 0.5, PT + 0.14, fz, red);
-            const ux = x + (n % 2 ? -0.42 : 0.42), wz = uz + sd * 0.12, m = d.mat([0xa9bfa3, 0xf3ebdc, 0xd9876a, 0x8fa9c4][n], 0.45);
+            [[-0.55, 0.64], [-0.62, 0.56], [0.52, 0.61]].forEach(([dx, y], i) => d.box(0.05, 0.05, 0.002, x + dx, y, fz, d.mat(NOTE[(n + i) % 4], 0.8), (i - 1) * 0.08));
+            d.box(0.085, 0.075, 0.002, x + 0.64, PT + 0.08, fz, white); d.box(0.085, 0.016, 0.0025, x + 0.64, PT + 0.14, fz, red);
+            const ux = x + (n % 2 ? -0.56 : 0.56), wz = uz + sd * 0.16, m = d.mat([0xa9bfa3, 0xf3ebdc, 0xd9876a, 0x8fa9c4][n], 0.45);
             d.cyl(0.022, 0.02, 0.045, ux, PT, wz, m); d.cyl(0.0185, 0.0185, 0.002, ux, PT + 0.045, wz, inside); d.ring(0.012, 0.004, ux + 0.027, PT + 0.023, wz, m);
-            const px = x - (n % 2 ? -0.42 : 0.42), pz = uz - sd * 0.08;
+            const px = x - (n % 2 ? -0.56 : 0.56), pz = uz - sd * 0.1;
             if (n % 2) { d.cyl(0.025, 0.02, 0.03, px, PT, pz, d.mat(0xece6da, 0.6)); for (let i = 0; i < 7; i++) { const a = i * 2.4, r = i < 2 ? 0.005 : 0.013; d.ball(0.01, px + Math.cos(a) * r, PT + 0.036 + (i < 2 ? 0.006 : 0), pz + Math.sin(a) * r, d.mat(i % 2 ? 0x8fb08a : 0x6f9a6a, 0.7), 1, 0.6, 1.4); } }
             else { d.cyl(0.018, 0.018, 0.05, px, PT, pz, d.mat(0xc98f55, 0.55)); [0x2f5d8a, 0xd9534f, 0x222222].forEach((c, i) => d.put(new THREE.CylinderGeometry(0.003, 0.003, 0.09, 6).rotateZ((i - 1) * 0.12), d.mat(c, 0.5), px + (i - 1) * 0.006, PT + 0.06, pz)); }
-            d.box(0.12, 0.012, 0.16, x - (n % 2 ? 0.2 : -0.22), PT, uz + sd * 0.05, white, (n - 1.5) * 0.1);
+            d.box(0.12, 0.012, 0.16, x - (n % 2 ? 0.3 : -0.3), PT, uz + sd * 0.08, white, (n - 1.5) * 0.1);
             n++;
           }));
         }
@@ -2067,7 +2067,7 @@
           d.box(0.04, 0.012, 0.5, WX + 0.02, 0.79, zc, d.mat(0xc9ccd0, 0.3, 0.5));
           [[0.1, 0x2f5d8a], [0.04, 0xb5443a], [-0.03, 0x3f7d4e]].forEach(([dz, c]) => d.put(new THREE.CylinderGeometry(0.006, 0.006, 0.07, 8).rotateX(Math.PI / 2), d.mat(c, 0.5), WX + 0.025, 0.808, zc + dz));
         }
-        // 1) 카페트 (2.2 × 2.6m): 테라코타 테두리 · 크림 띠(작은 마름모) · 겨자색 줄 · 크림 바탕에 마름모 격자 · 가운데 무늬, 양 끝 술
+        // 1) 카페트 (1.7 × 2.0m, 4인 탁자에 맞춰 작게): 테라코타 테두리 · 크림 띠(작은 마름모) · 겨자색 줄 · 크림 바탕에 마름모 격자 · 가운데 무늬, 양 끝 술
         {
           const c = document.createElement('canvas'); c.width = 256; c.height = 304; const g = c.getContext('2d');
           g.fillStyle = '#b8664a'; g.fillRect(0, 0, 256, 304);
@@ -2087,10 +2087,10 @@
           let s = 11; const rr = () => (s = (s * 9301 + 49297) % 233280) / 233280;
           for (let i = 0; i < 1400; i++) { g.fillStyle = rr() < 0.5 ? 'rgba(255,250,240,0.12)' : 'rgba(90,60,40,0.08)'; g.fillRect(rr() * 256, rr() * 304, 2, 1); }
           const t = new THREE.CanvasTexture(c); if ('colorSpace' in t) t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
-          const rug = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.01, 2.6), new THREE.MeshStandardMaterial({ map: t, roughness: 0.95 }));
-          rug.position.set(-9.0, F2_Y + 0.016, -4.6); rug.receiveShadow = true; f2.add(rug);
+          const rug = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.01, 2.0), new THREE.MeshStandardMaterial({ map: t, roughness: 0.95 }));
+          rug.position.set(-9.6, F2_Y + 0.016, -4.3); rug.receiveShadow = true; f2.add(rug);
           const fr = d.mat(0xf1e4cd, 1);
-          for (let i = 0; i < 72; i++) { const x = -10.08 + (i + 0.5) * 2.16 / 72; [-5.9, -3.3].forEach((z, j) => d.box(0.008, 0.004, 0.035 + (i % 3) * 0.005, x, 0.011, z + (j ? 1 : -1) * (0.017 + (i % 3) * 0.0025), fr)); }
+          for (let i = 0; i < 56; i++) { const x = -10.43 + (i + 0.5) * 1.66 / 56; [-5.3, -3.3].forEach((z, j) => d.box(0.008, 0.004, 0.035 + (i % 3) * 0.005, x, 0.011, z + (j ? 1 : -1) * (0.017 + (i % 3) * 0.0025), fr)); }
         }
         // 2) 회의 의자: 크림색 부클레(몽글한 천) 원형 의자 — 둥글게 감싸는 등받이 · 도톰한 방석 · 밝은 원목 다리 4 (앉는 높이 0.20m)
         {
@@ -2112,17 +2112,17 @@
             add(backG, boucle, 0, 0.16, 0);
             gp.userData.seat = { x, y: F2_Y + 0.20, z, rot: rotY, kind: 'chair' };
           };
-          [[-9.0, -5.55, 0], [-9.0, -3.65, Math.PI], [-9.75, -4.6, Math.PI / 2], [-8.25, -4.6, -Math.PI / 2]].forEach(([x, z, r]) => boucleChair(x, z, r));
+          [[-9.6, -5.0, 0], [-9.6, -3.6, Math.PI], [-10.2, -4.3, Math.PI / 2], [-9.0, -4.3, -Math.PI / 2]].forEach(([x, z, r]) => boucleChair(x, z, r));
         }
         // 3) 탁자 위: 작은 유리 꽃병(마른 꽃) · 머그 둘 · 펼친 공책과 연필
         {
           const T = 0.38, gl = d.mat(0xdfeef2, 0.05, 0, 0.45), dry = d.mat(0xc9a27a, 0.9), dry2 = d.mat(0xe8d6b5, 0.9), stem = d.mat(0x8a7a5a, 0.9), inside = d.mat(0x5b4636, 0.9);
-          d.cyl(0.025, 0.02, 0.08, -9.0, T, -4.75, gl);
+          d.cyl(0.025, 0.02, 0.08, -9.6, T, -4.42, gl);
           for (let i = 0; i < 7; i++) { const a = i * 0.9, h = 0.13 + (i % 3) * 0.025, tl = 0.25, g = new THREE.CylinderGeometry(0.002, 0.002, h, 4); g.translate(0, h / 2, 0); g.rotateZ(-Math.cos(a) * tl); g.rotateX(Math.sin(a) * tl);
-            d.put(g, stem, -9.0, T + 0.01, -4.75); d.ball(0.011, -9.0 + h * Math.sin(Math.cos(a) * tl), T + 0.01 + h * Math.cos(tl * 0.9), -4.75 + h * Math.sin(Math.sin(a) * tl), i % 2 ? dry : dry2, 1, 1.3, 1); }
-          [[-9.22, -4.35, 0xa9bfa3], [-8.8, -4.95, 0xf3ebdc]].forEach(([x, z, c]) => { const m = d.mat(c, 0.45); d.cyl(0.022, 0.02, 0.045, x, T, z, m); d.cyl(0.0185, 0.0185, 0.002, x, T + 0.045, z, inside); d.ring(0.012, 0.004, x + 0.027, T + 0.023, z, m); });
-          d.box(0.16, 0.006, 0.11, -8.82, T, -4.3, d.mat(0x8a5a3c, 0.7)); [-1, 1].forEach((sd) => d.box(0.075, 0.006, 0.1, -8.82 + sd * 0.039, T + 0.006, -4.3, d.mat(0xfbf8f0, 0.9), sd * 0.03));
-          d.put(new THREE.CylinderGeometry(0.003, 0.003, 0.09, 6).rotateZ(Math.PI / 2).rotateY(0.5), d.mat(0xd9a441, 0.5), -8.8, T + 0.016, -4.22);
+            d.put(g, stem, -9.6, T + 0.01, -4.42); d.ball(0.011, -9.6 + h * Math.sin(Math.cos(a) * tl), T + 0.01 + h * Math.cos(tl * 0.9), -4.42 + h * Math.sin(Math.sin(a) * tl), i % 2 ? dry : dry2, 1, 1.3, 1); }
+          [[-9.8, -4.05, 0xa9bfa3], [-9.42, -4.62, 0xf3ebdc]].forEach(([x, z, c]) => { const m = d.mat(c, 0.45); d.cyl(0.022, 0.02, 0.045, x, T, z, m); d.cyl(0.0185, 0.0185, 0.002, x, T + 0.045, z, inside); d.ring(0.012, 0.004, x + 0.027, T + 0.023, z, m); });
+          d.box(0.16, 0.006, 0.11, -9.45, T, -4.05, d.mat(0x8a5a3c, 0.7)); [-1, 1].forEach((sd) => d.box(0.075, 0.006, 0.1, -9.45 + sd * 0.039, T + 0.006, -4.05, d.mat(0xfbf8f0, 0.9), sd * 0.03));
+          d.put(new THREE.CylinderGeometry(0.003, 0.003, 0.09, 6).rotateZ(Math.PI / 2).rotateY(0.5), d.mat(0xd9a441, 0.5), -9.43, T + 0.016, -3.97);
         }
         // 4) 동쪽 벽 작은 홈카페장 (폭 1.1m): 세이지색 서랍 3 · 문 2 + 원목 상판, 크림 정사각 타일, 원목 벽장(2단 두 칸) + 아래 조명줄, '잠깐 쉬어가요' 작은 간판
         //    상판 위: 찻상자 · 스틱 컵 · 캡슐 커피 머신(머그) · 캡슐 유리병 · 전기 주전자 · 수건 위 머그 셋 · 쿠키 병 · 꽃병
