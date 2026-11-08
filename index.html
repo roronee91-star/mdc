@@ -2003,19 +2003,20 @@
           const bx = (w, h, d, x, y, z) => new THREE.BoxGeometry(w, h, d).translate(x, y + h / 2, z);
           const rr = (w, d, r) => { const sh = new THREE.Shape(), a = -w / 2, b = -d / 2; sh.moveTo(a + r, b); sh.lineTo(a + w - r, b); sh.quadraticCurveTo(a + w, b, a + w, b + r); sh.lineTo(a + w, b + d - r); sh.quadraticCurveTo(a + w, b + d, a + w - r, b + d);
             sh.lineTo(a + r, b + d); sh.quadraticCurveTo(a, b + d, a, b + d - r); sh.lineTo(a, b + r); sh.quadraticCurveTo(a, b, a + r, b); return sh; };
-          const pad = (w, h, d) => { const g = new THREE.ExtrudeGeometry(rr(w - 0.012, d - 0.012, 0.018), { depth: h - 0.012, bevelEnabled: true, bevelThickness: 0.006, bevelSize: 0.006, bevelSegments: 2, curveSegments: 4 }); g.rotateX(-Math.PI / 2); g.translate(0, 0.006, 0); return g; };   // 둥근 모서리 방석 (바닥 y 0 ~ 위 h)
+          const pad = (w, h, d) => { const g = new THREE.ExtrudeGeometry(rr(w - 0.008, d - 0.008, 0.016), { depth: h - 0.008, bevelEnabled: true, bevelThickness: 0.004, bevelSize: 0.004, bevelSegments: 2, curveSegments: 4 }); g.rotateX(-Math.PI / 2); g.translate(0, 0.004, 0); return g; };   // 둥근 모서리 방석 (바닥 y 0 ~ 위 h)
+          // 사용자 "투박하다" → 사진처럼 날씬하게: 다리 2cm · 띠 3cm × 1.4cm · 방석 2.8cm · 등판 1.8cm, 등받이 윗면 0.47m
           const TILT = -0.1, W = [], G = [];
           [-1, 1].forEach((sx) => {
-            W.push(bx(0.032, 0.165, 0.032, sx * 0.135, 0, 0.125));                                                   // 앞다리
-            W.push(new THREE.BoxGeometry(0.034, 0.52, 0.036).translate(0, 0.26, 0).rotateX(TILT).translate(sx * 0.152, 0, -0.105));   // 뒷다리 겸 등받이 기둥 (뒤로 기움)
-            W.push(bx(0.024, 0.045, 0.24, sx * 0.14, 0.118, 0.005));                                                  // 옆 띠
+            W.push(bx(0.02, 0.172, 0.02, sx * 0.13, 0, 0.12));                                                       // 앞다리
+            W.push(new THREE.BoxGeometry(0.022, 0.47, 0.024).translate(0, 0.235, 0).rotateX(TILT).translate(sx * 0.145, 0, -0.1));   // 뒷다리 겸 등받이 기둥 (뒤로 기움)
+            W.push(bx(0.014, 0.03, 0.23, sx * 0.135, 0.142, 0.005));                                                  // 옆 띠
           });
-          W.push(bx(0.27, 0.045, 0.024, 0, 0.118, 0.125), bx(0.27, 0.045, 0.024, 0, 0.118, -0.118));                 // 앞·뒤 띠
-          G.push(pad(0.27, 0.042, 0.28).translate(0, 0.163, 0.025));                                                 // 방석 (윗면 0.205)
+          W.push(bx(0.25, 0.03, 0.014, 0, 0.142, 0.12), bx(0.25, 0.03, 0.014, 0, 0.142, -0.115));                    // 앞·뒤 띠
+          G.push(pad(0.268, 0.028, 0.27).translate(0, 0.172, 0.02));                                                  // 방석 (윗면 0.20)
           // 등받이: 아래 띠 · 들어간 원목 판 · 가운데 띠 · 초록 등판 · 위 띠 → 뒤로 기울여 방석 뒤에 세움
-          const back = (g) => g.rotateX(TILT).translate(0, 0.205, -0.125);
-          [bx(0.27, 0.014, 0.03, 0, 0, 0), bx(0.25, 0.062, 0.012, 0, 0.014, -0.006), bx(0.27, 0.026, 0.03, 0, 0.076, 0), bx(0.3, 0.04, 0.036, 0, 0.282, 0)].forEach((g) => W.push(back(g)));
-          G.push(back(pad(0.25, 0.03, 0.18).rotateX(Math.PI / 2).translate(0, 0.192, 0)));
+          const back = (g) => g.rotateX(TILT).translate(0, 0.2, -0.12);
+          [bx(0.27, 0.012, 0.02, 0, 0, 0), bx(0.25, 0.05, 0.008, 0, 0.012, -0.004), bx(0.27, 0.018, 0.02, 0, 0.062, 0), bx(0.312, 0.026, 0.024, 0, 0.24, 0)].forEach((g) => W.push(back(g)));
+          G.push(back(pad(0.25, 0.018, 0.16).rotateX(Math.PI / 2).translate(0, 0.16, 0)));
           const woodG = mergeGeometries(W), padG = mergeGeometries(G); W.concat(G).forEach((g) => g.dispose());
           [-13.4, -12.65, -11.9, -11.15, -10.4].forEach((z) => {
             [-11.55, -11.05, -10.55, -8.7, -8.2, -7.7].forEach((x) => {                                                 // 강단(북쪽)을 바라봄, 앉으면 기도
