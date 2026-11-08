@@ -2345,6 +2345,142 @@
         }
         k.box(0.05, 0.7, 0.05, -12.2, 1.2, -14.0, k.mWood); k.box(0.05, 0.05, 0.36, -12.2, 1.6, -14.0, k.mWood);   // 서쪽 벽 십자가
         k.plant(-9.3, -13.1, 1.0);
+        // 구석 작은 홈카페장 (사용자 "목양실 구석에도 작게 홈카페장"): 십자가 북쪽 서쪽 벽 ~ 돌기둥(BACK_STONE_FIN, 남쪽 면 z -15.8) 사이 폭 1.0m
+        //   호두나무 아래장(라탄 문 2 · 서랍 3 · 놋쇠 손잡이) + 흰 대리석 상판, 짙은 초록 세로 타일, 호두나무 선반 2단(놋쇠 받침 · 아래 조명줄)
+        //   상판: 찻쟁반(찻주전자 · 찻잔 둘) · 핸드드립 · 구리 주전자 · 작은 크림색 에스프레소 머신 · 물병 쟁반 / 선반: 원두·찻잎·각설탕 병 · 차 통 · 찻잔, 꽃병 · '차 한 잔 하고 가세요' 액자 · 책 · 초 · 늘어진 화분
+        //   가상 자리(왼쪽 = 남쪽 끝이 원점, x = 벽 따라 오른쪽(북쪽), z = 벽에서 앞(동쪽))로 적고 돌림: 가상 +x → 실제 -z, 가상 +z → 실제 +x
+        {
+          const d = decoKit(F4_Y, f4);
+          const XW = -12.18, ZS = -14.79, W = 1.0, D = 0.4, T = 0.5, sw = W / 3, Ds = 0.17, S1y = 0.98, S2y = 1.3;
+          const RO = new THREE.Matrix4().makeTranslation(XW, 0, ZS).multiply(new THREE.Matrix4().makeRotationY(Math.PI / 2));
+          const og = new THREE.Group(); og.matrixAutoUpdate = false; og.matrix.copy(RO); f4.add(og);
+          const hid = k.box(D + 0.03, T, W, XW + (D + 0.03) / 2, 0, ZS - W / 2, new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false })); hid.castShadow = hid.receiveShadow = false; hid.userData.noCamBlock = true;   // 걷기만 막는 보이지 않는 상자
+          const tex = (c, rx, ry) => { const t = new THREE.CanvasTexture(c); if (rx) { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(rx, ry); } if ('colorSpace' in t) t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; return t; };
+          const plane = (w, h, mat, x, y, z, rx) => { const m = noHit(new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat)); m.position.set(x, F4_Y + y, z); if (rx) m.rotation.x = rx; m.receiveShadow = true; og.add(m); return m; };
+          d.R = RO;
+          const wal = d.mat(0x6b4a30, 0.5), walF = d.mat(0x7a5539, 0.48), brass = d.mat(0xc9a25a, 0.3, 0.6), dark = d.mat(0x2b2826, 0.6), white = d.mat(0xfbf9f4, 0.3), cream = d.mat(0xf3ebdc, 0.45);
+          const gl = d.mat(0xdfeef2, 0.05, 0, 0.45), water = d.mat(0xcfe6ef, 0.05, 0, 0.35), steel = d.mat(0xd4d8dc, 0.22, 0.6), copper = d.mat(0xb8734a, 0.3, 0.75), coffee = d.mat(0x3b2416, 0.4), tea = d.mat(0xa8652e, 0.3);
+          const green = d.mat(0x2f5a46, 0.4), sage = d.mat(0xa9bfa3, 0.45), clay = d.mat(0xc4704d, 0.6), blush = d.mat(0xf2c9c4, 0.5), leaf = d.mat(0x5f8f4e, 0.7), leaf2 = d.mat(0x7aab5c, 0.7), soil = d.mat(0x4a3626, 1);
+          const lit = new THREE.MeshBasicMaterial({ color: 0xffc56b, toneMapped: false });
+          // 아래장: 받침 · 몸통 · 문(라탄 판) 2 · 가운데 서랍 3
+          d.box(W - 0.04, 0.05, D - 0.05, W / 2, 0, (D - 0.05) / 2, dark);
+          d.box(W, T - 0.09, D - 0.02, W / 2, 0.05, (D - 0.02) / 2, wal);
+          const zF = D - 0.011;
+          {
+            const rc = document.createElement('canvas'); rc.width = rc.height = 64; const rg = rc.getContext('2d');
+            rg.fillStyle = '#d9b884'; rg.fillRect(0, 0, 64, 64); rg.lineCap = 'round';
+            rg.strokeStyle = '#c49e68'; rg.lineWidth = 2.4;
+            for (let i = -4; i <= 4; i++) { const q = i * 16; rg.beginPath(); rg.moveTo(q, 0); rg.lineTo(q + 64, 64); rg.stroke(); rg.beginPath(); rg.moveTo(q + 64, 0); rg.lineTo(q, 64); rg.stroke(); }
+            rg.strokeStyle = '#ead09f'; rg.lineWidth = 3;
+            for (let i = 0; i <= 4; i++) { const q = i * 16; [-1.6, 1.6].forEach((o) => { rg.beginPath(); rg.moveTo(0, q + o); rg.lineTo(64, q + o); rg.stroke(); rg.beginPath(); rg.moveTo(q + o, 0); rg.lineTo(q + o, 64); rg.stroke(); }); }
+            rg.fillStyle = '#4e3524'; for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) { rg.beginPath(); rg.arc(8 + i * 16, 8 + j * 16, 3.6, 0, Math.PI * 2); rg.fill(); }
+            const dw = sw - 0.012, pw = dw - 0.07, ph = 0.398 - 0.07, cane = new THREE.MeshStandardMaterial({ map: tex(rc, pw / 0.08, ph / 0.08), roughness: 0.75 });
+            [[0, 1], [2, -1]].forEach(([i, ks]) => {
+              const xs = (i + 0.5) * sw;
+              d.box(dw, 0.398, 0.018, xs, 0.055, zF, walF);
+              d.box(dw, 0.035, 0.006, xs, 0.055, zF + 0.012, walF); d.box(dw, 0.035, 0.006, xs, 0.418, zF + 0.012, walF);
+              [-1, 1].forEach((sd) => d.box(0.035, 0.398, 0.006, xs + sd * (dw / 2 - 0.0175), 0.055, zF + 0.012, walF));
+              plane(pw, ph, cane, xs, 0.055 + 0.199, zF + 0.0095);
+              d.ball(0.011, xs + ks * (dw / 2 - 0.05), T - 0.15, zF + 0.026, brass);
+            });
+          }
+          [0, 1, 2].forEach((j) => { const y = 0.055 + j * 0.1327; d.box(sw - 0.012, 0.126, 0.018, W / 2, y, zF, walF); d.box(0.09, 0.01, 0.012, W / 2, y + 0.08, zF + 0.014, brass); });
+          {                                                                                  // 흰 대리석 상판 (옅은 회색 결)
+            const mc = document.createElement('canvas'); mc.width = 256; mc.height = 128; const mg = mc.getContext('2d');
+            mg.fillStyle = '#f4f2ed'; mg.fillRect(0, 0, 256, 128);
+            for (let i = 0; i < 7; i++) { mg.strokeStyle = `rgba(140,132,122,${0.16 + (i % 3) * 0.09})`; mg.lineWidth = 0.7 + (i % 3) * 0.6; const y = 8 + i * 18; mg.beginPath(); mg.moveTo(-10, y); mg.bezierCurveTo(70, y + 28 - (i % 2) * 50, 160, y - 24 + (i % 3) * 18, 270, y + 10); mg.stroke(); }
+            const top = noHit(new THREE.Mesh(new THREE.BoxGeometry(W + 0.01, 0.04, D + 0.02), new THREE.MeshStandardMaterial({ map: tex(mc), roughness: 0.22 })));
+            top.position.set(W / 2, F4_Y + T - 0.02, (D + 0.02) / 2); top.castShadow = top.receiveShadow = true; og.add(top);
+          }
+          {                                                                                  // 짙은 초록 세로 타일 (상판 ~ 아래 선반)
+            const tc = document.createElement('canvas'); tc.width = tc.height = 128; const tg = tc.getContext('2d'); tg.fillStyle = '#d8d2c4'; tg.fillRect(0, 0, 128, 128);
+            const TC = ['#2f5a46', '#376552', '#2a523f', '#3c6b57', '#325e4a'];
+            for (let r = 0; r < 2; r++) for (let i = 0; i < 4; i++) { tg.fillStyle = TC[(r * 3 + i * 2) % 5]; tg.fillRect(i * 32 + 1.5, r * 64 + 1.5, 29, 61); tg.fillStyle = 'rgba(255,255,255,0.13)'; tg.fillRect(i * 32 + 4, r * 64 + 4, 5, 40); }
+            plane(W, S1y - T, new THREE.MeshStandardMaterial({ map: tex(tc, W / 0.24, (S1y - T) / 0.3), roughness: 0.18, metalness: 0.05 }), W / 2, T + (S1y - T) / 2, 0.004);
+          }
+          // 호두나무 선반 2단 + 놋쇠 받침, 아래 선반 밑 조명줄 · 상판 빛
+          [S1y, S2y].forEach((y) => { d.box(W - 0.02, 0.025, Ds, W / 2, y, Ds / 2, wal);
+            [0.07, W - 0.07].forEach((x) => { d.box(0.01, 0.07, 0.01, x, y - 0.07, 0.008, brass); d.box(0.01, 0.01, Ds - 0.03, x, y - 0.01, (Ds - 0.03) / 2 + 0.003, brass); }); });
+          cove(og, 0.06, Ds - 0.03, W - 0.06, Ds - 0.03, F4_Y + S1y - 0.012, 0xffcf96, -0.42, 0.28, 0.85);
+          glowSpot(og, W / 2, F4_Y + T + 0.003, D / 2, W - 0.1, D - 0.04, 0xffd9a8, [-Math.PI / 2, 0, 0], 0.15, 0.6);
+          const cup = (x, y, z, m) => { d.cyl(0.032, 0.028, 0.005, x, y, z, m, 18); d.cyl(0.024, 0.017, 0.032, x, y + 0.005, z, m); d.cyl(0.021, 0.021, 0.002, x, y + 0.03, z, tea); d.ring(0.009, 0.0028, x + 0.027, y + 0.02, z, m); };
+          // 상판 위 (왼쪽 → 오른쪽)
+          {
+            const ty = T + 0.012;                                                            // 1) 호두나무 찻쟁반: 흰 찻주전자 + 찻잔 둘
+            d.box(0.27, 0.012, 0.18, 0.17, T, 0.25, walF);
+            d.box(0.27, 0.026, 0.008, 0.17, T, 0.164, wal); d.box(0.27, 0.026, 0.008, 0.17, T, 0.336, wal); [0.039, 0.301].forEach((x) => d.box(0.008, 0.026, 0.18, x, T, 0.25, wal));
+            const TPX = 0.11, TPZ = 0.25;
+            d.ball(0.048, TPX, ty + 0.041, TPZ, white, 1, 0.85, 1); d.cyl(0.026, 0.03, 0.012, TPX, ty + 0.07, TPZ, white); d.ball(0.009, TPX, ty + 0.088, TPZ, brass);
+            d.put(new THREE.CylinderGeometry(0.006, 0.012, 0.06, 8).rotateZ(0.9), white, TPX - 0.06, ty + 0.05, TPZ);
+            d.ring(0.024, 0.006, TPX + 0.05, ty + 0.045, TPZ, white);
+            [0.205, 0.295].forEach((z) => cup(0.235, ty, z, white));
+            const PX = 0.41, PZ = 0.21;                                                      // 2) 핸드드립: 유리 서버(커피) + 흰 드리퍼
+            d.cyl(0.036, 0.034, 0.085, PX, T, PZ, gl); d.cyl(0.032, 0.031, 0.035, PX, T + 0.003, PZ, coffee); d.cyl(0.037, 0.037, 0.012, PX, T + 0.055, PZ, wal); d.ring(0.016, 0.004, PX + 0.04, T + 0.04, PZ, gl);
+            d.cyl(0.04, 0.04, 0.005, PX, T + 0.085, PZ, white); d.cyl(0.05, 0.022, 0.055, PX, T + 0.09, PZ, white); d.cyl(0.045, 0.045, 0.003, PX, T + 0.138, PZ, d.mat(0x6b4a2f, 0.9));
+            const KX = 0.545, KZ = 0.11;                                                     // 3) 구리 주전자 (거위목 주둥이)
+            d.cyl(0.036, 0.046, 0.085, KX, T, KZ, copper, 20); d.cyl(0.024, 0.036, 0.016, KX, T + 0.085, KZ, copper, 20); d.ball(0.008, KX, T + 0.106, KZ, wal);
+            d.put(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([new THREE.Vector3(KX - 0.04, T + 0.02, KZ), new THREE.Vector3(KX - 0.062, T + 0.07, KZ), new THREE.Vector3(KX - 0.068, T + 0.11, KZ), new THREE.Vector3(KX - 0.092, T + 0.124, KZ)]), 12, 0.0045, 6, false), copper, 0, 0, 0);
+            d.put(new THREE.TorusGeometry(0.035, 0.007, 6, 14, Math.PI).rotateZ(-Math.PI / 2), wal, KX + 0.046, T + 0.055, KZ);
+            const MX = 0.72, mcr = d.mat(0xeee4cf, 0.35);                                    // 4) 작은 크림색 에스프레소 머신
+            d.box(0.15, 0.2, 0.17, MX, T, 0.12, mcr); d.box(0.152, 0.012, 0.172, MX, T + 0.2, 0.12, steel); d.box(0.154, 0.016, 0.174, MX, T, 0.12, wal);
+            d.box(0.13, 0.02, 0.07, MX, T, 0.24, steel); for (let i = 0; i < 4; i++) d.box(0.11, 0.002, 0.005, MX, T + 0.02, 0.215 + i * 0.016, dark);
+            d.cyl(0.026, 0.026, 0.02, MX - 0.015, T + 0.122, 0.23, steel); d.cyl(0.024, 0.02, 0.018, MX - 0.015, T + 0.104, 0.23, steel);
+            d.put(new THREE.CylinderGeometry(0.008, 0.009, 0.075, 8).rotateX(Math.PI / 2).rotateY(-0.6), wal, MX - 0.038, T + 0.112, 0.263);
+            d.cyl(0.018, 0.014, 0.03, MX - 0.015, T + 0.02, 0.235, white);
+            d.put(new THREE.CylinderGeometry(0.02, 0.02, 0.006, 16).rotateX(Math.PI / 2), white, MX + 0.035, T + 0.155, 0.207); d.put(new THREE.TorusGeometry(0.02, 0.003, 6, 16), brass, MX + 0.035, T + 0.155, 0.21);
+            d.box(0.002, 0.014, 0.002, MX + 0.035, T + 0.153, 0.211, dark);
+            d.put(new THREE.CylinderGeometry(0.004, 0.004, 0.09, 6).rotateZ(0.15), steel, MX + 0.06, T + 0.085, 0.222); d.ball(0.011, MX + 0.055, T + 0.178, 0.208, wal);
+            d.cyl(0.006, 0.006, 0.003, MX - 0.04, T + 0.17, 0.205, lit, 10);
+            const CX = 0.9, CZ = 0.22;                                                       // 5) 놋쇠 쟁반: 유리 물병 + 물잔 둘
+            d.cyl(0.075, 0.075, 0.006, CX, T, CZ, brass, 24); d.put(new THREE.TorusGeometry(0.075, 0.004, 6, 24).rotateX(Math.PI / 2), brass, CX, T + 0.008, CZ);
+            d.cyl(0.035, 0.04, 0.12, CX - 0.02, T + 0.006, CZ - 0.02, gl); d.cyl(0.031, 0.036, 0.08, CX - 0.02, T + 0.009, CZ - 0.02, water); d.cyl(0.016, 0.024, 0.04, CX - 0.02, T + 0.126, CZ - 0.02, gl);
+            [[0.035, -0.035], [0.03, 0.04]].forEach(([dx, dz]) => { d.cyl(0.021, 0.018, 0.06, CX + dx, T + 0.006, CZ + dz, gl); d.cyl(0.018, 0.016, 0.035, CX + dx, T + 0.008, CZ + dz, water); });
+          }
+          // 아래 선반 (윗면 S1): 원두·찻잎·각설탕 유리병, 차 통 셋, 찻잔 둘
+          {
+            const S1 = S1y + 0.025, zc = 0.08;
+            [[0.09, 0.11, coffee], [0.17, 0.09, d.mat(0x6f7f45, 0.85)], [0.25, 0.1, white]].forEach(([x, h, fill]) => { d.cyl(0.032, 0.032, h, x, S1, zc, gl); d.cyl(0.029, 0.029, h * 0.7, x, S1 + 0.003, zc, fill); d.cyl(0.034, 0.034, 0.014, x, S1 + h, zc, wal); });
+            [[0.42, 0.11, green, cream], [0.5, 0.095, cream, green], [0.58, 0.105, clay, cream]].forEach(([x, h, m, band]) => { d.cyl(0.03, 0.03, h, x, S1, zc, m, 20); d.cyl(0.0305, 0.0305, 0.03, x, S1 + h * 0.3, zc, band, 20); d.cyl(0.031, 0.031, 0.016, x, S1 + h, zc, brass, 20); });
+            cup(0.76, S1, 0.085, white); cup(0.86, S1, 0.085, sage);
+          }
+          // 위 선반 (윗면 S2): 꽃병 · 액자 · 책 + 초 · 늘어진 화분
+          {
+            const S2 = S2y + 0.025;
+            const VX = 0.1, VZ = 0.08, yel = d.mat(0xf6d55c, 0.6), stem = d.mat(0x6f8f4e, 0.8);
+            d.cyl(0.02, 0.03, 0.09, VX, S2, VZ, sage); d.cyl(0.012, 0.018, 0.02, VX, S2 + 0.09, VZ, sage);
+            [[0, 0, 0.13, blush], [0.02, 0.01, 0.11, white], [-0.018, 0.012, 0.115, yel], [0.008, -0.02, 0.12, blush]].forEach(([dx, dz, h, m]) => {
+              const a1 = dx * 10, a2 = dz * 10, g = new THREE.CylinderGeometry(0.002, 0.002, h, 4); g.translate(0, h / 2, 0); g.rotateZ(-a1); g.rotateX(a2);
+              d.put(g, stem, VX, S2 + 0.1, VZ); d.ball(0.013, VX + h * Math.sin(a1), S2 + 0.1 + h * Math.cos(a1) * Math.cos(a2), VZ + h * Math.cos(a1) * Math.sin(a2), m, 1, 1.25, 1);
+            });
+            const FX = 0.36, FY = S2 + 0.078, FZ = 0.06, tilt = -0.12;
+            d.put(new THREE.BoxGeometry(0.215, 0.158, 0.012).rotateX(tilt), wal, FX, FY, FZ);
+            const sc = document.createElement('canvas'); sc.width = 300; sc.height = 210; const sg = sc.getContext('2d');
+            sg.fillStyle = '#f6efe2'; sg.fillRect(0, 0, 300, 210);
+            sg.strokeStyle = '#2f5a46'; sg.lineWidth = 5; sg.lineCap = sg.lineJoin = 'round';
+            sg.beginPath(); sg.moveTo(128, 36); sg.lineTo(132, 62); sg.quadraticCurveTo(134, 70, 142, 70); sg.lineTo(158, 70); sg.quadraticCurveTo(166, 70, 168, 62); sg.lineTo(172, 36); sg.closePath(); sg.stroke();
+            sg.beginPath(); sg.arc(174, 49, 8, -Math.PI / 2, Math.PI / 2); sg.stroke();
+            sg.beginPath(); sg.moveTo(118, 79); sg.lineTo(182, 79); sg.stroke();
+            [143, 157].forEach((x) => { sg.beginPath(); sg.moveTo(x, 29); sg.bezierCurveTo(x - 6, 22, x + 6, 16, x, 9); sg.stroke(); });
+            sg.fillStyle = '#4a3322'; sg.textAlign = 'center'; sg.textBaseline = 'middle'; sg.font = 'bold 38px sans-serif'; sg.fillText('차 한 잔', 150, 123); sg.fillText('하고 가세요', 150, 170);
+            const nz = Math.cos(tilt), ny = -Math.sin(tilt);
+            plane(0.19, 0.133, new THREE.MeshStandardMaterial({ map: tex(sc), roughness: 0.8 }), FX, FY + 0.0072 * ny, FZ + 0.0072 * nz, tilt);
+            d.box(0.16, 0.025, 0.12, 0.6, S2, 0.085, d.mat(0x3f5e4a, 0.7)); d.box(0.15, 0.022, 0.11, 0.6, S2 + 0.025, 0.085, d.mat(0xd9c7a3, 0.7));
+            d.cyl(0.022, 0.022, 0.05, 0.6, S2 + 0.047, 0.085, cream); d.ball(0.006, 0.6, S2 + 0.106, 0.085, lit, 1, 1.8, 1);
+            const PX = 0.86, pz = 0.08, py = S2;
+            d.cyl(0.035, 0.028, 0.05, PX, py, pz, clay); d.cyl(0.031, 0.031, 0.004, PX, py + 0.046, pz, soil);
+            for (let i = 0; i < 9; i++) { const a = i * 0.7; d.ball(0.016, PX + Math.cos(a) * 0.022, py + 0.06 + (i % 3) * 0.008, pz + Math.sin(a) * 0.022, i % 2 ? leaf : leaf2, 1.2, 0.6, 1); }
+            for (let v = 0; v < 3; v++) {
+              const m = 8 + (v % 2) * 2, L = 0.3 * (0.7 + 0.3 * ((v + 1) % 2)), pts = [];
+              for (let i = 0; i <= m; i++) {
+                const t = i / m, s = (v - 1) * 0.035 + Math.sin(i * 1.1 + v * 2) * 0.009, f = 0.04 + Math.min(t * 4, 1) * 0.075 + t * 0.01, y = py + 0.05 - L * Math.max(0, t - 0.1) / 0.9;
+                pts.push(new THREE.Vector3(PX + s, y, pz + f));
+                if (i) { const o = (i % 2 ? 1 : -1) * 0.011; d.ball(0.014 - t * 0.004, PX + s + o, y, pz + f + 0.006, (i + v) % 2 ? leaf : leaf2, 1.1, 0.9, 0.5); }
+              }
+              d.put(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), m * 3, 0.0018, 4, false), leaf, 0, 0, 0);
+            }
+          }
+          d.R = null; d.flush();
+        }
         k.sign('목양실', -10.0, F4_IN_S + 0.06, 0, 2.4); k.light(-10.6, -14.0, 1.4);
       }
       // 화장실 두 곳
