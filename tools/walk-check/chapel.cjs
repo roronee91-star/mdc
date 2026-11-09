@@ -1,5 +1,5 @@
 // 2층 소예배실 개인 의자 (원목 틀 + 초록 가죽) 화면 찍기 + 앉기 확인
-// 사용: node chapel.cjs <저장폴더> [이름앞말] [찍을 장면들: rows,front,close,side]
+// 사용: node chapel.cjs <저장폴더> [이름앞말] [찍을 장면들: rows,front,close,side,screen,screenNear]
 const { chromium } = require('playwright');
 (async () => {
   const out = process.argv[2], pre = process.argv[3] || '';
@@ -19,6 +19,9 @@ const { chromium } = require('playwright');
   if (want('rows')) await shot([-7.25, F2 + 1.55, -14.7], [-9.7, F2 + 0.1, -11.4], [-9.63, -11.0], 'rows');
   if (want('front')) await shot([-9.63, F2 + 1.0, -14.3], [-9.63, F2 + 0.25, -11.0], [-9.63, -11.0], 'front');
   if (want('close')) await shot([-7.35, F2 + 0.55, -14.05], [-7.85, F2 + 0.3, -13.35], [-9.63, -11.0], 'close');
+  // 앞 벽 스크린 · 십자가: 가운데 통로 뒤쪽에서(사용자 휴대폰 화면과 비슷) · 가까이
+  if (want('screen')) await shot([-9.63, F2 + 1.3, -9.2], [-9.63, F2 + 1.05, -15.5], [-9.63, -9.0], 'screen');
+  if (want('screenNear')) await shot([-9.2, F2 + 0.95, -12.3], [-9.2, F2 + 1.3, -15.5], [-9.63, -9.0], 'screenNear');
   if (want('side')) await shot([-9.35, F2 + 0.6, -13.25], [-8.6, F2 + 0.28, -13.45], [-9.63, -11.0], 'side');
   const r = await p.evaluate(async () => { const all = window.__dbg.seatsHere().filter((s) => s.kind === 'pew' && s.x < -7 && s.z < -10 && s.z > -14); const st = all.find((s) => Math.abs(s.x + 8.2) < 0.05 && Math.abs(s.z + 11.9) < 0.05);
     window.__dbg.character.position.set(-9.63, 3.65, -9.6); window.__dbg.sit(st); await new Promise((res) => setTimeout(res, 12000)); const c = window.__dbg.character.position; return [all.length, +Math.hypot(c.x - st.x, c.z - st.z).toFixed(2), window.__dbg.eyesClosed]; });

@@ -1993,7 +1993,24 @@
         const wood = k.M(0x8a6240, 0.6), cx = -9.63;
         k.box(4.2, 0.1, 1.3, cx, 0, -14.9, k.M(0xc9a97a, 0.7));                   // 강단 (높이 10cm)
         k.box(0.55, 0.3, 0.36, cx, 0.1, -14.75, wood); k.box(0.6, 0.04, 0.42, cx, 0.4, -14.73, wood);   // 강대상: 윗면이 캐릭터 가슴 높이(강단 위 0.34m) — 사용자 "강대상이 높아"로 0.2m 낮춤
-        k.box(0.06, 1.0, 0.06, cx, 1.0, -15.55, k.mWood); k.box(0.5, 0.06, 0.06, cx, 1.65, -15.55, k.mWood);   // 북쪽 벽 십자가
+        // 앞 벽 스크린 (사용자 "소예배실 앞에도 스크린으로"): 본당처럼 가운데에 화면(검은 테두리 + 사용자가 준 '서로 짐을 나눠지는 공동체' 그림, 16:9 · 2.3m × 1.29m)
+        //   십자가는 화면 오른쪽(동쪽) 벽으로 옮기고 뒤에 은은한 빛 (왼쪽엔 디지털 피아노)
+        {
+          const SW = 2.3, SH = 2.3 * 9 / 16, SB = 0.74, SZ = -15.53;
+          const frame = k.box(SW + 0.06, SH + 0.06, 0.05, cx, SB - 0.03, SZ + 0.025, k.M(0x15171c, 0.6)); frame.userData.noCamBlock = true;
+          const fc = document.createElement('canvas'); fc.width = 512; fc.height = 288; const fx = fc.getContext('2d');   // 그림을 못 불러올 때 쓰는 글씨 화면
+          const sky = fx.createLinearGradient(0, 0, 0, 288); sky.addColorStop(0, '#8fc3f0'); sky.addColorStop(0.75, '#e8f4fc'); sky.addColorStop(1, '#9fd27a'); fx.fillStyle = sky; fx.fillRect(0, 0, 512, 288);
+          fx.textAlign = 'center'; fx.font = 'bold 44px sans-serif'; fx.fillStyle = '#8a5a3c'; fx.fillText('서로 짐을', 256, 112); fx.fillStyle = '#f08a2c'; fx.fillText('나눠지는 공동체', 256, 170);
+          const ftex = new THREE.CanvasTexture(fc); if ('colorSpace' in ftex) ftex.colorSpace = THREE.SRGBColorSpace;
+          const face = noHit(new THREE.Mesh(new THREE.PlaneGeometry(SW, SH), new THREE.MeshBasicMaterial({ map: ftex, toneMapped: false })));
+          face.position.set(cx, F2_Y + SB + SH / 2, SZ + 0.052); f2.add(face);
+          const img = new Image();
+          img.onload = () => { const t = new THREE.Texture(img); if ('colorSpace' in t) t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; t.needsUpdate = true; face.material.map = t; face.material.needsUpdate = true; ftex.dispose(); };
+          img.src = 'assets/screen/share-burdens.jpg';
+          const CRX = -7.75;
+          k.box(0.06, 1.0, 0.06, CRX, 1.0, -15.55, k.mWood); k.box(0.5, 0.06, 0.06, CRX, 1.65, -15.55, k.mWood);   // 십자가 (화면 오른쪽 벽)
+          glowSpot(f2, CRX, F2_Y + 1.55, -15.51, 1.0, 1.5, 0xffc777, null, 0.25, 0.7);
+        }
         k.box(0.32, 0.5, 0.32, cx - 1.6, 0.1, -15.15, k.M(0x2b2b2b, 0.3)); k.box(0.5, 0.06, 0.22, cx - 1.6, 0.6, -15.2, k.M(0x111111, 0.3));   // 작은 디지털 피아노
         k.box(2.4, 0.012, 4.5, cx, 0, -11.2, k.M(0xa8846a, 0.95));                // 가운데 통로 카펫
         // 개인 의자 (사용자가 보여 준 교회 의자 분위기만 참고): 밝은 원목 틀 + 초록 가죽 방석·등받이, 살짝 뒤로 기운 등받이
