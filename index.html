@@ -588,7 +588,8 @@
     function camAfterUpdate() {
       const t = controls.target, cp = camera.position;
       // 천장 아래로: 캐릭터 머리 위로 광선을 쏴서 천장이 있으면 카메라 높이를 그 아래 25cm까지만
-      const up = blockDistFrom(t, UP_V, 6);
+      const roots = rayRoots();
+      const up = blockDistFrom(t, UP_V, 6, roots);
       if (up !== null) { const maxY = t.y + up - 0.25; if (cp.y > maxY) cp.y = Math.max(t.y - 0.2, maxY); }
       // 가리는 것 찾기: 카메라 → 캐릭터 머리·몸·발 세 줄
       const want = new Set();
@@ -597,31 +598,50 @@
         const pt = t.clone().addScaledVector(right, dx); pt.y += dy;
         const d = pt.clone().sub(cp), len = d.length(); if (len < 0.3) return;
         occRay.set(cp, d.divideScalar(len)); occRay.near = 0.02; occRay.far = len - 0.25; occRay.camera = camera;
-        occRay.intersectObjects(scene.children, true).forEach((h) => { if (isOccluder(h.object)) want.add(h.object); });
+        occRay.intersectObjects(roots, true).forEach((h) => { if (isOccluder(h.object)) want.add(h.object); });
       });
       const k = 1 - Math.exp(-9 * frameDt);
       want.forEach((m) => {
         if (!fadedMeshes.has(m)) {
-          const orig = m.material, mat = orig.clone();
-          mat.transparent = true; mat.depthWrite = false;
+          const orig = m.material, mat = fadeMatOf(m);
           m.material = mat; fadedMeshes.set(m, { orig, mat, base: orig.transparent ? orig.opacity : 1 });
         }
       });
       fadedMeshes.forEach((f, m) => {
         const goal = want.has(m) ? Math.min(0.2, f.base) : f.base;
         f.mat.opacity += (goal - f.mat.opacity) * k;
-        if (!want.has(m) && Math.abs(f.mat.opacity - f.base) < 0.02) { m.material = f.orig; f.mat.dispose(); fadedMeshes.delete(m); }
+        if (!want.has(m) && Math.abs(f.mat.opacity - f.base) < 0.02) { m.material = f.orig; fadedMeshes.delete(m); }   // 투명 재질은 버리지 않고 다음에 다시 씀 (버리면 셰이더를 또 만들어 멈칫함)
       });
     }
-    function blockDistFrom(origin, dir, far) {
+    function blockDistFrom(origin, dir, far, roots) {
       camRay.set(origin, dir); camRay.far = far; camRay.near = 0.05;
-      for (const h of camRay.intersectObjects(scene.children, true)) if (isCamBlocker(h.object)) return h.distance;
+      for (const h of camRay.intersectObjects(roots || rayRoots(), true)) if (isCamBlocker(h.object)) return h.distance;
       return null;
     }
     function blockDist(dir, far) {
       camRay.set(controls.target, dir); camRay.far = far; camRay.near = 0.25;
-      for (const h of camRay.intersectObjects(scene.children, true)) if (isCamBlocker(h.object)) return h.distance;
+      for (const h of camRay.intersectObjects(rayRoots(), true)) if (isCamBlocker(h.object)) return h.distance;
       return null;
+    }
+    // ---- 걸을 때 버벅임 줄이기 (사용자 "캐릭터가 움직일 때 약간 버벅거려") ----
+    // 매 화면 카메라 광선은 지금 보이는 무리에만 쏨 (숨긴 다른 층 가구까지 훑던 것을 뺌)
+    function rayRoots() { return scene.children.filter((c) => c.visible); }
+    // 캐릭터를 가리는 벽·가구를 투명하게 할 때 쓰는 재질: 물체마다 한 번 만들어 두고 계속 씀 (원래 재질의 지금 값을 그때그때 복사)
+    function fadeMatOf(m) {
+      const orig = m.material; let mat = m.userData.fadeMat;
+      if (!mat || m.userData.fadeSrc !== orig) { mat = orig.clone(); m.userData.fadeMat = mat; m.userData.fadeSrc = orig; m.userData.fadeVer = orig.version; }
+      else { mat.copy(orig); if (m.userData.fadeVer !== orig.version) { mat.needsUpdate = true; m.userData.fadeVer = orig.version; } }   // 원래 재질이 그사이 바뀌었으면(그림 붙임 등) 다시 맞춤
+      mat.transparent = true; mat.depthWrite = false; return mat;
+    }
+    // 층을 옮긴 직후(엘리베이터 화면이 가린 동안) 그 층 물체의 셰이더를 미리 만들어 둠: 걷다가 처음 보는 물체나 처음 투명해지는 벽 때문에 멈칫하지 않게
+    function warmShaders() {
+      try {
+        const occ = []; scene.traverseVisible((o) => { if (o.isMesh && !fadedMeshes.has(o) && isOccluder(o)) occ.push(o); });
+        occ.forEach((o) => { o.userData.warmOrig = o.material; o.material = fadeMatOf(o); });
+        renderer.compile(scene, camera);                                   // 투명해질 때 모양
+        occ.forEach((o) => { o.material = o.userData.warmOrig; delete o.userData.warmOrig; });
+        renderer.compileAsync(scene, camera).catch(() => {});             // 평소 모양 (휴대폰이 뒤에서 나눠 만들도록)
+      } catch (e) { /* 미리 만들기는 못 해도 그리기는 그대로 됨 */ }
     }
 
     // 조명
@@ -4131,7 +4151,11 @@
       // 내 시선: 건물을 숨기지 않고 실내 천장·벽을 그대로 둔다 (밖이 보이면 어색하므로)
       const hideOut = !eye && wp.hideOutside, hideTop = !eye && wp.hideTop;
       outsideMeshes.forEach(m => { m.visible = !m.userData.forceHidden && !(hideOut || (hideTop && m.userData.isTop)); });
-      furn.visible = !hideOut; // 3층 가구는 본당을 위에서 볼 때 숨김
+      // 지금 층 가구만 그림: 다른 층 가구는 바닥·벽에 가려 안 보이는데도 매 화면 그리고 그림자까지 만들어 휴대폰에서 걸을 때 버벅였음
+      //   (모든 장소의 처음 화면을 숨기기 전후로 비교해 똑같음을 확인. 1층 필로티 가구는 B1이 아니면 늘 둠)
+      const lv = wp.level, b1Fix = scene.getObjectByName('B1_FIXES');
+      furn.visible = !hideOut && lv === 'F3'; // 3층 가구 (본당을 위에서 볼 때도 숨김)
+      f1.visible = lv !== 'B1'; f2.visible = lv === 'F2'; f4.visible = lv === 'F4'; if (b1Fix) b1Fix.visible = lv === 'B1';
       levelLabels.forEach(l => { l.visible = l.userData.lv === wp.level; });   // 지금 층 이름표만
       Object.entries(floorLights).forEach(([lv, ls]) => ls.forEach((l) => { l.visible = lv === wp.level; }));
       ROOM_LIGHTS.forEach((r) => { r.light.visible = r.lv === wp.level; });
@@ -4158,6 +4182,7 @@
 
       rebuildWalk(); buildNav(); rebuildSeats(); walkPath = []; pendingSeat = null; updateActions();
       walkedSinceRide = false; wasNearEl = true;   // 장소에 막 도착했을 땐 층 선택 창을 띄우지 않음 (걸어서 다가올 때만)
+      warmShaders();
       if (eye) { eyeCam(); return; }
       controls.target.copy(wp.camLook);
       camera.position.copy(wp.camPos);
