@@ -3390,7 +3390,7 @@
       root.updateMatrixWorld(true);
       root.traverse((o) => {
         if (!o.isMesh) return;
-        if (/^CROSS_(VERTICAL|HORIZONTAL)/.test(o.name)) { const ps = new THREE.Vector3(); o.parent.getWorldScale(ps); o.position.y -= 1.0 / (ps.y || 1); return; }   // 사용자 "십자가 조금 위치가 내려와야겠는데"
+        if (/^CROSS_(VERTICAL|HORIZONTAL)/.test(o.name)) { const ps = new THREE.Vector3(); o.parent.getWorldScale(ps); o.position.y -= 1.3 / (ps.y || 1); return; }   // 사용자 "십자가 조금 위치가 내려와야겠는데" → "아주 조금만 더"
         if (!/^(CROSS_TOWER_CORNER|LEFT_FACADE_TALL_FIN|WEST_STONE_PIER|BACK_STONE_FIN|RIGHT_STONE_END_PIER)/.test(o.name)) return;   // 기둥 + 앞면 세로 살 (사용자 "세로살도 맞추고")
         o.geometry = o.geometry.clone(); const P = o.geometry.attributes.position; inv.copy(o.matrixWorld).invert(); let ch = false;
         for (let i = 0; i < P.count; i++) { v.fromBufferAttribute(P, i).applyMatrix4(o.matrixWorld); if (v.y > ROOF_TOP) { v.y = ROOF_TOP; v.applyMatrix4(inv); P.setXYZ(i, v.x, v.y, v.z); ch = true; } }
