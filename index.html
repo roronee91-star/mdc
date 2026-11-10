@@ -946,6 +946,7 @@
         scene.add(loadedModel);
         try { applyB1Fixes(loadedModel); } catch (e) { console.warn('본당 보정 실패', e); }
         try { applyF4Fixes(loadedModel); } catch (e) { console.warn('4층 보정 실패', e); }
+        try { trimRoofTops(loadedModel); } catch (e) { console.warn('옥상 위 기둥 보정 실패', e); }
         try { fixRoads(loadedModel); } catch (e) { console.warn('도로 보정 실패', e); }
         try { fixCrosswalk(loadedModel); } catch (e) { console.warn('횡단보도 보정 실패', e); }
         try { streetCars(loadedModel); } catch (e) { console.warn('길가 차 보정 실패', e); }
@@ -3381,6 +3382,20 @@
         // 실내·계단실 구간은 천장까지 벽을 다시 세움
         [[-17.4, F4_IN_S], [F4_CORE_N, 0.0]].forEach(([z0, z1]) => { const m = new THREE.Mesh(new THREE.BoxGeometry(0.19, 14.1 - top, z1 - z0), wallMat); m.position.set(-12.355, (top + 14.1) / 2, (z0 + z1) / 2); m.castShadow = true; scene.add(m); });
       }
+    }
+    // 옥상 위로 솟은 기둥·세로 판자를 지붕 높이로 맞춤 (사용자 "십자가 기둥이 높고 판자 같은 게 있는데… 저만큼 높이로 조절해줘").
+    // GLB 파일은 그대로 두고, 화면이 열릴 때 꼭짓점 높이만 지붕 높이(ROOF_TOP)로 눌러 줌. 십자가는 낮아진 탑 안에 들어오게 조금 내림.
+    function trimRoofTops(root) {
+      const ROOF_TOP = 14.3, v = new THREE.Vector3(), inv = new THREE.Matrix4();
+      root.updateMatrixWorld(true);
+      root.traverse((o) => {
+        if (!o.isMesh) return;
+        if (/^CROSS_(VERTICAL|HORIZONTAL)/.test(o.name)) { const ps = new THREE.Vector3(); o.parent.getWorldScale(ps); o.position.y -= 0.5 / (ps.y || 1); return; }
+        if (!/^(CROSS_TOWER_CORNER|WEST_STONE_PIER|BACK_STONE_FIN|RIGHT_STONE_END_PIER)/.test(o.name)) return;   // 기둥만 (세로 판자는 그대로 — 사용자 "기둥만 조절하면 돼")
+        o.geometry = o.geometry.clone(); const P = o.geometry.attributes.position; inv.copy(o.matrixWorld).invert(); let ch = false;
+        for (let i = 0; i < P.count; i++) { v.fromBufferAttribute(P, i).applyMatrix4(o.matrixWorld); if (v.y > ROOF_TOP) { v.y = ROOF_TOP; v.applyMatrix4(inv); P.setXYZ(i, v.x, v.y, v.z); ch = true; } }
+        if (ch) { P.needsUpdate = true; o.geometry.computeBoundingBox(); o.geometry.computeBoundingSphere(); }
+      });
     }
     // ---- 엘리베이터: 모든 층 같은 자리(건물 앞쪽 오른편, x -3.5~-2.3 · z -2.4~0)에 문은 북쪽을 봄 ----
     const ELEV = { x: -0.93, doorZ: -2.45, frontZ: -3.1 };   // 십자가 탑 가운데 — 탑이 곧 승강로라 따로 통로 벽을 세우지 않음
