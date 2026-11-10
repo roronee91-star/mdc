@@ -1575,8 +1575,10 @@
         const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.1, 0.3, 16), pm); pot.position.set(x, F3_Y + 0.15, z); pot.castShadow = true; furn.add(pot);
         cyl(0.13, 0.01, x, 0.29, z, mat(0x5a4636));                                                               // 흙
         const tr = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.018, h - 0.35, 6), mat(0x6b4f36)); tr.position.set(x, F3_Y + 0.3 + (h - 0.35) / 2, z); furn.add(tr);
+        const lg = [[], [], []];   // 잎: 둥근 뭉치로, 재질별로 묶어 그림 (예전: 각진 조각 7개를 따로)
         for (let i = 0; i < 7; i++) { const a = i * 2.4, rr = 0.08 + (i % 3) * 0.05, yy = 0.55 + (i / 7) * (h - 0.6);
-          const lf = noPick(new THREE.Mesh(new THREE.IcosahedronGeometry(0.13 + (i % 2) * 0.04, 0), leafM[i % 3])); lf.position.set(x + Math.cos(a) * rr, F3_Y + yy, z + Math.sin(a) * rr); lf.rotation.set(i, i * 0.7, 0); lf.castShadow = true; furn.add(lf); }
+          lg[i % 3].push(new THREE.SphereGeometry(0.13 + (i % 2) * 0.04, 10, 8).scale(1, 0.85, 1).translate(x + Math.cos(a) * rr, F3_Y + yy, z + Math.sin(a) * rr)); }
+        lg.forEach((gs2, i) => { const lf = noPick(new THREE.Mesh(mergeGeometries(gs2), leafM[i])); gs2.forEach((g) => g.dispose()); lf.castShadow = true; furn.add(lf); });
       };
       const topiary = (x, z) => {
         const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.08, 0.22, 14), potDark); pot.position.set(x, F3_Y + 0.11, z); furn.add(pot);
@@ -1840,7 +1842,8 @@
         },
         plant(x, z, s) {
           s = s || 1; k.cyl(0.11 * s, 0.22 * s, x, 0, z, k.mPot);
-          const leaf = new THREE.Mesh(new THREE.IcosahedronGeometry(0.22 * s, 0), k.mLeaf); leaf.position.set(x, Y + 0.42 * s, z); leaf.castShadow = true; group.add(leaf);
+          const leaf = new THREE.Mesh(mergeGeometries([[0, 0, 0, 0.17], [0.1, -0.05, 0.05, 0.12], [-0.09, -0.04, -0.07, 0.12], [0.02, 0.12, -0.02, 0.11], [-0.03, -0.03, 0.11, 0.1]].map(([dx, dy, dz, r]) => new THREE.SphereGeometry(r * s, 10, 8).translate(dx * s, dy * s, dz * s))), k.mLeaf);   // 둥근 잎 뭉치 (예전: 각진 덩어리 하나)
+          leaf.position.set(x, Y + 0.42 * s, z); leaf.castShadow = true; group.add(leaf);
         },
         shelf(x, z, w, rotY) {
           const g = new THREE.Group(); g.position.set(x, Y, z); g.rotation.y = rotY || 0; group.add(g);
@@ -1979,6 +1982,11 @@
         k.box(0.04, 2.0, 0.86, SPLIT + 0.05, 0, -4.75, doorM); k.box(0.02, 0.05, 0.12, SPLIT + 0.08, 1.0, -4.45, k.M(0xc9ccd1, 0.3));   // 계단실 문 + 손잡이
         // 계단실 안 계단 (위로 올라가는 한 줄): 문 틈과 위에서 보면 보임
         for (let i = 0; i < 9; i++) k.box(0.95, 0.17 * (i + 1), 0.28, -4.75, 0, CZ1 - 0.2 - i * 0.28, k.M(0xd8d2c8, 0.7));
+        { const sd = decoKit(0, f1), tm2 = sd.mat(0xece7dd, 0.6), nm = sd.mat(0xb9b0a2, 0.5);   // 디딤판(밝은 돌) + 둥근 앞 모서리(논슬립) — 네모 상자만 쌓여 보이던 것을 다듬음
+          for (let i = 0; i < 9; i++) { const zc = CZ1 - 0.2 - i * 0.28, y = 0.17 * (i + 1);
+            sd.box(0.95, 0.015, 0.27, -4.75, y, zc - 0.005, tm2);
+            const g = new THREE.CylinderGeometry(0.018, 0.018, 0.95, 10); g.rotateZ(Math.PI / 2); sd.put(g, nm, -4.75, y, zc + 0.135); }
+          sd.flush(); }
         k.box(0.04, 0.9, 2.6, -4.25, 0.17 * 9, -3.85, k.M(0x9aa1a8, 0.4)).rotation.x = 0;                                   // 난간 (단순)
         // 전실: 북쪽 유리 + 자동문(폭 1.2m, 가운데 x -1.6), 동쪽 유리
         [[SPLIT, -2.2], [-1.0, CX1]].forEach(([p, q]) => { k.box(q - p, H, 0.04, (p + q) / 2, 0, CZ0, k.mGlass); k.box(q - p, 0.08, 0.08, (p + q) / 2, H - 0.08, CZ0, frame); });
@@ -3157,7 +3165,12 @@
         k.box(0.15, 0.6, F4_CORE_N - F4_IN_S, 0.05, 0, (F4_IN_S + F4_CORE_N) / 2, rail); k.box(0.03, 0.35, F4_CORE_N - F4_IN_S, 0.05, 0.6, (F4_IN_S + F4_CORE_N) / 2, k.mGlass);
         // 난간 앞 화단
         k.box(CORE2_W - CORE1_E - 0.4, 0.25, 0.4, (CORE1_E + CORE2_W) / 2, 0, -0.2, planter);
-        for (let xx = CORE1_E + 0.5; xx < CORE2_W - 0.4; xx += 0.5) { const fl = new THREE.Mesh(new THREE.SphereGeometry(0.13, 8, 6), k.M([0xf08aa8, 0xf6d55c, 0xffffff][Math.round(xx * 2) % 3 + (Math.round(xx * 2) % 3 < 0 ? 3 : 0)] || 0xf08aa8)); fl.position.set(xx, F4_Y + 0.34, -0.2); f4.add(fl); }
+        { const fd = decoKit(F4_Y, f4), fm = [fd.mat(0xf08aa8, 0.8), fd.mat(0xf6d55c, 0.8), fd.mat(0xffffff, 0.8)], lm = fd.mat(0x5f9d55, 0.95); let n = 0;
+          for (let xx = CORE1_E + 0.5; xx < CORE2_W - 0.4; xx += 0.5, n++) {
+            fd.ball(0.15, xx, 0.29, -0.2, lm, 1.25, 0.6, 1);                                                    // 잎 덤불
+            [[0, 0.37, 0], [0.09, 0.34, 0.06], [-0.09, 0.34, -0.05], [0.03, 0.33, -0.1], [-0.04, 0.33, 0.1]].forEach(([dx, y, dz], i) => fd.ball(0.045, xx + dx, y, -0.2 + dz, fm[(n + (i > 2 ? 1 : 0)) % 3]));   // 작은 꽃송이 다섯
+          }
+          fd.flush(); }
         k.sign('옥상 정원', -11.4, F4_CORE_N - 0.05, Math.PI, 1.8);
         // 밤 조명: 돌 길 옆 작은 기둥 조명 + 바닥 빛, 화단 나무 아래 위로 비추는 빛, 앞 난간 아래 조명줄
         const capM = new THREE.MeshBasicMaterial({ color: 0xfff1d0, toneMapped: false });
