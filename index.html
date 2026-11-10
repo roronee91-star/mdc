@@ -3112,18 +3112,41 @@
       k.sign('엘리베이터 · 계단', -4.0, F4_CORE_N - 0.05, Math.PI, 2.3); k.sign('계단', CORE1_E + 0.05, -3.6, Math.PI / 2, 2.3);
       // 옥상 정원: 인조잔디 + 돌 길 + 화단·나무 + 벤치 + 파라솔 탁자 + 난간
       {
-        const grass = new THREE.MeshStandardMaterial({ color: 0x6fae5a, roughness: 1 });
+        // 잔디·돌·나무를 네모 대신 자연스러운 모양으로 (사용자 "잔디나 계단 디테일이 다 네모형태라 별로")
+        let gs = 7; const gr = () => { gs = (gs * 16807) % 2147483647; return gs / 2147483647; };
+        const gcv = document.createElement('canvas'); gcv.width = gcv.height = 256; const gx = gcv.getContext('2d');
+        gx.fillStyle = '#6fae5a'; gx.fillRect(0, 0, 256, 256);
+        for (let i = 0; i < 260; i++) { const x = gr() * 256, y = gr() * 256, r = 6 + gr() * 22; gx.fillStyle = ['rgba(92,150,72,0.10)', 'rgba(140,190,104,0.10)', 'rgba(78,134,66,0.08)'][i % 3]; for (const ox of [-256, 0, 256]) for (const oy of [-256, 0, 256]) { gx.beginPath(); gx.arc(x + ox, y + oy, r, 0, 7); gx.fill(); } }
+        for (let i = 0; i < 2600; i++) { const x = gr() * 256, y = gr() * 256, l = 3 + gr() * 5, a = -1.57 + (gr() - 0.5) * 1.1; gx.strokeStyle = ['rgba(60,112,52,0.35)', 'rgba(150,200,112,0.35)', 'rgba(96,156,76,0.4)'][i % 3]; gx.lineWidth = 1; gx.beginPath(); gx.moveTo(x, y); gx.lineTo(x + Math.cos(a) * l, y + Math.sin(a) * l); gx.stroke(); }
+        const gtex = new THREE.CanvasTexture(gcv); gtex.colorSpace = THREE.SRGBColorSpace; gtex.wrapS = gtex.wrapT = THREE.RepeatWrapping; gtex.repeat.set(7, 4); gtex.anisotropy = 4;
+        const grass = new THREE.MeshStandardMaterial({ color: 0xffffff, map: gtex, roughness: 1 });
         k.box(12.26, 0.03, F4_CORE_N - F4_IN_S, -6.13, 0, (F4_IN_S + F4_CORE_N) / 2, grass);
         k.box(CORE2_W - CORE1_E, 0.03, 0.1 - F4_CORE_N, (CORE1_E + CORE2_W) / 2, 0, (F4_CORE_N + 0.1) / 2, grass);
-        const stone = k.M(0xd9d2c5, 0.9);
-        for (let z = F4_CORE_N - 0.3; z > F4_IN_S + 0.2; z -= 0.55) k.box(0.7, 0.035, 0.4, -4.0, 0, z, stone);      // 계단실 문 → 실내
-        for (let xx = -4.6; xx > -11.0; xx -= 0.6) k.box(0.4, 0.035, 0.7, xx, 0, -8.6, stone);                     // 정원 가로 길
-        const planter = k.M(0x8d7b66), trunk = k.M(0x6b4a2f), crown = k.M(0x4f8a4b);
+        const gd = decoKit(F4_Y, f4);
+        const stoneM = [gd.mat(0xd9d2c5, 0.9), gd.mat(0xcfc6b6, 0.95), gd.mat(0xe2dccf, 0.9)];
+        const tuftM = [gd.mat(0x6aa857, 1), gd.mat(0x8cc46e, 1), gd.mat(0x5d9c4e, 1)];
+        const tuft = (x, z, sc) => { for (let i = 0; i < 5; i++) { const h = (0.05 + gr() * 0.06) * (sc || 1), g = new THREE.ConeGeometry(0.013, h, 3); g.scale(1, 1, 0.45); g.translate(0, h / 2, 0); g.rotateZ((gr() - 0.5) * 1.0); g.rotateY(gr() * 6.28); gd.put(g, tuftM[Math.floor(gr() * 3)], x + (gr() - 0.5) * 0.09, 0.03, z + (gr() - 0.5) * 0.09); } };
+        // 디딤돌: 모서리가 둥근 자연석 (크기·방향·색이 조금씩 다름), 돌 둘레에 풀이 살짝 올라옴
+        const stone = (x, z, rx, rz) => {
+          const g = new THREE.CylinderGeometry(0.88, 1, 0.035, 26, 1), P = g.attributes.position, p1 = gr() * 6.28, p2 = gr() * 6.28;
+          for (let i = 0; i < P.count; i++) { const vx = P.getX(i), vz = P.getZ(i); if (!vx && !vz) continue; const a = Math.atan2(vz, vx), f = 1 + 0.06 * Math.sin(a * 2 + p1) + 0.035 * Math.sin(a * 3 + p2); P.setX(i, vx * f * rx); P.setZ(i, vz * f * rz); }
+          g.rotateY((gr() - 0.5) * 0.5); g.computeVertexNormals(); gd.put(g, stoneM[Math.floor(gr() * 3)], x, 0.03 + 0.0175, z);
+          for (let i = 0; i < 3; i++) { const a = gr() * 6.28; tuft(x + Math.cos(a) * (rx + 0.03), z + Math.sin(a) * (rz + 0.03), 0.8); }
+        };
+        for (let z = F4_CORE_N - 0.3; z > F4_IN_S + 0.2; z -= 0.55) stone(-4.0 + (gr() - 0.5) * 0.08, z, 0.33 + gr() * 0.04, 0.2 + gr() * 0.03);      // 계단실 문 → 실내
+        for (let xx = -4.6; xx > -11.0; xx -= 0.6) stone(xx, -8.6 + (gr() - 0.5) * 0.08, 0.2 + gr() * 0.03, 0.33 + gr() * 0.04);                     // 정원 가로 길
+        for (let i = 0; i < 110; i++) tuft(-11.9 + gr() * 11.6, F4_IN_S + 0.3 + gr() * (F4_CORE_N - F4_IN_S - 0.6), 1);                                  // 여기저기 풀 무더기
+        const planter = k.M(0x8d7b66), trunk = k.M(0x6b4a2f);
+        const leafM = [gd.mat(0x4f8a4b, 0.95), gd.mat(0x5f9d55, 0.95), gd.mat(0x437a44, 0.95)];
         [[-10.6, -10.3], [-7.2, -6.6], [-1.2, -10.2], [-1.2, -6.6]].forEach(([tx, tz]) => {
           k.box(0.9, 0.3, 0.9, tx, 0, tz, planter); k.box(0.8, 0.02, 0.8, tx, 0.3, tz, k.M(0x5a4030));
           k.cyl(0.05, 0.7, tx, 0.3, tz, trunk);
-          const c = new THREE.Mesh(new THREE.IcosahedronGeometry(0.45, 1), crown); c.position.set(tx, F4_Y + 1.25, tz); c.castShadow = true; f4.add(c);
+          // 나무 머리: 각진 덩어리 대신 둥근 잎 뭉치 여러 개
+          [[0, 1.27, 0, 0.36], [0.22, 1.16, 0.1, 0.25], [-0.2, 1.2, -0.12, 0.26], [0.05, 1.12, -0.24, 0.22], [-0.08, 1.14, 0.24, 0.23], [0.02, 1.52, 0.02, 0.24]].forEach(([dx, y, dz, r], i) => gd.ball(r, tx + dx, y, tz + dz, leafM[i % 3], 1, 0.88, 1));
+          for (let i = 0; i < 5; i++) { const a = i * 1.26 + tx; tuft(tx + Math.cos(a) * 0.3, tz + Math.sin(a) * 0.3, 0.9); }
         });
+        gd.flush();
+        f4.traverse((o) => { if (o.isMesh && tuftM.includes(o.material)) o.castShadow = false; });   // 풀 무더기는 그림자 지도에 넣지 않음 (가볍게)
         [[-8.0, -10.3, 0], [-3.0, -10.3, 0], [-9.4, -6.2, Math.PI], [-2.6, -7.6, -Math.PI / 2]].forEach(([bx, bz, r]) => k.sofa(bx, bz, 1.2, r, k.M(0xa57c52, 0.7)));  // 나무 벤치
         k.cyl(0.32, 0.03, -6.5, 0.36, -2.6, k.M(0xf3efe6)); k.cyl(0.03, 1.2, -6.5, 0, -2.6, k.M(0x777777));
         const umb = new THREE.Mesh(new THREE.ConeGeometry(0.85, 0.3, 12), k.M(0xe9e2d0)); umb.position.set(-6.5, F4_Y + 1.25, -2.6); f4.add(umb);
