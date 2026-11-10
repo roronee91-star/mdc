@@ -499,6 +499,8 @@
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.shadowMap.autoUpdate = false; renderer.shadowMap.needsUpdate = true;   // 해 그림자 지도는 바뀔 때만 다시 그림 (아래 tickShadow)
+    let shadowDirty = true, shadowAt = 0, shadowWasLive = false, shadowMode = 'auto', shadowRuns = 0;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.15;
     container.appendChild(renderer.domElement);
@@ -516,6 +518,7 @@
     let nightLights = null;
     function applyTimeOfDay(force) {
       const n = nightNow(); if (n === isNight && !force) return; isNight = n;
+      shadowDirty = true;
       const sky = n ? 0x1d2640 : 0xdce7f3;
       scene.background = new THREE.Color(sky); scene.fog.color.set(sky); scene.fog.density = n ? 0.006 : 0.002;
       hemiLight.color.set(n ? 0x8fa0d8 : 0xfff7ef); hemiLight.groundColor.set(n ? 0x2a2420 : 0x475569); hemiLight.intensity = n ? 0.42 : 0.95;
@@ -548,7 +551,7 @@
       nightLights.visible = n;
     }
     setInterval(() => applyTimeOfDay(false), 60000);   // 1분마다 확인 → 저녁 7시가 되면 바뀜
-    window.__dbg = { get hymns() { return HYMNS; }, chordFor: (k, m) => chordFor(k, m), midiOf: (n) => midiOf(n), camera, controls, scene, get furn() { return furn; }, get b1Seats() { return b1Seats; }, get character() { return characterGroup; }, findPath: (a, b) => findPath(a, b), goTo: (k) => goToTourStep(k), get camWant() { return [camWantDist, camCurDist, camLift]; }, setCam: (c, t) => { controls.target.set(...t); camera.position.set(...c); resetCamPull(); }, get eyesClosed() { return eyeParts.lids[0].visible; }, get moving() { return isMoving; }, get eating() { return isEating; }, seatsHere: () => { const r = []; const seen = new Set(); seatPick.forEach((m) => { const o = m.userData.seatOwner; if (!o || seen.has(o)) return; seen.add(o); (o.userData.seat ? [o.userData.seat] : o.userData.seats).forEach((st) => r.push(st)); }); return r; }, sit: (st) => goSit(st), get ringOpacity() { return +targetRing.material.opacity.toFixed(2); }, rayHits: (a, b) => { const A = new THREE.Vector3(...a), B = new THREE.Vector3(...b), d = B.clone().sub(A), L = d.length(); const rc = new THREE.Raycaster(A, d.normalize(), 0, L); rc.camera = camera; return rc.intersectObjects(scene.children, true).map((h) => { const m = h.object; if (m.geometry && !m.geometry.boundingBox) m.geometry.computeBoundingBox(); const bb = m.geometry && m.geometry.boundingBox ? m.geometry.boundingBox.clone().applyMatrix4(m.matrixWorld) : null; return [m.type, m.name || (m.parent && m.parent.name), +h.distance.toFixed(2), !!(m.material && m.material.transparent), m.material ? +(m.material.opacity || 0).toFixed(2) : null, bb && bb.min.toArray().map((v) => +v.toFixed(2)), bb && bb.max.toArray().map((v) => +v.toFixed(2))]; }); }, get faded() { return [...fadedMeshes.keys()].map(m => { m.geometry.computeBoundingBox(); const b = m.geometry.boundingBox.clone().applyMatrix4(m.matrixWorld); return [m.name || m.parent.name, +m.material.opacity.toFixed(2), b.min.toArray().map(v => +v.toFixed(2)), b.max.toArray().map(v => +v.toFixed(2))]; }); } }; // 화면 확인(자동 검사)용
+    window.__dbg = { shadow: (m) => { shadowMode = m; shadowDirty = true; }, get shadowRuns() { return shadowRuns; }, inSunBox: (x, y, z) => inSunBox(new THREE.Vector3(x, y, z)), get sunCam() { const c = sunLight.shadow.camera; return [c.left, c.right, c.top, c.bottom, c.near, c.far]; }, get hymns() { return HYMNS; }, chordFor: (k, m) => chordFor(k, m), midiOf: (n) => midiOf(n), camera, controls, scene, get furn() { return furn; }, get b1Seats() { return b1Seats; }, get character() { return characterGroup; }, findPath: (a, b) => findPath(a, b), goTo: (k) => goToTourStep(k), get camWant() { return [camWantDist, camCurDist, camLift]; }, setCam: (c, t) => { controls.target.set(...t); camera.position.set(...c); resetCamPull(); }, get eyesClosed() { return eyeParts.lids[0].visible; }, get moving() { return isMoving; }, get eating() { return isEating; }, seatsHere: () => { const r = []; const seen = new Set(); seatPick.forEach((m) => { const o = m.userData.seatOwner; if (!o || seen.has(o)) return; seen.add(o); (o.userData.seat ? [o.userData.seat] : o.userData.seats).forEach((st) => r.push(st)); }); return r; }, sit: (st) => goSit(st), get ringOpacity() { return +targetRing.material.opacity.toFixed(2); }, rayHits: (a, b) => { const A = new THREE.Vector3(...a), B = new THREE.Vector3(...b), d = B.clone().sub(A), L = d.length(); const rc = new THREE.Raycaster(A, d.normalize(), 0, L); rc.camera = camera; return rc.intersectObjects(scene.children, true).map((h) => { const m = h.object; if (m.geometry && !m.geometry.boundingBox) m.geometry.computeBoundingBox(); const bb = m.geometry && m.geometry.boundingBox ? m.geometry.boundingBox.clone().applyMatrix4(m.matrixWorld) : null; return [m.type, m.name || (m.parent && m.parent.name), +h.distance.toFixed(2), !!(m.material && m.material.transparent), m.material ? +(m.material.opacity || 0).toFixed(2) : null, bb && bb.min.toArray().map((v) => +v.toFixed(2)), bb && bb.max.toArray().map((v) => +v.toFixed(2))]; }); }, get faded() { return [...fadedMeshes.keys()].map(m => { m.geometry.computeBoundingBox(); const b = m.geometry.boundingBox.clone().applyMatrix4(m.matrixWorld); return [m.name || m.parent.name, +m.material.opacity.toFixed(2), b.min.toArray().map(v => +v.toFixed(2)), b.max.toArray().map(v => +v.toFixed(2))]; }); } }; // 화면 확인(자동 검사)용
     controls.maxDistance = 55;
     controls.maxPolarAngle = Math.PI * 0.49; // 바닥 아래로 돌아 들어가 건물 밖/땅 속이 보이지 않게
 
@@ -626,6 +629,8 @@
     // ---- 걸을 때 버벅임 줄이기 (사용자 "캐릭터가 움직일 때 약간 버벅거려") ----
     // 매 화면 카메라 광선은 지금 보이는 무리에만 쏨 (숨긴 다른 층 가구까지 훑던 것을 뺌)
     function rayRoots() { return scene.children.filter((c) => c.visible); }
+    // 숨긴 층의 가구 무리는 자리 계산(행렬 갱신)도 건너뜀: 안 보이는 물체 2천여 개의 자리를 매 화면 다시 계산하던 것을 뺌 (다시 보일 때 goToTourStep에서 한 번 통째로 계산)
+    function lazyMatrix(g) { if (g.userData.lazyM) return; g.userData.lazyM = true; const up = g.updateMatrixWorld; g.updateMatrixWorld = function (force) { if (this.visible) up.call(this, force); }; }
     // 캐릭터를 가리는 벽·가구를 투명하게 할 때 쓰는 재질: 물체마다 한 번 만들어 두고 계속 씀 (원래 재질의 지금 값을 그때그때 복사)
     function fadeMatOf(m) {
       const orig = m.material; let mat = m.userData.fadeMat;
@@ -633,16 +638,7 @@
       else { mat.copy(orig); if (m.userData.fadeVer !== orig.version) { mat.needsUpdate = true; m.userData.fadeVer = orig.version; } }   // 원래 재질이 그사이 바뀌었으면(그림 붙임 등) 다시 맞춤
       mat.transparent = true; mat.depthWrite = false; return mat;
     }
-    // 층을 옮긴 직후(엘리베이터 화면이 가린 동안) 그 층 물체의 셰이더를 미리 만들어 둠: 걷다가 처음 보는 물체나 처음 투명해지는 벽 때문에 멈칫하지 않게
-    function warmShaders() {
-      try {
-        const occ = []; scene.traverseVisible((o) => { if (o.isMesh && !fadedMeshes.has(o) && isOccluder(o)) occ.push(o); });
-        occ.forEach((o) => { o.userData.warmOrig = o.material; o.material = fadeMatOf(o); });
-        renderer.compile(scene, camera);                                   // 투명해질 때 모양
-        occ.forEach((o) => { o.material = o.userData.warmOrig; delete o.userData.warmOrig; });
-        renderer.compileAsync(scene, camera).catch(() => {});             // 평소 모양 (휴대폰이 뒤에서 나눠 만들도록)
-      } catch (e) { /* 미리 만들기는 못 해도 그리기는 그대로 됨 */ }
-    }
+    // (층을 옮길 때 셰이더를 미리 만들어 두던 warmShaders()는 뺌: 크롬 계열 휴대폰에서는 셰이더가 다 될 때까지 0.01초마다 모든 재질을 되물어 오히려 더 끊겼음 — 사용자 "더 버벅이고 끊기는 느낌")
 
     // 조명
     const hemiLight = new THREE.HemisphereLight(0xfff7ef, 0x475569, 0.95);
@@ -655,6 +651,24 @@
     sunLight.shadow.mapSize.set(2048, 2048);
     sunLight.shadow.bias = -0.0004;
     scene.add(sunLight);
+    // ---- 해 그림자 지도는 바뀔 때만 다시 그림 (걸을 때 버벅임 줄이기) ----
+    // 해 그림자는 원점을 지나는 폭 10m 기둥 안에만 생기고 건물·가구는 움직이지 않는데, 예전엔 매 화면마다 그 안의 물체 140~440개를 그림자 지도에 다시 그렸음.
+    // 이제는 ① 층·시간이 바뀌었을 때 ② 움직이는 캐릭터(나·다른 사람)가 그 기둥 안에 있을 때만 다시 그림. 그 밖엔 앞서 그린 지도를 그대로 씀 (화면은 전과 같음).
+    const shP = new THREE.Vector3(), shLast = [0, 0, 0, 0];
+    function inSunBox(p) { const c = sunLight.shadow.camera; shP.copy(p).applyMatrix4(c.matrixWorldInverse); return Math.abs(shP.x) < c.right + 1.5 && Math.abs(shP.y) < c.top + 1.5; }
+    function tickShadow(now) {
+      const g = characterGroup, p = g.position;
+      const moved = shLast[0] !== p.x || shLast[1] !== p.y || shLast[2] !== p.z || shLast[3] !== g.rotation.y;
+      shLast[0] = p.x; shLast[1] = p.y; shLast[2] = p.z; shLast[3] = g.rotation.y;
+      let act = (moved || isMoving || isPraying || isEating || isWaving()) && inSunBox(p);
+      if (!act) remotes.forEach((r) => { if (!act && r.group.visible && inSunBox(r.group.position)) act = true; });
+      if (shadowMode === 'static') { if (shadowDirty) { renderer.shadowMap.needsUpdate = true; shadowDirty = false; shadowRuns++; } return; }   // 검사용: 층이 바뀔 때만
+      // 캐릭터의 해 그림자는 1층(바깥·필로티)에서만 보임: 지하·2~4층은 기둥 안 여러 자리에서 '매 화면 다시 그리기'와 견줘 한 점도 다르지 않았음(tools/walk-check/shadowvis.cjs) → 걷는 동안엔 다시 그리지 않음
+      const live = shadowMode === 'always' || (act && curLevel() === 'F1');
+      // 움직임이 멈춘 바로 다음 화면에는 한 번 그려 마지막 모습을 남김. 가만히 서 있을 땐 4초에 한 번만 (걷는 중엔 주기적으로 그리지 않아 일정한 간격의 멈칫이 없음)
+      if (live || (shadowWasLive && !act) || shadowDirty || (!isMoving && now - shadowAt > 4000)) { renderer.shadowMap.needsUpdate = true; shadowDirty = false; shadowAt = now; shadowRuns++; }
+      shadowWasLive = act;
+    }
 
     const b1WarmLight = new THREE.PointLight(0xffe2be, 2.8, 35, 0.7);
     b1WarmLight.position.set(-6, -4.0, -8);
@@ -4156,6 +4170,7 @@
       const lv = wp.level, b1Fix = scene.getObjectByName('B1_FIXES');
       furn.visible = !hideOut && lv === 'F3'; // 3층 가구 (본당을 위에서 볼 때도 숨김)
       f1.visible = lv !== 'B1'; f2.visible = lv === 'F2'; f4.visible = lv === 'F4'; if (b1Fix) b1Fix.visible = lv === 'B1';
+      [furn, f1, f2, f4, b1Fix].forEach((g) => { if (!g) return; lazyMatrix(g); if (g.visible) g.updateMatrixWorld(true); });   // 숨긴 층은 자리 계산도 쉼, 다시 보이는 층은 지금 한 번 통째로 계산
       levelLabels.forEach(l => { l.visible = l.userData.lv === wp.level; });   // 지금 층 이름표만
       Object.entries(floorLights).forEach(([lv, ls]) => ls.forEach((l) => { l.visible = lv === wp.level; }));
       ROOM_LIGHTS.forEach((r) => { r.light.visible = r.lv === wp.level; });
@@ -4182,7 +4197,7 @@
 
       rebuildWalk(); buildNav(); rebuildSeats(); walkPath = []; pendingSeat = null; updateActions();
       walkedSinceRide = false; wasNearEl = true;   // 장소에 막 도착했을 땐 층 선택 창을 띄우지 않음 (걸어서 다가올 때만)
-      warmShaders();
+      shadowDirty = true;   // 층이 바뀌었으니 해 그림자 지도를 한 번 다시 그림
       if (eye) { eyeCam(); return; }
       controls.target.copy(wp.camLook);
       camera.position.copy(wp.camPos);
@@ -5584,11 +5599,12 @@
       controls.update();
       camAfterUpdate();
       levelLabels.forEach(l => { if (l.visible) l.material.opacity = THREE.MathUtils.clamp((l.position.distanceTo(camera.position) - 2.5) / 2.5, 0, 1); }); // 너무 가까운 이름표는 흐리게
-      ceilingRig.visible = camera.position.y < -1.0; // 천장 위에서 내려다보면 조명 줄이 객석을 가리므로 숨김
+      { const cr = camera.position.y < -1.0; if (ceilingRig.visible !== cr) { ceilingRig.visible = cr; shadowDirty = true; } } // 천장 위에서 내려다보면 조명 줄이 객석을 가리므로 숨김
       updatePrayLight(myPrayLight, isPraying, time, frameDt);
       Net.tick(performance.now());
       remotes.forEach((r) => { if (r.target) poseRemote(r, r.target, time, frameDt); });
       fadeBubbles();
+      tickShadow(performance.now());
       renderer.render(scene, camera);
     }
 
