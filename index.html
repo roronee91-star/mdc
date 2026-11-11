@@ -4025,17 +4025,147 @@
         bx(-3.57, -3.45, 0, H, -1.88, -1.15, wm);             // 동쪽 벽 (문 -1.15 ~ -0.3)
         bx(-3.57, -3.45, 2.1, H, -1.15, -0.3, wm);
         bx(-3.57, -3.45, 0, H, -0.3, 0.08, wm);
-        const dark = M(0x3a3f4a), top = M(0x59606c), screen = M(0x3b82f6, { emissive: 0x1d4ed8, emissiveIntensity: 0.6 });
-        bx(-8.0, -4.4, 0, 0.75, -1.7, -1.05, dark);           // 믹싱 데스크
+        const dark = M(0x3a3f4a), top = M(0x2d3139, { roughness: 0.55 });
+        bx(-8.0, -4.4, 0, 0.75, -1.7, -1.05, dark);           // 믹싱 데스크 (몸통·윗판은 걷기 막힘용으로 그대로)
         bx(-8.05, -4.35, 0.75, 0.8, -1.75, -1.0, top);
-        for (let i = 0; i < 12; i++) bx(-7.9 + i * 0.29, -7.8 + i * 0.29, 0.8, 0.83, -1.45, -1.2, M(i % 3 === 0 ? 0xef4444 : 0xe5e7eb));
-        [-7.4, -6.2, -5.0].forEach((x) => bx(x - 0.28, x + 0.28, 0.85, 1.25, -1.68, -1.62, screen)); // 모니터
         bx(-8.75, -8.2, 0, 1.5, -0.6, -0.1, dark);            // 장비 랙
         bx(-8.15, -7.6, 0, 1.5, -0.6, -0.1, dark);
-        bx(-8.65, -8.3, 0.4, 0.46, -0.1, -0.08, screen);
-        bx(-6.45, -6.0, 0.2, 0.26, -0.6, -0.15, dark);        // 의자
-        bx(-6.45, -6.0, 0.26, 0.7, -0.18, -0.15, dark);
-        bx(-6.27, -6.18, 0, 0.2, -0.42, -0.33, dark);
+        // ---- 방송실 디테일 (사용자 "엔지니어룸도 디테일"): 모두 조각을 재질별로 합쳐서 그리기 횟수는 거의 그대로 ----
+        {
+          const d = decoKit(FLOOR, g); let rs = 7; const r = () => { rs = (rs * 16807) % 2147483647; return rs / 2147483647; };
+          const LED = (c) => d.LM[c] || (d.LM[c] = new THREE.MeshBasicMaterial({ color: c, toneMapped: false }));
+          d.LM = {};
+          const at = (geo, m, x, y, z, ry, rx) => { if (rx) geo.rotateX(rx); if (ry) geo.rotateY(ry); d.put(geo, m, x, y, z); };
+          const B = (w, h, dd) => new THREE.BoxGeometry(w, h, dd), C = (rt, rb, h, s) => new THREE.CylinderGeometry(rt, rb, h, s || 12);
+          const mBody = d.mat(0x23262d, 0.5), mPanel = d.mat(0x3b4049, 0.45), mSlot = d.mat(0x0d0f12, 0.8), mCap = d.mat(0xd9dde3, 0.35);
+          const mKnob = d.mat(0x15171b, 0.4), mMetal = d.mat(0xa3aab5, 0.3, 0.6), mFab = d.mat(0x2f3542, 0.9), mEdge = d.mat(0x1b1d22, 0.4);
+          const capC = [d.mat(0xe34b4b, 0.4), d.mat(0x4f8ef7, 0.4), d.mat(0xf2c94c, 0.4), d.mat(0xe5e7eb, 0.4)];
+          // 책상 앞 둥근 모서리
+          { const e = C(0.026, 0.026, 3.7, 12).rotateZ(Math.PI / 2); d.put(e, mEdge, -6.2, 0.775, -1.0); }
+          // 1) 믹싱 콘솔: 뒤가 살짝 올라간 판 + 16채널 (페이더 · 노브 4줄 · 버튼) + 레벨 미터 줄
+          const CX = -6.2, CZ = -1.31, TH = 0.15, SN = Math.sin(TH);
+          const surf = (zr) => 0.9147 - SN * zr;
+          d.put(B(1.54, 0.05, 0.5), mBody, CX, 0.825, CZ);
+          at(B(1.5, 0.05, 0.48), mPanel, CX, 0.89, CZ, 0, TH);
+          for (let i = 0; i < 16; i++) {
+            const x = CX - 0.66 + i * 0.075;
+            at(B(0.012, 0.004, 0.15), mSlot, x, surf(0.14) + 0.001, CZ + 0.14, 0, TH);                       // 페이더 홈
+            const fz = 0.08 + r() * 0.12; at(B(0.032, 0.018, 0.022), mCap, x, surf(fz) + 0.009, CZ + fz, 0, TH);   // 페이더 손잡이
+            [-0.2, -0.14, -0.08, -0.02].forEach((zr, k) => { at(C(0.011, 0.013, 0.014, 10), mKnob, x, surf(zr) + 0.007, CZ + zr, 0, TH); at(C(0.004, 0.004, 0.004, 6), capC[k], x, surf(zr) + 0.015, CZ + zr, 0, TH); });
+            at(B(0.026, 0.008, 0.016), r() < 0.3 ? LED(0xf59e0b) : d.mat(0x8a9099, 0.5), x, surf(0.03) + 0.004, CZ + 0.03, 0, TH);   // 끄기 버튼 (몇 개는 켜짐)
+          }
+          // 오른쪽 주 출력부: 큰 페이더 2개 + 큰 노브 + 토크백 마이크
+          [CX + 0.6, CX + 0.66].forEach((x) => { at(B(0.014, 0.004, 0.17), mSlot, x, surf(0.13) + 0.001, CZ + 0.13, 0, TH); at(B(0.038, 0.02, 0.026), d.mat(0xe34b4b, 0.4), x, surf(0.09) + 0.01, CZ + 0.09, 0, TH); });
+          at(C(0.022, 0.025, 0.02, 14), mKnob, CX + 0.63, surf(-0.12) + 0.01, CZ - 0.12, 0, TH);
+          d.put(C(0.012, 0.015, 0.02, 10), mMetal, CX + 0.69, surf(-0.2) + 0.01, CZ - 0.2);
+          at(C(0.0035, 0.0035, 0.2, 6), mMetal, CX + 0.67, surf(-0.2) + 0.11, CZ - 0.17, 0, -0.35);
+          d.ball(0.013, CX + 0.655, surf(-0.2) + 0.21, CZ - 0.13, mKnob, 1, 1.6, 1);
+          // 레벨 미터 줄 (초록·노랑·빨강 불빛)
+          d.put(B(1.5, 0.1, 0.03), mBody, CX, 0.995, CZ - 0.255);
+          for (let i = 0; i < 18; i++) {
+            const x = CX - 0.66 + i * (i < 16 ? 0.075 : 0.06) + (i >= 16 ? 0.06 : 0), lv = 2 + Math.floor(r() * 6);
+            for (let j = 0; j < 8; j++) d.put(B(0.014, 0.007, 0.004), j >= lv ? d.mat(0x1f2328, 0.6) : LED(j < 5 ? 0x34d399 : j < 7 ? 0xfacc15 : 0xef4444), x, 0.958 + j * 0.0095, CZ - 0.239);
+          }
+          // 2) 모니터 2대 (조작자 쪽으로 살짝 돌림) + 스탠드
+          const CW = 1024, CH = 640, cv = document.createElement('canvas'); cv.width = CW; cv.height = CH; const cx = cv.getContext('2d');
+          const sub = (px, py, pw, ph, fn) => { cx.save(); cx.beginPath(); cx.rect(px, py, pw, ph); cx.clip(); cx.translate(px, py); fn(pw, ph); cx.restore(); };
+          sub(0, 0, 512, 288, (w, h) => {   // 왼쪽: 예배 화면(자막 송출)
+            const gr = cx.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, '#1e3a8a'); gr.addColorStop(1, '#0b1226'); cx.fillStyle = gr; cx.fillRect(0, 0, w, h);
+            cx.fillStyle = 'rgba(255,236,190,0.10)'; for (let k = 0; k < 5; k++) { cx.beginPath(); cx.moveTo(256, -20); cx.lineTo(60 + k * 100, h); cx.lineTo(100 + k * 100, h); cx.fill(); }
+            cx.fillStyle = '#f6d58a'; cx.fillRect(250, 40, 12, 58); cx.fillRect(232, 56, 48, 11);
+            cx.textAlign = 'center'; cx.fillStyle = '#ffffff'; cx.font = 'bold 46px sans-serif'; cx.fillText('물댄동산교회', 256, 168);
+            cx.fillStyle = '#f6d58a'; cx.font = 'bold 30px sans-serif'; cx.fillText('주일 예배', 256, 218);
+          });
+          sub(512, 0, 512, 288, (w, h) => {   // 오른쪽: 녹음 프로그램(파형)
+            cx.fillStyle = '#111827'; cx.fillRect(0, 0, w, h); cx.fillStyle = '#1f2937'; cx.fillRect(0, 0, w, 26); cx.fillRect(0, 0, 92, h);
+            cx.fillStyle = '#9ca3af'; for (let k = 0; k < 12; k++) cx.fillRect(100 + k * 34, 16, 1, 10);
+            const cols = ['#60a5fa', '#34d399', '#f472b6', '#fbbf24', '#a78bfa', '#f87171'];
+            for (let t = 0; t < 6; t++) { const y = 32 + t * 42; cx.fillStyle = '#374151'; cx.fillRect(6, y + 4, 80, 32); cx.fillStyle = cols[t]; cx.fillRect(10, y + 8, 8, 24);
+              cx.fillStyle = cols[t] + '33'; cx.fillRect(96, y + 2, w - 100, 38); cx.fillStyle = cols[t];
+              for (let xx = 98; xx < w - 4; xx += 3) { const a = (Math.sin(xx * 0.05 + t) * 0.5 + 0.5) * (0.3 + r() * 0.7) * 16; cx.fillRect(xx, y + 21 - a, 2, a * 2); } }
+            cx.fillStyle = '#ef4444'; cx.fillRect(330, 26, 2, h);
+          });
+          sub(0, 288, 512, 288, (w, h) => {   // 뒷벽 큰 화면: 카메라 4분할
+            cx.fillStyle = '#0a0a0a'; cx.fillRect(0, 0, w, h); const tw = 252, th = 140;
+            const tile = (i, fn, label, tally) => { const ox = 3 + (i % 2) * (tw + 4), oy = 3 + Math.floor(i / 2) * (th + 2); cx.save(); cx.beginPath(); cx.rect(ox, oy, tw, th); cx.clip(); cx.translate(ox, oy); fn(); cx.restore();
+              cx.fillStyle = 'rgba(0,0,0,0.6)'; cx.fillRect(ox + 4, oy + th - 24, 64, 20); cx.fillStyle = '#fff'; cx.font = 'bold 15px sans-serif'; cx.textAlign = 'left'; cx.fillText(label, ox + 9, oy + th - 9);
+              if (tally) { cx.strokeStyle = '#ef4444'; cx.lineWidth = 4; cx.strokeRect(ox + 2, oy + 2, tw - 4, th - 4); } };
+            const hall = () => { cx.fillStyle = '#e9dcc4'; cx.fillRect(0, 0, tw, th); cx.fillStyle = '#d9c7a8'; cx.fillRect(0, 70, tw, 70); cx.fillStyle = '#8a6240'; cx.fillRect(121, 18, 10, 52); cx.fillRect(106, 30, 40, 8);
+              cx.fillStyle = '#7a5537'; for (let k = 0; k < 4; k++) cx.fillRect(20 + k * 6, 92 + k * 12, tw - 40 - k * 12, 7); };
+            const pulpit = () => { cx.fillStyle = '#efe4d2'; cx.fillRect(0, 0, tw, th); cx.fillStyle = '#8a6240'; cx.fillRect(122, 10, 8, 40); cx.fillRect(110, 20, 32, 7); cx.fillStyle = '#c9a97a'; cx.fillRect(0, 110, tw, 30);
+              cx.fillStyle = '#e8e0d4'; cx.beginPath(); cx.moveTo(96, 112); cx.lineTo(156, 112); cx.lineTo(150, 62); cx.lineTo(102, 62); cx.fill(); cx.fillStyle = '#8a6240'; cx.fillRect(122, 78, 8, 22); };
+            const band = () => { cx.fillStyle = '#d8cab2'; cx.fillRect(0, 0, tw, th); cx.fillStyle = '#c9a97a'; cx.fillRect(0, 96, tw, 44); cx.fillStyle = '#9b2c2c'; cx.beginPath(); cx.arc(80, 92, 20, 0, 7); cx.fill();
+              cx.fillStyle = '#e5e7eb'; cx.beginPath(); cx.ellipse(120, 70, 18, 5, 0, 0, 7); cx.fill(); cx.fillStyle = '#1f2937'; cx.fillRect(160, 64, 60, 32); cx.fillStyle = '#f9fafb'; for (let k = 0; k < 8; k++) cx.fillRect(162 + k * 7, 84, 5, 10); };
+            const slide = () => { const gr = cx.createLinearGradient(0, 0, 0, th); gr.addColorStop(0, '#1e3a8a'); gr.addColorStop(1, '#0b1226'); cx.fillStyle = gr; cx.fillRect(0, 0, tw, th); cx.fillStyle = '#fff'; cx.font = 'bold 26px sans-serif'; cx.textAlign = 'center'; cx.fillText('환영합니다', tw / 2, 78); };
+            tile(0, hall, 'CAM 1', true); tile(1, pulpit, 'CAM 2'); tile(2, band, 'CAM 3'); tile(3, slide, 'PGM');
+          });
+          sub(512, 288, 512, 144, (w, h) => {   // ON AIR 등
+            cx.fillStyle = '#3b0a0a'; cx.fillRect(0, 0, w, h); cx.fillStyle = '#b91c1c'; cx.fillRect(10, 10, w - 20, h - 20);
+            cx.shadowColor = '#fecaca'; cx.shadowBlur = 18; cx.fillStyle = '#fff5f5'; cx.font = 'bold 84px sans-serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle'; cx.fillText('ON AIR', w / 2, h / 2 + 4); cx.shadowBlur = 0;
+          });
+          sub(512, 432, 160, 160, (w, h) => {   // 벽시계 (예배 시간 11시)
+            cx.fillStyle = '#ffffff'; cx.fillRect(0, 0, w, h); cx.strokeStyle = '#1f2937'; cx.lineCap = 'round';
+            for (let k = 0; k < 12; k++) { const a = k * Math.PI / 6; cx.lineWidth = k % 3 ? 3 : 6; cx.beginPath(); cx.moveTo(80 + Math.sin(a) * 62, 80 - Math.cos(a) * 62); cx.lineTo(80 + Math.sin(a) * 72, 80 - Math.cos(a) * 72); cx.stroke(); }
+            cx.lineWidth = 7; cx.beginPath(); cx.moveTo(80, 80); cx.lineTo(80 + Math.sin(-Math.PI / 6) * 40, 80 - Math.cos(-Math.PI / 6) * 40); cx.stroke();
+            cx.lineWidth = 4; cx.beginPath(); cx.moveTo(80, 80); cx.lineTo(80, 22); cx.stroke(); cx.fillStyle = '#ef4444'; cx.beginPath(); cx.arc(80, 80, 5, 0, 7); cx.fill();
+          });
+          const tex = new THREE.CanvasTexture(cv); if ('colorSpace' in tex) tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 4;
+          const mScr = new THREE.MeshBasicMaterial({ map: tex, toneMapped: false });
+          const uvMap = (geo, px, py, pw, ph) => { const uv = geo.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setXY(i, (px + uv.getX(i) * pw) / CW, 1 - (py + (1 - uv.getY(i)) * ph) / CH); return geo; };
+          [[-7.42, 0.4, 0], [-4.98, -0.4, 512]].forEach(([X, ry, px]) => {
+            at(B(0.6, 0.36, 0.024).translate(0, 1.16, 0), mEdge, X, 0, -1.52, ry);                              // 테두리
+            at(uvMap(new THREE.PlaneGeometry(0.56, 0.315), px, 0, 512, 288).translate(0, 1.16, 0.0125), mScr, X, 0, -1.52, ry);
+            at(B(0.04, 0.26, 0.022).translate(0, 0.93, -0.03), mMetal, X, 0, -1.52, ry);                        // 목
+            d.put(C(0.09, 0.1, 0.012, 20), mMetal, X, 0.806, -1.55);                                            // 받침
+          });
+          // 3) 스피커 2개 (둥근 우퍼·트위터)
+          [-7.88, -4.52].forEach((X) => { const ry = X < -6 ? 0.3 : -0.3;
+            at(B(0.17, 0.27, 0.2).translate(0, 0.935, 0), mBody, X, 0, -1.5, ry);
+            at(C(0.058, 0.058, 0.01, 20).rotateX(Math.PI / 2).translate(0, 0.9, 0.101), mKnob, X, 0, -1.5, ry);
+            at(C(0.03, 0.045, 0.012, 16).rotateX(Math.PI / 2).translate(0, 0.9, 0.104), mPanel, X, 0, -1.5, ry);
+            at(C(0.02, 0.02, 0.01, 14).rotateX(Math.PI / 2).translate(0, 1.01, 0.102), mKnob, X, 0, -1.5, ry); });
+          // 4) 노트북 · 헤드폰 (왼쪽) / 키보드 · 마우스 (오른쪽)
+          d.put(B(0.32, 0.014, 0.22), d.mat(0xb8bec7, 0.35, 0.4), -7.45, 0.807, -1.18);
+          at(B(0.32, 0.21, 0.01).translate(0, 0.105, 0), d.mat(0xb8bec7, 0.35, 0.4), -7.45, 0.814, -1.29, 0, -0.32);
+          at(uvMap(new THREE.PlaneGeometry(0.29, 0.163), 512, 0, 512, 288).translate(0, 0.105, 0.0055), mScr, -7.45, 0.814, -1.29, 0, -0.32);
+          d.put(B(0.27, 0.004, 0.12), mKnob, -7.45, 0.816, -1.16);
+          d.put(new THREE.TorusGeometry(0.065, 0.009, 6, 18, Math.PI).rotateX(-Math.PI / 2), mKnob, -7.1, 0.812, -1.2);
+          [-0.065, 0.065].forEach((o) => d.ball(0.036, -7.1 + o, 0.818, -1.2, mFab, 1, 0.45, 1));
+          d.put(B(0.42, 0.018, 0.14), mBody, -4.98, 0.809, -1.18);
+          for (let row = 0; row < 4; row++) d.put(B(0.38, 0.008, 0.022), mCap, -4.98, 0.82, -1.235 + row * 0.033);
+          d.ball(0.028, -4.65, 0.812, -1.17, mBody, 0.8, 0.45, 1.25);
+          // 5) 사무용 의자 (바퀴 5개 · 둥근 방석 · 등받이 · 팔걸이) — 캐릭터 키에 맞춘 높이
+          { const X = -6.22, Z = -0.38;
+            for (let k = 0; k < 5; k++) { const a = k * Math.PI * 2 / 5; d.put(B(0.03, 0.02, 0.2).translate(0, 0, 0.1).rotateY(a), mMetal, X, 0.04, Z); d.ball(0.02, X + Math.sin(a) * 0.2, 0.02, Z + Math.cos(a) * 0.2, mKnob); }
+            d.cyl(0.022, 0.022, 0.16, X, 0.04, Z, mMetal, 10);
+            d.cyl(0.2, 0.19, 0.05, X, 0.19, Z, mFab, 22); d.ball(0.19, X, 0.24, Z, mFab, 1, 0.12, 1);
+            d.box(0.05, 0.22, 0.03, X, 0.22, Z + 0.17, mMetal);
+            d.ball(0.2, X, 0.5, Z + 0.19, mFab, 1, 1.25, 0.25);
+            [-1, 1].forEach((s) => { d.box(0.02, 0.12, 0.02, X + s * 0.19, 0.24, Z + 0.02, mMetal); d.box(0.05, 0.025, 0.18, X + s * 0.19, 0.36, Z + 0.02, mKnob); }); }
+          // 6) 랙: 장비 칸마다 다른 앞판 + 불빛, 양옆 은색 레일
+          [[-8.475, 0.55], [-7.875, 0.55]].forEach(([X, W]) => {
+            [-1, 1].forEach((s) => d.put(B(0.022, 1.42, 0.01), mMetal, X + s * (W / 2 - 0.011), 0.76, -0.605));
+            for (let u = 0; u < 10; u++) {
+              const y = 0.12 + u * 0.128, kind = Math.floor(r() * 3);
+              d.put(B(W - 0.06, 0.11, 0.012), kind === 0 ? mPanel : kind === 1 ? mBody : d.mat(0x4b5563, 0.45), X, y + 0.055, -0.606);
+              for (let l = 0; l < 2 + Math.floor(r() * 3); l++) d.put(B(0.014, 0.014, 0.006), LED([0x22c55e, 0x60a5fa, 0xf59e0b][Math.floor(r() * 3)]), X - W / 2 + 0.06 + l * 0.03, y + 0.07, -0.614);
+              if (kind === 1) d.put(B(0.16, 0.03, 0.005), LED(0x0e7490), X + 0.06, y + 0.055, -0.614);
+              else d.put(B(0.2, 0.008, 0.004), mSlot, X + 0.07, y + 0.035, -0.613);
+            }
+          });
+          // 7) 뒷벽(남쪽): 카메라 4분할 큰 화면 · ON AIR 등 · 벽시계 · 흡음판 — 홀에서 유리창 너머로 보임
+          d.put(B(1.36, 0.79, 0.04), mEdge, -6.2, 1.48, -0.06);
+          at(uvMap(new THREE.PlaneGeometry(1.3, 0.731), 0, 288, 512, 288).translate(0, 0, 0.0205), mScr, -6.2, 1.48, -0.06, Math.PI);
+          d.put(B(0.66, 0.2, 0.04), mEdge, -6.2, 2.04, -0.06);
+          at(uvMap(new THREE.PlaneGeometry(0.62, 0.175), 512, 288, 512, 144).translate(0, 0, 0.0205), mScr, -6.2, 2.04, -0.06, Math.PI);
+          d.put(C(0.17, 0.17, 0.03, 28).rotateX(Math.PI / 2), mEdge, -3.95, 1.8, -0.05);
+          at(uvMap(new THREE.CircleGeometry(0.15, 28), 512, 432, 160, 160), mScr, -3.95, 1.8, -0.067, Math.PI);
+          [[-7.3, 1.4], [-7.3, 1.95], [-5.1, 1.4], [-4.55, 1.4], [-5.1, 1.95], [-4.55, 1.95]].forEach(([x, y], i) => {
+            d.put(B(0.5, 0.5, 0.05), i % 3 === 1 ? d.mat(0x8b7355, 0.95) : d.mat(0x5b5148, 0.95), x, y, -0.065);
+            for (let k = 0; k < 4; k++) d.put(C(0.012, 0.012, 0.46, 8).rotateZ(Math.PI / 2), d.mat(0x4a423b, 0.95), x, y - 0.18 + k * 0.12, -0.093);   // 둥근 홈 줄
+          });
+          d.flush();
+        }
         makeSign(g, '방송실', -3.40, FLOOR + 2.3, -0.725, Math.PI / 2);   // 동쪽 문 위
         makeSign(g, '방송실 (엔지니어룸)', -6.2, FLOOR + 2.6, -2.15, Math.PI);   // 홀 쪽 유리창 위
       }
